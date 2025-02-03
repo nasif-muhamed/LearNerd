@@ -1,0 +1,12 @@
+.env
+
+kuber/
+
+**/.env
+**/venv/
+
+**/migrations/
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
