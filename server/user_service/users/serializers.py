@@ -1,16 +1,18 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Profile
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ['id', 'email', 'password', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active']
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'is_tutor', 'is_active']
 
     password = serializers.CharField(write_only=True)
 
     def validate_password(self, value):
-        # Custom validation for password strength.
+        # validation for password strength.
         if len(value) < 8:
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         if not any(char.isdigit() for char in value):
@@ -37,3 +39,14 @@ class ProfileSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom claims to the token payload
+        token['is_active'] = user.is_active
+        token['is_tutor'] = user.is_tutor  
+
+        return token
