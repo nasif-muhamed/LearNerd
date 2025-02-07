@@ -4,18 +4,9 @@ from rest_framework.views import APIView
 from .models import Badges
 from .serializers import BadgeSerializer, SimplifiedBadgeSerializer
 
-class BadgeView(APIView):
-    def get(self, request, id=None):
-        # If id is provided, return a single badge with questions and answers
-        if id:
-            try:
-                badge = Badges.objects.get(id=id)
-                serializer = BadgeSerializer(badge)
-                return Response(serializer.data)
-            except Badges.DoesNotExist:
-                return Response({'detail': 'Badge not found'}, status=status.HTTP_404_NOT_FOUND)
-        
-        # If no id is provided, return the list of badges.
+class BadgesView(APIView):
+    def get(self, request):        
+        # Return the list of badges without questions and answers
         badges = Badges.objects.all()
         serializer = SimplifiedBadgeSerializer(badges, many=True)
         return Response(serializer.data)
@@ -27,3 +18,12 @@ class BadgeView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class BadgeView(APIView):
+    def get(self, request, id):
+        try:
+            badge = Badges.objects.get(id=id)
+            serializer = BadgeSerializer(badge)
+            return Response(serializer.data)
+        except Badges.DoesNotExist:
+            return Response({'detail': 'Badge not found'}, status=status.HTTP_404_NOT_FOUND)
