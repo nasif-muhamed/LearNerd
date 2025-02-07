@@ -40,6 +40,12 @@ class ProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
+class UserActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['is_active']
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):

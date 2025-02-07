@@ -3,8 +3,10 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import generics, permissions
+
 from . models import Profile, AdminUser
-from . serializers import ProfileSerializer, CustomTokenObtainPairSerializer
+from . serializers import ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -53,14 +55,35 @@ class UserView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+def is_admin(user):
+    return AdminUser.objects.filter(profile=user).exists()
+
+class UserActionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        # Check if the requesting user is an admin
+        user =  request.user
+        if not is_admin(user) or user.pk == pk:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            user = Profile.objects.get(pk=pk)
+        except Profile.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserActionSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'message': 'User status updated successfully', 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UsersView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):
         try:
-            user = request.user
-            is_admin = AdminUser.objects.filter(profile=user).exists()
-
-            if is_admin:
+            if is_admin(request.user):
                 users = Profile.objects.all()
             else:
                 return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
