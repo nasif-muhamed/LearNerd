@@ -1,17 +1,17 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Register from './pages/user/common/Register';
-import Login from './pages/user/common/Login';
-import Home from './pages/user/student/Home';
+import CommonRoutes from './routes/CommonRoutes';
 
 function App() {
 
     return (
         <Router>
             <Routes>
-                <Route path="/register" element={<Register/>} />
-                <Route path="/login" element={<Login/>} />
-                <Route path="/" element={<Home/>} />
+                <Route path="/student" element={<></>} />
+                <Route path="/tutor" element={<></>} />
+                <Route path="/admin" element={<></>} />
+                <Route path="/*" element={<CommonRoutes />} />
+                <Route path="*" element={<></>} /> {/*  404 page  */}
             </Routes>
         </Router>
     )

@@ -2,7 +2,7 @@ import React from 'react'
 
 const InputField = ({ label, type = "text", placeholder }) => (
     <div className="mb-4">
-        <label className="block text-gray-300 mb-2">{label}</label>
+        {label && <label className="block text-gray-300 mb-2">{label}</label>}
         <input
             type={type}
             placeholder={placeholder}
