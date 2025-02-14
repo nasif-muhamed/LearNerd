@@ -7,9 +7,9 @@ function App() {
     return (
         <Router>
             <Routes>
-                <Route path="/student" element={<></>} />
-                <Route path="/tutor" element={<></>} />
-                <Route path="/admin" element={<></>} />
+                <Route path="/student/*" element={<></>} />
+                <Route path="/tutor/*" element={<></>} />
+                <Route path="/admin/*" element={<></>} />
                 <Route path="/*" element={<CommonRoutes />} />
                 <Route path="*" element={<></>} /> {/*  404 page  */}
             </Routes>

@@ -15,7 +15,6 @@ const CommonRoutes = () => {
             <Route path="/test" element={<Test/>} />
 
             <Route path="/" element={<AntiProtectedRoute> <UserUnAuthenticatedLayout /> </AntiProtectedRoute>}>
-                {console.log("CommonRoutes")}
                 <Route path="/register" element={<Register/>} />
                 <Route path="/login" element={<Login/>} />
             </Route>
