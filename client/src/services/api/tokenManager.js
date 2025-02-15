@@ -29,3 +29,6 @@ class tokenManager {
         localStorage.removeItem('refreshToken');
     }
 }
+
+
+export default tokenManager;

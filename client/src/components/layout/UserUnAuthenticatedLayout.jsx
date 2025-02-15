@@ -1,6 +1,6 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom';
-import HeaderAuth from '../user/common/auth/HeaderAuth';
+import HeaderAuth from '../user/common/unauth/HeaderAuth';
 
 
 const UserUnAuthenticatedLayout = () => {

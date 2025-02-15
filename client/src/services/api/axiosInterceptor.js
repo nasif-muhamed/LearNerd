@@ -2,7 +2,7 @@ import axios from 'axios';
 import tokenManager from './tokenManager';
 
 const token = new tokenManager();
-const BASE_URL = 'http://localhost:8000/api/' // Base URL for the APIGateway
+const BASE_URL = 'http://localhost:8000/api/v1/' // Base URL for the APIGateway
 
 // Create an axios instance with the base URL
 const api = axios.create({
@@ -13,9 +13,9 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
     (config) => {
-        const token = token.getAccessToken();
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+        const accessToken = token.getAccessToken();
+        if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
         }
         return config;
     },
@@ -33,7 +33,7 @@ api.interceptors.response.use(
         const originalRequest = error.config;
 
         // Check if the error is due to an expired token
-        if (error.response.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
             try {
