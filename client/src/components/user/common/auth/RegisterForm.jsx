@@ -4,8 +4,8 @@ import SocialButton from './SocialButton';
 import { useForm } from "react-hook-form";
 import api from '../../../../services/api/axiosInterceptor';
 
-const RegisterForm = () => {
-    const { register, handleSubmit, watch, formState: { errors } } = useForm({ mode: "onBlur" });
+const RegisterForm = ({setStep}) => {
+    const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({ mode: "onBlur" });
 
     const password = watch("pass");
     
@@ -16,11 +16,19 @@ const RegisterForm = () => {
                 password: data.pass,
             }
             const response = await api.post("/users/register/", credentials);
-            console.log(response.data);
+            if (response.status !== 200) {
+                throw new Error(response.data);
+            }
+            setStep(2);
+            reset();
+            sessionStorage.setItem("userEmail", data.email); // Store email
+            sessionStorage.setItem("userEmailExpiry", (Date.now() + 300000).toString()); // Store expiration timestamp (5 minutes)
 
         } catch (error) {
             console.log(error);
             console.log('message:', error.message);
+            console.log('data:', error.response?.data);
+            alert(`Error: ${error.response?.data}`);
         }
     };
 
@@ -53,11 +61,11 @@ const RegisterForm = () => {
                         required: "Password is required", 
                         minLength: { value: 8, message: "Password must be at least 8 characters" },
                         pattern: { 
-                            value: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 
-                            message: "Password must include a letter, a number, and a special character"
+                            value: /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 
+                            message: "Password must include at least one uppercase letter, a number, and a special character"
                         }
                     })
-                }} 
+                }}
             />
             {errors.pass && <span className="text-sm text-red-500">{errors.pass.message}</span>}
 

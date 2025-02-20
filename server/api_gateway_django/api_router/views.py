@@ -1,10 +1,14 @@
 import requests
+import os
 from django.http import JsonResponse
 from django.http import HttpResponse
 from django.conf import settings
-from rest_framework.decorators import api_view
 from django.shortcuts import HttpResponse
-import os
+from rest_framework.decorators import api_view
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 # URLs of the other services
 USER_SERVICE_URL = 'http://localhost:8001/'  #  os.getenv('ORDER_SERVICE_URL')
@@ -23,6 +27,9 @@ def proxy_to_user_service(request):
         json=request.data,
     )
     
+    print('response: ', response)
+    print('response.content: ', response.content)
+    
     return HttpResponse(
         response.content,
         status=response.status_code,
@@ -31,8 +38,8 @@ def proxy_to_user_service(request):
 
 # Proxy view to Product Service
 @api_view(['GET', 'POST', 'PUT', 'DELETE'])
-def proxy_to_product_service(request):
-    url = PRODUCT_SERVICE_URL + request.path
+def proxy_to_admin_service(request):
+    url = ADMIN_SERVICE_URL + request.path
 
     response = requests.request(
         method=request.method,
@@ -47,23 +54,24 @@ def proxy_to_product_service(request):
         content_type=response.headers['Content-Type']
     )
 
-# Proxy view to Order Service
-@api_view(['GET', 'POST', 'PUT', 'DELETE'])
-def proxy_to_order_service(request):
-    url = ORDER_SERVICE_URL + request.path
+# # Proxy view to Order Service
+# @api_view(['GET', 'POST', 'PUT', 'DELETE'])
+# def proxy_to_order_service(request):
+#     url = ORDER_SERVICE_URL + request.path
 
-    response = requests.request(
-        method=request.method,
-        url=url,
-        headers=request.headers,
-        json=request.data,
-    )
+#     response = requests.request(
+#         method=request.method,
+#         url=url,
+#         headers=request.headers,
+#         json=request.data,
+#     )
     
-    return HttpResponse(
-        response.content,
-        status=response.status_code,
-        content_type=response.headers['Content-Type']
-    )
+#     return HttpResponse(
+#         response.content,
+#         status=response.status_code,
+#         content_type=response.headers['Content-Type']
+#     )
 
-def hello_world(request):
-    return HttpResponse('Hello World')
+class SimpleAPIView(APIView):
+    def get(self, request):
+        return Response({'name': 'john'}, status=status.HTTP_200_OK)

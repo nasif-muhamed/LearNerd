@@ -1,65 +1,49 @@
-import React from "react";
-import "../index.css"; // Ensure Tailwind is imported properly
+import { useState, useRef } from "react";
+import Studs from "../assets/user-auth/studs-otp.webp";
 
-const AuthPage = () => {
-  return (
-    <div className="flex h-screen w-full bg-dark text-white">
-      {/* Left Side Illustration */}
-      <div className="w-1/2 flex items-center justify-center bg-gray-800">
-        <img src="https://via.placeholder.com/500" alt="Placeholder" className="w-3/4" />
-      </div>
+export default function OTPVerification() {
+    const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+    const inputRefs = useRef([]);
 
-      {/* Right Side Form */}
-      <div className="w-1/2 flex flex-col justify-center p-10 bg-gray-900">
-        <h2 className="text-3xl font-bold mb-6">Create a new account</h2>
-        <RegisterForm />
-        <div className="text-center my-4">OR</div>
-        <SocialLogin />
-        <p className="text-center mt-4">
-          Already have an account? <a href="#" className="text-blue-400">Login</a>
-        </p>
-      </div>
-    </div>
-  );
-};
+    const handleChange = (index, value) => {
+        if (isNaN(value)) return;
+        let newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
 
-const RegisterForm = () => {
-  return (
-    <form className="flex flex-col gap-4">
-      <input
-        type="email"
-        placeholder="Email"
-        className="p-3 rounded bg-gray-700 text-white"
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        className="p-3 rounded bg-gray-700 text-white"
-      />
-      <input
-        type="password"
-        placeholder="Confirm Password"
-        className="p-3 rounded bg-gray-700 text-white"
-      />
-      <button className="bg-blue-500 p-3 rounded font-bold text-white">Send OTP</button>
-    </form>
-  );
-};
+        if (value && index < otp.length - 1) {
+            inputRefs.current[index + 1].focus();
+        }
+    };
 
-const SocialLogin = () => {
-  return (
-    <div className="flex justify-center gap-6">
-      <button className="bg-white p-3 rounded-full">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/0/09/IOS_Google_icon.png" alt="Google" className="w-6 h-6" />
-      </button>
-      <button className="bg-white p-3 rounded-full">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook" className="w-6 h-6" />
-      </button>
-      <button className="bg-white p-3 rounded-full">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" className="w-6 h-6" />
-      </button>
-    </div>
-  );
-};
+    const handleKeyDown = (index, event) => {
+        if (event.key === "Backspace" && !otp[index] && index > 0) {
+            inputRefs.current[index - 1].focus();
+        }
+    };
 
-export default AuthPage;
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white px-4">
+            <h1 className="text-2xl font-semibold mb-4">Create a new account</h1>
+            <div className="flex flex-col items-center bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div className="flex space-x-4 my-4">
+                    {otp.map((digit, index) => (
+                        <input
+                            key={index}
+                            ref={(el) => (inputRefs.current[index] = el)}
+                            type="text"
+                            maxLength="1"
+                            value={digit}
+                            onChange={(e) => handleChange(index, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(index, e)}
+                            className="w-12 h-12 text-center text-xl bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500"
+                        />
+                    ))}
+                </div>
+                <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg mt-4">Verify</button>
+                <p className="mt-3 text-sm text-gray-400 cursor-pointer hover:underline">Resend OTP</p>
+            </div>
+            <img src={Studs} alt="Placeholder" className="mt-6 w-64" />
+        </div>
+    );
+}

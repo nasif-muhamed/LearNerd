@@ -1,3 +1,8 @@
+import pyotp
+from django.core.cache import cache
+from django.core.mail import send_mail
+from django.conf import settings
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,17 +13,49 @@ from rest_framework import generics, permissions
 from . models import Profile, AdminUser
 from . serializers import ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer
 
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
         serializer = ProfileSerializer(data=request.data)
-        print('request.data', request.data)
 
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            email = serializer.validated_data['email']
+            totp = pyotp.TOTP(pyotp.random_base32())
+            otp = totp.now()
+            cache.set(email, {'otp': otp, 'data': serializer.validated_data}, timeout=300)  # 5 minutes expiry
+            
+            subject = 'Your One Time Password (OTP) for LearNerds'
+            message = f'Your OTP code is {otp}'
+            email_from = settings.EMAIL_HOST_USER
+            recipient_list = [email]
+            send_mail(subject, message, email_from, recipient_list, fail_silently=False)
+                        
+            return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        cache_data = cache.get(email)
+
+        if cache_data and cache_data['otp'] == otp:
+            serializer = ProfileSerializer(data=cache_data['data'])
+
+            if serializer.is_valid():
+                user = serializer.save()
+                cache.delete(email)
+                return Response({'message': 'User registered successfully', 'id': user.id}, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoginView(TokenObtainPairView):

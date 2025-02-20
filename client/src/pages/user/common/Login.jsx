@@ -1,6 +1,6 @@
 import React from 'react'
 import Studs from '../../../assets/user-auth/studs-login.png'
-import LoginForm from '../../../components/user/common/unauth/LoginForm';
+import LoginForm from '../../../components/user/common/auth/LoginForm';
 
 
 const Login = () => {

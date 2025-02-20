@@ -2,7 +2,7 @@ import axios from 'axios';
 import tokenManager from './tokenManager';
 
 const token = new tokenManager();
-const BASE_URL = 'http://localhost:8000/api/v1/' // Base URL for the APIGateway
+const BASE_URL = 'http://127.0.0.1:8000/api/v1/' // Base URL for the APIGateway
 
 // Create an axios instance with the base URL
 const api = axios.create({

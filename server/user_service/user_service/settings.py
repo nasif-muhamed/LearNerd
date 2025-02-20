@@ -106,8 +106,17 @@ DATABASES = {
         'NAME': 'learnerd_user',
         'USER': 'postgres',
         'PASSWORD': 'Nasif@sql',
-        'HOST': 'localhost',
+        'HOST': 'db', # 'localhost',
         'PORT': '5432',
+    }
+}
+
+
+# CACHE
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": "redis://redis:6379/1", # "redis://127.0.0.1:6379/1"
     }
 }
 
@@ -158,3 +167,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 AUTH_USER_MODEL = "users.Profile"
+
+
+# Email settings
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_USE_TLS = True
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'akhinasi95@gmail.com'
+EMAIL_HOST_PASSWORD = 'didfjlrsxhaqssan'

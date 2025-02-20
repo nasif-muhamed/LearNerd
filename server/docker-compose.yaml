@@ -1,0 +1,50 @@
+services:
+  # Redis container
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - ecom_network
+
+  # Postgres database container
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME_USER}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecom_network
+
+  user_service:
+    build:
+      context: ./user_service
+    container_name: user_service
+    environment:
+      - DATABASE_HOST=${DB_HOST}
+      - DATABASE_NAME=${DB_NAME_USER}
+      - DATABASE_USER=${DB_USER}
+      - DATABASE_PASSWORD=${DB_PASSWORD}
+      - DATABASE_PORT=${DB_PORT}
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./user_service:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8001"
+    depends_on:
+      - db
+    networks:
+      - ecom_network
+
+volumes:
+  postgres_data:
+
+networks:
+  ecom_network:
+    driver: bridge
