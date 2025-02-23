@@ -1,16 +1,17 @@
-import { useState, useRef } from 'react'
+import React from 'react'
 import { Facebook, Github } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from "react-hook-form";
+import { useDispatch } from "react-redux";
+import { login, fetchUserDetails } from "../../../../redux/features/authSlice";
 import SocialButton from './SocialButton';
 import InputField from './InputField';
-import api from '../../../../services/api/axiosInterceptor';
-import tokenManager from '../../../../services/api/tokenManager';
+import api, { tokenMgr } from '../../../../services/api/axiosInterceptor';
 
 const LoginForm = () => {
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ mode: "onBlur" });
-    const token = new tokenManager();
     const navigate = useNavigate();
+    const dispatch = useDispatch();
 
     const onSubmit = async (data) => {
         try {
@@ -22,12 +23,13 @@ const LoginForm = () => {
             if (response.status !== 200) {
                 throw new Error(response.data);
             }
-
-            token.setAccessToken(response.data.access); // Store accesstoken
-            token.setRefreshToken(response.data.refresh); // Store refreshtoken
-            console.log(token.getAccessToken(), token.getRefreshToken());
+            
+            tokenMgr.setAccessToken(response.data.access); // Store accesstoken
+            tokenMgr.setRefreshToken(response.data.refresh); // Store refreshtoken
+            dispatch(login({'token':response.data.access}));
+            dispatch(fetchUserDetails());
             reset();
-            navigate("/");
+            navigate("/student/home");
 
         } catch (error) {
             console.log(error);
@@ -38,7 +40,7 @@ const LoginForm = () => {
     };
 
     const emailtyped = watch("email");
-    console.log(emailtyped);
+
     return (
         <div className="w-full md:w-1/2 max-w-md">
             <h1 className="text-3xl font-bold text-white mb-8">Login to your account</h1>

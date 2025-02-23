@@ -16,17 +16,21 @@ ADMIN_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('USER_SERVICE_URL')
 # PRODUCT_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('PRODUCT_SERVICE_URL')
 
 # Proxy view to User Service
-@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+@api_view(['GET', 'POST', 'PATCH'])
 def proxy_to_user_service(request):
     url = USER_SERVICE_URL + request.path
     print('url: ', url) 
+
+    print("Received Data:", request.data)
+    print("files:", request.FILES)
+
     response = requests.request(
         method=request.method,
         url=url,
         headers=request.headers,
         json=request.data,
     )
-    
+
     print('response: ', response)
     print('response.content: ', response.content)
     
@@ -37,7 +41,7 @@ def proxy_to_user_service(request):
     )
 
 # Proxy view to Product Service
-@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+@api_view(['GET', 'POST', 'PATCH'])
 def proxy_to_admin_service(request):
     url = ADMIN_SERVICE_URL + request.path
 

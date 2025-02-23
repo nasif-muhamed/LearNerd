@@ -1,6 +1,6 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom';
-import HeaderAuth from '../user/common/auth/HeaderAuth';
+import HeaderUnAuth from '../user/common/auth/HeaderUnAuth';
 
 
 const UserUnAuthenticatedLayout = () => {
@@ -8,7 +8,7 @@ const UserUnAuthenticatedLayout = () => {
     return (
         <div className="min-h-screen bg-gray-900 flex flex-col">
             
-            <HeaderAuth/>
+            <HeaderUnAuth/>
 
             {/* Main Content */}
             <main className="flex-1 flex flex-col md:flex-row items-center justify-center p-4 gap-8">

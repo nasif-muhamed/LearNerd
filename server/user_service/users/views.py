@@ -9,16 +9,17 @@ from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import generics, permissions
+from rest_framework.parsers import MultiPartParser, FormParser 
 
 from . models import Profile, AdminUser
-from . serializers import ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer
+from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer
 
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     
     def post(self, request):
-        serializer = ProfileSerializer(data=request.data)
+        serializer = RegisterSerializer(data=request.data)
 
         if serializer.is_valid():
             email = serializer.validated_data['email']
@@ -46,7 +47,7 @@ class VerifyOTPView(APIView):
         cache_data = cache.get(email)
 
         if cache_data and cache_data['otp'] == otp:
-            serializer = ProfileSerializer(data=cache_data['data'])
+            serializer = RegisterSerializer(data=cache_data['data'])
 
             if serializer.is_valid():
                 user = serializer.save()
@@ -64,24 +65,22 @@ class LoginView(TokenObtainPairView):
 
 class UserView(APIView):
     permission_classes = [IsAuthenticated]
-    
-    def get(self, request, pk):
+    # parser_classes = [MultiPartParser, FormParser]
+
+    def get(self, request):
+        
         try:
             profile = request.user
-            if profile.pk == pk:
-                serializer = ProfileSerializer(profile)
-                return Response(serializer.data)
-            else:
-                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            serializer = ProfileSerializer(profile)
+            return Response(serializer.data)
 
         except Profile.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    def patch(self, request, pk):
+    def patch(self, request):
         try:
             profile = request.user
-            if profile.pk != pk:
-                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            print("Received Data:", request.data) # Debugging
 
         except Profile.DoesNotExist:
             return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -90,6 +89,8 @@ class UserView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

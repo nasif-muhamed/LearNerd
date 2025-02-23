@@ -3,13 +3,11 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Profile
 
 
-class ProfileSerializer(serializers.ModelSerializer):
+class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['id', 'email', 'password', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active']
-        read_only_fields = ['id', 'is_tutor', 'is_active']
-
-    password = serializers.CharField(write_only=True)
+        fields = ['email', 'password']
+        extra_kwargs = {'password': {'write_only': True}, 'email': {'write_only': True}}
 
     def validate_password(self, value):
         # validation for password strength.
@@ -30,14 +28,12 @@ class ProfileSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-    def update(self, instance, validated_data):
-        password = validated_data.pop('password', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        if password:
-            instance.set_password(password)
-        instance.save()
-        return instance
+
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active']
+        read_only_fields = ['id', 'email', 'is_tutor', 'is_active']
 
 
 class UserActionSerializer(serializers.ModelSerializer):
