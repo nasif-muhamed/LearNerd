@@ -15,9 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from api_router.views import MediaProxyView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('api_router.urls')), # Include the api_router urls
+    re_path(r'^media/(?P<path>.*)$', MediaProxyView.as_view(), name='media-proxy'),  # Proxy media files
 ]

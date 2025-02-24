@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import { login, fetchUserDetails } from "../../../../redux/features/authSlice";
 import SocialButton from './SocialButton';
 import InputField from './InputField';
-import api, { tokenMgr } from '../../../../services/api/axiosInterceptor';
+import api from '../../../../services/api/axiosInterceptor';
 
 const LoginForm = () => {
     const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ mode: "onBlur" });
@@ -24,9 +24,10 @@ const LoginForm = () => {
                 throw new Error(response.data);
             }
             
-            tokenMgr.setAccessToken(response.data.access); // Store accesstoken
-            tokenMgr.setRefreshToken(response.data.refresh); // Store refreshtoken
-            dispatch(login({'token':response.data.access}));
+            // tokenMgr.setAccessToken(response.data.access); // Store accesstoken
+            // tokenMgr.setRefreshToken(response.data.refresh); // Store refreshtoken
+            console.log('accessToken', response.data.access)
+            dispatch(login({'access':response.data.access, 'refresh':response.data.refresh}));
             dispatch(fetchUserDetails());
             reset();
             navigate("/student/home");

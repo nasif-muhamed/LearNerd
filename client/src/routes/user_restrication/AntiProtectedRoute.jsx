@@ -4,8 +4,7 @@ import { useSelector } from "react-redux";
 import UserUnAuthenticatedLayout from '../../components/layout/UserUnAuthenticatedLayout';
 
 const AntiProtectedRoute = () => {
-    const token = useSelector((state) => state.auth.token);
-    console.log('token');
+    const token = useSelector((state) => state.auth.accessToken);
     return token ? <Navigate to="/student/home" /> : <UserUnAuthenticatedLayout > <Outlet /> </UserUnAuthenticatedLayout>;
 }
 

@@ -9,12 +9,64 @@ from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 # URLs of the other services
 USER_SERVICE_URL = 'http://localhost:8001/'  #  os.getenv('ORDER_SERVICE_URL')
 ADMIN_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('USER_SERVICE_URL')
 # PRODUCT_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('PRODUCT_SERVICE_URL')
 
+
+class UserProfileGateway(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
+
+    def get(self, request):
+        url = USER_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")  # Forward JWT
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            print('inside api_gateway profile spe')
+            print('response: ', response)
+            print('response.content: ', response.content)
+
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+            json_data = response.json() 
+            if json_data.get('image'):
+                json_data['image'] = request.build_absolute_uri('/') + json_data['image']
+
+            return Response(json_data, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            return Response({"error": "Failed to fetch profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request):
+        url = USER_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")
+        }
+        # Forward files and data
+        files = request.FILES
+        print("files:", request.FILES)
+        data = request.POST if files else request.data
+
+        try:
+            response = requests.patch(url, headers=headers, data=data, files=files)
+            print('response: ', response)
+            print('response.content: ', response.content)
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+
+            return Response({'message': 'user updated successfully'}, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            try:
+                error_data = response.json()  # Try to parse error details
+                return Response(error_data, status=response.status_code)
+            except (ValueError, AttributeError):
+                return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+                
 # Proxy view to User Service
 @api_view(['GET', 'POST', 'PATCH'])
 def proxy_to_user_service(request):
@@ -79,3 +131,33 @@ def proxy_to_admin_service(request):
 class SimpleAPIView(APIView):
     def get(self, request):
         return Response({'name': 'john'}, status=status.HTTP_200_OK)
+
+
+class MediaProxyView(APIView):
+    SERVICE_MAP = {
+        'user': USER_SERVICE_URL,
+        'admin': ADMIN_SERVICE_URL,
+        # Add other services as needed
+    }
+
+    def get(self, request, path):
+        # Split path to extract service prefix (e.g., 'user/profile/images/...')
+        parts = path.split('/', 1)  # ['user', 'profile/images/...']
+        if len(parts) < 2:
+            return Response({"error": "Invalid media path"}, status=status.HTTP_400_BAD_REQUEST)
+
+        service_prefix = parts[0]
+        base_url = self.SERVICE_MAP.get(service_prefix)
+
+        if not base_url:
+            return Response({"error": "Service not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        media_url = f"{base_url}media/{path}"
+        print('media_url:', media_url)
+        headers = {"Authorization": request.headers.get("Authorization")}
+        try:
+            response = requests.get(media_url, headers=headers, stream=True)
+            response.raise_for_status()
+            return HttpResponse(response.content, content_type=response.headers['Content-Type'])
+        except requests.exceptions.RequestException as e:
+            return Response({"error": "Media not found"}, status=status.HTTP_404_NOT_FOUND)

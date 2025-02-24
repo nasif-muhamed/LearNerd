@@ -1,19 +1,23 @@
 import axios from 'axios';
-import tokenManager from './tokenManager';
+import { store } from '../../redux/app/store';
 
-const tokenMgr = new tokenManager();
-const BASE_URL = 'http://127.0.0.1:8000/api/v1/' // Base URL for the APIGateway
+const BASE_URL = 'http://127.0.0.1:8000/api/v1/'; // Base URL for the APIGateway
 
-// Create an axios instance with the base URL
+// axios instance with the base URL
 const api = axios.create({
     baseURL: BASE_URL,
     withCredentials: true,
 });
 
+// Helper function to get tokens from Redux store
+const getAccessToken = () => store.getState().auth.accessToken;
+const getRefreshToken = () => store.getState().auth.refreshToken;
+
 // Request interceptor
 api.interceptors.request.use(
     (config) => {
-        const accessToken = tokenMgr.getAccessToken();
+        const accessToken = getAccessToken();
+        console.log('getAccessToken:', accessToken);
         if (accessToken) {
             config.headers.Authorization = `Bearer ${accessToken}`;
         }
@@ -38,22 +42,26 @@ api.interceptors.response.use(
 
             try {
                 // Attempt to refresh the token
-                const refreshToken = tokenMgr.getRefreshToken();
-                const response = await axios.post(`${BASE_URL}/users/token/refresh/`, {
+                const refreshToken = getRefreshToken();
+                console.log('getRefreshToken:', refreshToken);
+                const response = await axios.post(`${BASE_URL}users/token/refresh/`, {
                     refreshToken,
                 });
 
-                // Update the tokens in localStorage
-                tokenMgr.setAccessToken(response.data.accessToken);
-                tokenMgr.setRefreshToken(response.data.refreshToken);
+                // Dispatch updated tokens to Redux store
+                store.dispatch({
+                    type: 'auth/login',
+                    payload: {
+                        accessToken: response.data.access,
+                    },
+                });
 
                 // Retry the original request with the new token
                 originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
                 return api(originalRequest);
-
             } catch (refreshError) {
-                // If token refresh fails, redirect to login
-                tokenMgr.clearTokens();
+                // If token refresh fails, dispatch logout and redirect
+                store.dispatch({ type: 'auth/logout' });
                 window.location.href = '/logout'; // Redirect to logout page
                 return Promise.reject(refreshError);
             }
@@ -64,4 +72,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-export { tokenMgr };

@@ -22,7 +22,8 @@ export const fetchUserDetails = createAsyncThunk(
 
 const initialState = {
     user: null,
-    token: null,
+    accessToken: null,
+    refreshToken: null,
     status: 'idle',
     error: null,
 };
@@ -33,11 +34,13 @@ const authSlice = createSlice({
     reducers: {
         login: (state, action) => {
             state.user = action.payload.user || null;
-            state.token = action.payload.token;
+            state.accessToken = action.payload.access;
+            state.refreshToken = action.payload.refresh;
         },
         logout: (state) => {
             state.user = null;
-            state.token = null;
+            state.accessToken = null;
+            state.refreshToken = null;
             state.status = 'idle';
             state.error = null;     
             storage.removeItem("persist:auth");
@@ -47,6 +50,7 @@ const authSlice = createSlice({
         builder
             .addCase(fetchUserDetails.pending, (state) => {
                 state.status = "loading";
+                console.log('++++++++++++++++++++')
             })
             .addCase(fetchUserDetails.fulfilled, (state, action) => {
                 // console.log('action.payload:', action.payload);
