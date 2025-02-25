@@ -17,7 +17,6 @@ const getRefreshToken = () => store.getState().auth.refreshToken;
 api.interceptors.request.use(
     (config) => {
         const accessToken = getAccessToken();
-        console.log('getAccessToken:', accessToken);
         if (accessToken) {
             config.headers.Authorization = `Bearer ${accessToken}`;
         }

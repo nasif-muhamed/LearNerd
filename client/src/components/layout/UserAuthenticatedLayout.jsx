@@ -2,12 +2,15 @@ import React, { useState } from 'react'
 import { Outlet } from 'react-router-dom';
 import HeaderAuth from '../user/common/HeaderAuth';
 import SideBar from '../user/common/SideBar';
+import { useSelector, useDispatch } from "react-redux";
+import { toggleIsSidebarOpen } from '../../redux/features/uiSlice'
 
 const UserAuthenticatedLayout = () => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const isSidebarOpen = useSelector((state) => state.ui.isSidebarOpen)
+    const dispatch = useDispatch()
 
     const toggleSidebar = () => {
-        setIsSidebarOpen(!isSidebarOpen);
+        dispatch(toggleIsSidebarOpen())
     };
 
     return (

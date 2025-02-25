@@ -81,10 +81,12 @@ const LoginForm = () => {
                         forgot password?
                     </a>
                 </div>
-
-                <button onClick={handleSubmit(onSubmit)} className="w-full bg-gray-200 text-gray-900 py-4 rounded-lg font-bold hover:bg-gray-300 transition-colors">
-                    Login
-                </button>
+                    
+                <div className='w-full flex justify-center'>
+                    <button onClick={handleSubmit(onSubmit)} className="px-28 bg-gray-200 text-gray-900 py-2 rounded-lg font-bold hover:bg-gray-300 transition-colors">
+                        Login
+                    </button>
+                </div>
 
                 <div className="relative">
                     <div className="absolute inset-0 flex items-center">

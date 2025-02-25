@@ -24,7 +24,7 @@ const Profile = () => {
                     <h1 className="text-3xl font-bold ">My Profile</h1>
                     
                     <Link to={'/logout'}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full transition "
                     >
                         <span className="text-xl"><ArrowBigLeft /></span> Logout
                     </Link>

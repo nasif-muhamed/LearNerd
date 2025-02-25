@@ -62,7 +62,7 @@ const HeaderAuth = ({ toggleSidebar }) => {
                 </div>
 
                 {/* Right Section: Actions */}
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 md:px-4">
                     {/* Search icon on mobile */}
                     <button
                         className="text-white text-2xl md:hidden"

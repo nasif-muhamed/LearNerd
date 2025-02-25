@@ -3,6 +3,7 @@ import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import UserAuthenticatedLayout from "../../components/layout/UserAuthenticatedLayout";
 import { fetchUserDetails } from "../../redux/features/authSlice";
+import LoadingSpinner from "../../components/user/common/ui/LoadingSpinner"
 
 const ProtectedRoute = () => {
     const token = useSelector((state) => state.auth.accessToken);
@@ -29,7 +30,7 @@ const ProtectedRoute = () => {
 
     // fallback ui for loading
     if (status === 'loading') {
-        return <div>Loading...</div>;
+        return <LoadingSpinner />;
     }
 
     return token ? (

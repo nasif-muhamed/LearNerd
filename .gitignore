@@ -10,3 +10,5 @@ kuber/
 **/*.pyc
 **/*.pyo
 **/*.pyd
+
+**/media/

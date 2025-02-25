@@ -19,6 +19,7 @@ const RegisterForm = ({setStep}) => {
             if (response.status !== 200) {
                 throw new Error(response.data);
             }
+            // alert('otp sent to the respected email')
             setStep(2);
             reset();
             sessionStorage.setItem("userEmail", data.email); // Store email

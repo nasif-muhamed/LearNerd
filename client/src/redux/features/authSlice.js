@@ -13,7 +13,8 @@ export const fetchUserDetails = createAsyncThunk(
                 throw new Error("Failed to fetch user details");
             }
             const data = await response.data;
-            return data; // Assuming data contains user details
+            return data;
+            
         } catch (error) {
             return rejectWithValue(error.response?.data?.message || error.message || 'An unknown error occurred');
         }
