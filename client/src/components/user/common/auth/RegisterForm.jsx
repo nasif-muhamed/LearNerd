@@ -14,7 +14,7 @@ const RegisterForm = ({setStep, setLoading}) => {
         try {
             setLoading(true);  // Show spinner
             const credentials = {
-                email: data.email,
+                email: data.email.trim(),
                 password: data.pass,
             }
             const response = await api.post("/users/register/", credentials);
@@ -51,7 +51,7 @@ const RegisterForm = ({setStep, setLoading}) => {
                         pattern: { 
                             value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 
                             message: "Invalid email format" 
-                        } 
+                        },
                     })
                 }} 
             />
@@ -66,10 +66,12 @@ const RegisterForm = ({setStep, setLoading}) => {
                     ...register("pass", { 
                         required: "Password is required", 
                         minLength: { value: 8, message: "Password must be at least 8 characters" },
+                        validate: value => (!/\s/.test(value) || "No spaces allowed"),
                         pattern: { 
                             value: /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 
-                            message: "Password must include at least one uppercase letter, a number, and a special character"
-                        }
+                            message: "Password must include at least a uppercase, a number, a special character and space is not allowed"
+                        },
+
                     })
                 }}
             />

@@ -18,7 +18,7 @@ const LoginForm = ({ setLoading }) => {
         setLoading(true);
         try {
             const credentials = {
-                email: data.email,
+                email: data.email.trim(),
                 password: data.pass,
             }
             const response = await api.post("/users/token/", credentials);
@@ -62,7 +62,7 @@ const LoginForm = ({ setLoading }) => {
                             pattern: { 
                                 value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 
                                 message: "Invalid email format" 
-                            } 
+                            },
                         })
                     }}
                 />
@@ -76,6 +76,7 @@ const LoginForm = ({ setLoading }) => {
                             ...register("pass", { 
                                 required: "Password is required", 
                                 minLength: { value: 8, message: "Not enough characters on password" },
+                                validate: value => (!/\s/.test(value) || "No spaces allowed"),
                             })
                         }}
                         

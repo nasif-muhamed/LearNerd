@@ -4,7 +4,7 @@ import Studs from '../../../assets/user-auth/studs-register.png';
 import StudsOtp from "../../../assets/user-auth/studs-otp.webp";
 import RegisterForm from '../../../components/user/common/auth/RegisterForm';
 import OTPForm from '../../../components/user/common/auth/OTPForm';
-import LoadingSpinner from '../../../components/user/common/ui/LoadingSpinner'
+import LoadingSpinner from '../../../components/ui/LoadingSpinner'
 
 const Register = () => {
     const [step, setStep] = useState(1);

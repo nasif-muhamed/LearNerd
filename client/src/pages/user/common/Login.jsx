@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Studs from '../../../assets/user-auth/studs-login.png'
 import LoginForm from '../../../components/user/common/auth/LoginForm';
-import LoadingSpinner from '../../../components/user/common/ui/LoadingSpinner'
+import LoadingSpinner from '../../../components/ui/LoadingSpinner'
 
 
 const Login = () => {

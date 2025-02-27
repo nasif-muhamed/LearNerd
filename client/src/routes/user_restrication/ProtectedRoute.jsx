@@ -3,7 +3,7 @@ import { Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import UserAuthenticatedLayout from "../../components/layout/UserAuthenticatedLayout";
 import { fetchUserDetails } from "../../redux/features/authSlice";
-import LoadingSpinner from "../../components/user/common/ui/LoadingSpinner"
+import LoadingSpinner from "../../components/ui/LoadingSpinner"
 
 const ProtectedRoute = () => {
     const token = useSelector((state) => state.auth.accessToken);

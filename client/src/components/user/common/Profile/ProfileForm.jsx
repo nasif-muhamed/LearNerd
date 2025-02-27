@@ -78,7 +78,7 @@ const ProfileForm = ({ user }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="flex items-center w-full bg-slate-800 text-white rounded p-3">
+                        <div className="flex items-center w-full bg-slate-800 text-white rounded p-3 min-h-12">
                             <span>{user.first_name}</span>
                         </div>
                     )}
@@ -110,7 +110,7 @@ const ProfileForm = ({ user }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="flex items-center w-full bg-slate-800 text-white rounded p-3">
+                        <div className="flex items-center w-full bg-slate-800 text-white rounded p-3 min-h-12">
                             <span>{user.last_name}</span>
                         </div>
                     )}
