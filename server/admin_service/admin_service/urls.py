@@ -21,8 +21,8 @@ from django.conf import settings
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/admin/', include('admins.urls')),
-    path('api/badges/', include('badges.urls')),
+    path('api/v1/admin/', include('admins.urls')),
+    path('api/v1/badges/', include('badges.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

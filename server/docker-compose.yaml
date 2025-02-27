@@ -5,6 +5,8 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     networks:
       - ecom_network
 
@@ -17,6 +19,22 @@ services:
       POSTGRES_DB: ${DB_NAME_USER}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ecom_network
+
+  api_gateway_django:
+    build:
+      context: ./api_gateway_django
+    container_name: api_gateway
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api_gateway_django:/app
+    command: >
+      sh -c "python manage.py runserver 0.0.0.0:8000"
+    depends_on:
+      - db
+      - redis
     networks:
       - ecom_network
 
@@ -39,11 +57,36 @@ services:
              python manage.py runserver 0.0.0.0:8001"
     depends_on:
       - db
+      - redis
+      - api_gateway_django
+    networks:
+      - ecom_network
+
+  admin_service:
+    build:
+      context: ./admin_service
+    container_name: admin_service
+    environment:
+      - DATABASE_HOST=${DB_HOST}
+      - DATABASE_NAME=${DB_NAME_USER}
+      - DATABASE_USER=${DB_ADMIN}
+      - DATABASE_PASSWORD=${DB_PASSWORD}
+      - DATABASE_PORT=${DB_PORT}
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./admin_service:/app
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8002"
+    depends_on:
+      - user_service
     networks:
       - ecom_network
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   ecom_network:

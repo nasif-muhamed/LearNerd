@@ -1,7 +1,6 @@
 import requests
 import os
-from django.http import JsonResponse
-from django.http import HttpResponse
+from django.http import JsonResponse, HttpResponse
 from django.conf import settings
 from django.shortcuts import HttpResponse
 from rest_framework.decorators import api_view
@@ -12,9 +11,9 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 # URLs of the other services
-USER_SERVICE_URL = 'http://localhost:8001/'  #  os.getenv('ORDER_SERVICE_URL')
-ADMIN_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('USER_SERVICE_URL')
-# PRODUCT_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('PRODUCT_SERVICE_URL')
+USER_SERVICE_URL = 'http://host.docker.internal:8001/' # 'http://localhost:8001/'  #  os.getenv('ORDER_SERVICE_URL')
+ADMIN_SERVICE_URL = 'http://host.docker.internal:8002/'  #  os.getenv('USER_SERVICE_URL')
+# COURSE_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('COURSE_SERVICE_URL')
 
 
 class UserProfileGateway(APIView):

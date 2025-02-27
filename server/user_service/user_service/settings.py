@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-bhyufu-uk!3t)q$_fxax^n!6-nowu2r5505jg#s+d^03(kmt!*
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -175,4 +175,3 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'akhinasi95@gmail.com'
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-print('EMAIL_HOST_PASSWORD:',EMAIL_HOST_PASSWORD)
