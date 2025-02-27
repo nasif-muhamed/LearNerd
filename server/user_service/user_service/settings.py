@@ -174,4 +174,5 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'akhinasi95@gmail.com'
-EMAIL_HOST_PASSWORD = 'didfjlrsxhaqssan' # os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+print('EMAIL_HOST_PASSWORD:',EMAIL_HOST_PASSWORD)

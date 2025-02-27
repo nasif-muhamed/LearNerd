@@ -4,16 +4,18 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { login, fetchUserDetails } from "../../../../redux/features/authSlice";
+import { toast } from 'sonner'
 import SocialButton from './SocialButton';
 import InputField from './InputField';
 import api from '../../../../services/api/axiosInterceptor';
 
-const LoginForm = () => {
-    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({ mode: "onBlur" });
+const LoginForm = ({ setLoading }) => {
+    const { register, handleSubmit, reset, formState: { errors } } = useForm({ mode: "onBlur" });
     const navigate = useNavigate();
     const dispatch = useDispatch();
 
     const onSubmit = async (data) => {
+        setLoading(true);
         try {
             const credentials = {
                 email: data.email,
@@ -24,23 +26,26 @@ const LoginForm = () => {
                 throw new Error(response.data);
             }
             
-            // tokenMgr.setAccessToken(response.data.access); // Store accesstoken
-            // tokenMgr.setRefreshToken(response.data.refresh); // Store refreshtoken
-            console.log('accessToken', response.data.access)
             dispatch(login({'access':response.data.access, 'refresh':response.data.refresh}));
             dispatch(fetchUserDetails());
+            toast.success('Login success. Welcome back!')
             reset();
             navigate("/student/home");
 
         } catch (error) {
+
             console.log(error);
             console.log('message:', error.message);
-            console.log('data:', error.response?.data);
-            alert(`Error: ${error.response?.data}`);
+            console.log('data:', Object.values(error.response?.data)?.[0]);
+            toast.error(Object.values(error.response?.data)?.[0] || error.message || 'Something went wrong');
+
+        } finally {
+
+            setLoading(false);
+            
         }
     };
 
-    const emailtyped = watch("email");
 
     return (
         <div className="w-full md:w-1/2 max-w-md">

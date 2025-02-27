@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner'
 import api from '../../../../services/api/axiosInterceptor';
 
-const OTPForm = ({setStep}) => {
+const OTPForm = ({setStep, setLoading}) => {
     const [otp, setOtp] = useState(["", "", "", "", "", ""]);
     const inputRefs = useRef([]);
     const navigate = useNavigate();
@@ -25,6 +26,7 @@ const OTPForm = ({setStep}) => {
     };
 
     const handleVerifyOTP = async () => {
+        setLoading(true);  // Show spinner
         try {
             const otpValue = otp.join("");
             const email = sessionStorage.getItem("userEmail");
@@ -41,21 +43,23 @@ const OTPForm = ({setStep}) => {
                 }
                 sessionStorage.removeItem("userEmail");
                 sessionStorage.removeItem("userEmailExpiry");
-                alert("User registered successfully");
+                toast.success(`OTP verified and User registered successfully`);
                 navigate("/login");
 
             } else {
                 sessionStorage.removeItem("userEmail");
                 sessionStorage.removeItem("userEmailExpiry");
-                alert("OTP verification failed", Date.now() < parseInt(emailExpiry));
+                toast.error(`OTP Expired`);
                 setStep(1)
             }
 
-        }catch (error) {
+        } catch (error) {
             console.log(error);
             console.log('message:', error.message);
             console.log('data:', error.response?.data);
-            alert(`Error: ${error.response?.data}`);
+            toast.error(error.response?.data || `OTP verification failed`);
+        } finally {
+            setLoading(false);  // Hide spinner
         }
     };
 

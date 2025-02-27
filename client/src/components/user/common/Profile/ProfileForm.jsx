@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import api from "../../../../services/api/axiosInterceptor";
 import { fetchUserDetails } from "../../../../redux/features/authSlice";
 import { useDispatch } from "react-redux";
+import { toast } from 'sonner'
+import api from "../../../../services/api/axiosInterceptor";
 
 const ProfileForm = ({ user }) => {
     const dispatch = useDispatch();
     const [isEditing, setIsEditing] = useState(false);
-    const [profileData, setProfileData] = useState({
-        firstName: user.first_name,
-        lastName: user.last_name,
-        email: user.email,
-        biography: user.biography,
-    });
 
     const {
         register,
@@ -39,21 +34,15 @@ const ProfileForm = ({ user }) => {
             if (response.status !== 200) {
                 throw new Error(response.data);
             }
-            alert(`user data updated: ${response.data.message}`);
-            console.log(
-                "user data response",
-                response,
-                "response.data.message",
-                response.data.message
-            );
             if (user) {
                 dispatch(fetchUserDetails());
             }
+            toast.success(`user data updated`);
         } catch (error) {
             console.log(error);
             console.log("message:", error.message);
             console.log("data:", error.response?.data);
-            alert(`Error: ${error.response?.data}`);
+            toast.error(`Error: ${error.response?.data}`);
             reset();
         } finally {
             setIsEditing(false);
@@ -90,7 +79,7 @@ const ProfileForm = ({ user }) => {
                         </div>
                     ) : (
                         <div className="flex items-center w-full bg-slate-800 text-white rounded p-3">
-                            <span>{profileData.firstName}</span>
+                            <span>{user.first_name}</span>
                         </div>
                     )}
                 </div>
@@ -122,7 +111,7 @@ const ProfileForm = ({ user }) => {
                         </div>
                     ) : (
                         <div className="flex items-center w-full bg-slate-800 text-white rounded p-3">
-                            <span>{profileData.lastName}</span>
+                            <span>{user.last_name}</span>
                         </div>
                     )}
                 </div>
@@ -131,7 +120,7 @@ const ProfileForm = ({ user }) => {
                 <div>
                     <label className="block text-slate-400 mb-1">email</label>
                     <div className="flex items-center w-full bg-slate-800 text-white rounded p-3">
-                        <span>{profileData.email}</span>
+                        <span>{user.email}</span>
                     </div>
                 </div>
 
@@ -161,7 +150,7 @@ const ProfileForm = ({ user }) => {
                         </div>
                     ) : (
                         <div className="relative w-full bg-slate-800 text-white rounded p-3 min-h-32">
-                            <p>{profileData.biography}</p>
+                            <p>{user.biography}</p>
                         </div>
                     )}
                 </div>

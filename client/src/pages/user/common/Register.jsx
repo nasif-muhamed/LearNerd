@@ -4,13 +4,17 @@ import Studs from '../../../assets/user-auth/studs-register.png';
 import StudsOtp from "../../../assets/user-auth/studs-otp.webp";
 import RegisterForm from '../../../components/user/common/auth/RegisterForm';
 import OTPForm from '../../../components/user/common/auth/OTPForm';
+import LoadingSpinner from '../../../components/user/common/ui/LoadingSpinner'
 
 const Register = () => {
     const [step, setStep] = useState(1);
-
+    const [loading, setLoading] = useState(false);
 
     return (
         <>
+            {/* Show spinner if loading */}
+            {loading && <LoadingSpinner />}  
+
             {step === 1 ? (
 
                 <>
@@ -34,7 +38,7 @@ const Register = () => {
                             <h2 className="text-2xl text-white font-bold mb-4">Create a new account</h2>
                             
                             {/* Register Form */}
-                            <RegisterForm setStep={setStep} />
+                            <RegisterForm setStep={setStep} setLoading={setLoading} />
 
                             {/* Login Link */}
                             <p className="mt-6 text-center text-gray-400">
@@ -53,7 +57,7 @@ const Register = () => {
 
                 <div className="flex flex-col items-center justify-center  bg-gray-900 text-white px-4">
                     <h1 className="text-2xl font-semibold mb-4">Create a new account</h1>
-                    <OTPForm setStep={setStep} />
+                    <OTPForm setStep={setStep} setLoading={setLoading} />
                     <img src={StudsOtp} alt="Placeholder" className="mt-6 w-64 md:block hidden" />
                 </div>
 

@@ -2,6 +2,8 @@ import React from 'react'
 import { X } from 'lucide-react';
 import { fetchUserDetails } from "../../../../redux/features/authSlice";
 import { useDispatch } from "react-redux";
+import { toast } from 'sonner'
+
 const ImageUploadModal = ({previewImage, isUploading, setIsUploading, selectedFile, setSelectedFile, setShowModal, setPreviewImage, api, user }) => {
     const dispatch = useDispatch();
 
@@ -33,6 +35,7 @@ const ImageUploadModal = ({previewImage, isUploading, setIsUploading, selectedFi
             setShowModal(false);
             setPreviewImage(null);
             setSelectedFile(null);
+            toast.success('Image updation successfull')
         } catch (error) {
             console.error('Error uploading image:', error);
             // Handle error - you might want to show a toast notification
@@ -62,12 +65,12 @@ const ImageUploadModal = ({previewImage, isUploading, setIsUploading, selectedFi
                 </div>
                 
                 <div className="p-6">
-                    <div className="w-full max-h-56 mx-auto overflow-hidden rounded-lg mb-6">
+                    <div className="w-full h-56 flex items-center justify-center overflow-hidden mb-6">
                         {previewImage && (
                             <img 
                                 src={previewImage} 
                                 alt="Profile Preview" 
-                                className="w-full h-full object-cover"
+                                className="max-w-full max-h-full object-contain"
                             />
                         )}
                     </div>

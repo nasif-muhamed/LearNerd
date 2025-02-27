@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import studs1 from '../../../assets/user-auth/studs-login.png'
 import studs2 from '../../../assets/user-auth/studs-otp.webp'
-import studs3 from '../../../assets/user-auth/studs-register.png'
 
 const Home = () => {
 

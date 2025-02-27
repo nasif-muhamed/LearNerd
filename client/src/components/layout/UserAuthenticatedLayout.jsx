@@ -31,7 +31,7 @@ const UserAuthenticatedLayout = () => {
                 <SideBar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar}/>
 
                 {/* Main Content */}
-                <main className={`flex-1 overflow-y-auto bg-gray-900 text-white transition-all duration-300 ease-in-out`} >
+                <main className={`flex-1 overflow-y-auto text-white transition-all duration-300 ease-in-out`} >
                     <Outlet />
                 </main>
             </div>

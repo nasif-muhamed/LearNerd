@@ -1,16 +1,18 @@
 import { Facebook, Github } from 'lucide-react';
+import { toast } from 'sonner'
+import { useForm } from "react-hook-form";
 import InputField from './InputField';
 import SocialButton from './SocialButton';
-import { useForm } from "react-hook-form";
 import api from '../../../../services/api/axiosInterceptor';
 
-const RegisterForm = ({setStep}) => {
+const RegisterForm = ({setStep, setLoading}) => {
     const { register, handleSubmit, watch, reset, formState: { errors } } = useForm({ mode: "onBlur" });
 
     const password = watch("pass");
     
     const onSubmit = async (data) => {
         try {
+            setLoading(true);  // Show spinner
             const credentials = {
                 email: data.email,
                 password: data.pass,
@@ -19,7 +21,7 @@ const RegisterForm = ({setStep}) => {
             if (response.status !== 200) {
                 throw new Error(response.data);
             }
-            // alert('otp sent to the respected email')
+            toast.info(`OTP sent to ${data.email}. Check your inbox \nYou have 3 minutes left `);
             setStep(2);
             reset();
             sessionStorage.setItem("userEmail", data.email); // Store email
@@ -28,9 +30,12 @@ const RegisterForm = ({setStep}) => {
         } catch (error) {
             console.log(error);
             console.log('message:', error.message);
-            console.log('data:', error.response?.data);
-            alert(`Error: ${error.response?.data}`);
+            console.log('data:', error.response?.data?.email);
+            toast.error(error.response?.data?.email || 'Something went wrong');
+        } finally {
+            setLoading(false);  // Hide spinner
         }
+
     };
 
     return (

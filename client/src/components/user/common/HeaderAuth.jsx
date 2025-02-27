@@ -78,7 +78,9 @@ const HeaderAuth = ({ toggleSidebar }) => {
                         <button className="text-white text-2xl"> <Heart /> </button>
                         <Link to='/profile' className="text-white text-2xl">
                             {user && user.image ? (
-                                <img src={user.image} alt="Profile" className="h-10 w-10 rounded-full" />
+                                <div className='h-10 w-10 rounded-full overflow-hidden'>
+                                    <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                                </div>
                             ) : (
                                 <UserRound />
                             )}

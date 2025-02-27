@@ -38,31 +38,34 @@ api.interceptors.response.use(
         // Check if the error is due to an expired token
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
-
-            try {
-                // Attempt to refresh the token
-                const refreshToken = getRefreshToken();
-                console.log('getRefreshToken:', refreshToken);
-                const response = await axios.post(`${BASE_URL}users/token/refresh/`, {
-                    refreshToken,
-                });
-
-                // Dispatch updated tokens to Redux store
-                store.dispatch({
-                    type: 'auth/login',
-                    payload: {
-                        accessToken: response.data.access,
-                    },
-                });
-
-                // Retry the original request with the new token
-                originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
-                return api(originalRequest);
-            } catch (refreshError) {
-                // If token refresh fails, dispatch logout and redirect
-                store.dispatch({ type: 'auth/logout' });
-                window.location.href = '/logout'; // Redirect to logout page
-                return Promise.reject(refreshError);
+            const refreshToken = getRefreshToken();
+            console.log('refresh:', refreshToken)
+            if (refreshToken){
+                try {
+                    // Attempt to refresh the token
+                    console.log('getRefreshToken:', refreshToken);
+                    const response = await axios.post(`${BASE_URL}users/token/refresh/`, {
+                        refreshToken,
+                    });
+                    console.log('current access:', getAccessToken())
+                    console.log('new access:', response.data.access)
+                    // Dispatch updated tokens to Redux store
+                    store.dispatch({
+                        type: 'auth/login',
+                        payload: {
+                            accessToken: response.data.access,
+                        },
+                    });
+    
+                    // Retry the original request with the new token
+                    originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+                    return api(originalRequest);
+                } catch (refreshError) {
+                    // If token refresh fails, dispatch logout and redirect
+                    store.dispatch({ type: 'auth/logout' });
+                    // window.location.href = '/logout'; // Redirect to logout page
+                    return Promise.reject(refreshError);
+                }
             }
         }
 

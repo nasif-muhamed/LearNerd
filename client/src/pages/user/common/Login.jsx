@@ -1,13 +1,19 @@
-import React from 'react'
+import { useState } from 'react'
 import Studs from '../../../assets/user-auth/studs-login.png'
 import LoginForm from '../../../components/user/common/auth/LoginForm';
+import LoadingSpinner from '../../../components/user/common/ui/LoadingSpinner'
 
 
 const Login = () => {
+    const [loading, setLoading] = useState(false);
+
     return (
         <>
+            {/* Show spinner if loading */}
+            {loading && <LoadingSpinner />}
+
             {/* Login Form Section */}
-            <LoginForm/>
+            <LoginForm setLoading={setLoading} />
 
             {/* Illustration Section */}
             <div className="w-full md:w-1/2 max-w-xl md:block hidden">

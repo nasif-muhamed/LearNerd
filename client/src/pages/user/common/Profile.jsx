@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { ArrowBigLeft } from 'lucide-react';
@@ -18,7 +18,7 @@ const Profile = () => {
     const [isUploading, setIsUploading] = useState(false);
 
     return (
-        <div className="bg-slate-900 text-white p-8 min-h-screen">
+        <div className="text-white p-8 min-h-screen">
             <div className="max-w-4xl mx-auto">
                 <div className="flex justify-between items-center mb-10">
                     <h1 className="text-3xl font-bold ">My Profile</h1>
@@ -39,7 +39,7 @@ const Profile = () => {
                     setShowModal={setShowModal} 
                 />
 
-                {/* Profile information form */}
+                {/* Profile information and update form */}
                 <ProfileForm user={user}/>
             </div>
 
