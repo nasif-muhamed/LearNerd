@@ -22,16 +22,20 @@ const RegisterForm = ({setStep, setLoading}) => {
                 throw new Error(response.data);
             }
             toast.info(`OTP sent to ${data.email}. Check your inbox \nYou have 3 minutes left `);
-            setStep(2);
-            reset();
             sessionStorage.setItem("userEmail", data.email); // Store email
             sessionStorage.setItem("userEmailExpiry", (Date.now() + 300000).toString()); // Store expiration timestamp (5 minutes)
+            setStep(2);
+            reset();
 
         } catch (error) {
             console.log(error);
             console.log('message:', error.message);
             console.log('data:', error.response?.data?.email);
-            toast.error(error.response?.data?.email || 'Something went wrong');
+            if (error.response?.data){
+                toast.error(Object.values(error.response?.data)?.[0]);
+            } else {
+                toast.error(error.message || 'Something went wrong');
+            }
         } finally {
             setLoading(false);  // Hide spinner
         }

@@ -57,7 +57,11 @@ const OTPForm = ({setStep, setLoading}) => {
             console.log(error);
             console.log('message:', error.message);
             console.log('data:', error.response?.data);
-            toast.error(error.response?.data || `OTP verification failed`);
+            if (error.response?.data){
+                toast.error(Object.values(error.response?.data)?.[0]);
+            } else {
+                toast.error(error.message || 'Something went wrong');
+            }
         } finally {
             setLoading(false);  // Hide spinner
         }

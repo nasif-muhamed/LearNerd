@@ -27,7 +27,7 @@ const initialState = {
 };
 
 const adminAuthSlice = createSlice({
-    name: "auth",
+    name: "adminAuth",
     initialState,
     reducers: {
         adminLogin: (state, action) => {

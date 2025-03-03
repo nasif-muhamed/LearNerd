@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import AdminLoginForm from '../../../components/admin/auth/AdminLoginForm';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner'
-import OTPForm from '../../../components/admin/auth/OTPForm';
+import AdminLoginForm from '../../../components/admin/auth/AdminLoginForm';
+import AdminOTPForm from '../../../components/admin/auth/AdminOTPForm';
 
 const Login = () => {
     const [step, setStep] = useState(1);
@@ -21,7 +21,7 @@ const Login = () => {
             ):(
                 <>
                     {/* Login OTP Section */}
-                    <OTPForm setLoading={setLoading} setStep={setStep} />
+                    <AdminOTPForm setLoading={setLoading} setStep={setStep} />
                 </>
             )}
         </div>

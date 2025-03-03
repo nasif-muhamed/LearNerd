@@ -36,8 +36,12 @@ const LoginForm = ({ setLoading }) => {
 
             console.log(error);
             console.log('message:', error.message);
-            console.log('data:', Object.values(error.response?.data)?.[0]);
-            toast.error(Object.values(error.response?.data)?.[0] || error.message || 'Something went wrong');
+            console.log('data:', error.response?.data);
+            if (error.response?.data){
+                toast.error(Object.values(error.response?.data)?.[0]);
+            } else {
+                toast.error(error.message || 'Something went wrong');
+            }
 
         } finally {
 

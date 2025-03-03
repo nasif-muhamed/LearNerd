@@ -45,20 +45,20 @@ api.interceptors.response.use(
                     // Attempt to refresh the token
                     console.log('getRefreshToken:', refreshToken);
                     const response = await axios.post(`${BASE_URL}users/token/refresh/`, {
-                        refreshToken,
+                        refresh : refreshToken
                     });
                     console.log('current access:', getAccessToken())
                     console.log('new access:', response.data.access)
                     // Dispatch updated tokens to Redux store
                     store.dispatch({
-                        type: 'auth/login',
+                        type: 'auth/updateAcess',
                         payload: {
-                            accessToken: response.data.access,
+                            access: response.data.access,
                         },
                     });
     
                     // Retry the original request with the new token
-                    originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+                    originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
                     return api(originalRequest);
                 } catch (refreshError) {
                     // If token refresh fails, dispatch logout and redirect
