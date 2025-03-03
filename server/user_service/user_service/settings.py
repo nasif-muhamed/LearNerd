@@ -24,11 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bhyufu-uk!3t)q$_fxax^n!6-nowu2r5505jg#s+d^03(kmt!*'
+SECRET_KEY = os.getenv('DJANGO_SECRET_USER')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
+DEBUG = os.getenv('DEBUG') == 'True'
 ALLOWED_HOSTS = ["*"]
 
 
@@ -58,12 +57,12 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=2),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
-    # 'SIGNING_KEY': os.getenv('JWT_SECRET_KEY'),  
-    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': os.getenv('JWT_SECRET_KEY_USER'),  
+    'ALGORITHM': os.getenv('JWT_ALGORITHM_USER'),
 }
 
 MIDDLEWARE = [
@@ -102,21 +101,26 @@ WSGI_APPLICATION = 'user_service.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'learnerd_user',
-        'USER': 'postgres',
-        'PASSWORD': 'Nasif@sql',
-        'HOST': 'db', # 'localhost',
-        'PORT': '5432',
+        'ENGINE': os.getenv('DB_ENGINE'),
+        'NAME': os.getenv('DB_NAME_USER'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'), # 'localhost',
+        'PORT': os.getenv('DB_PORT'),
     }
 }
 
-
 # CACHE
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = os.getenv('REDIS_PORT')
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": "redis://redis:6379/1", # "redis://127.0.0.1:6379/1"
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1", # "redis://127.0.0.1:6379/1"
+        "OPTIONS": {
+            'CLIENT_CLASS': 'path.to.your.custom.RedisClient',
+        }
     }
 }
 
@@ -173,5 +177,5 @@ AUTH_USER_MODEL = "users.Profile"
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER = 'akhinasi95@gmail.com'
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD_USER')

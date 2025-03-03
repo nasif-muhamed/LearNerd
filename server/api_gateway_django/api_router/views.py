@@ -1,8 +1,10 @@
 import requests
 import os
+
 from django.http import JsonResponse, HttpResponse
 from django.conf import settings
 from django.shortcuts import HttpResponse
+
 from rest_framework.decorators import api_view
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
@@ -11,9 +13,11 @@ from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 # URLs of the other services
-USER_SERVICE_URL = 'http://host.docker.internal:8001/' # 'http://localhost:8001/'  #  os.getenv('ORDER_SERVICE_URL')
-ADMIN_SERVICE_URL = 'http://host.docker.internal:8002/'  #  os.getenv('USER_SERVICE_URL')
-# COURSE_SERVICE_URL = 'http://localhost:8002/'  #  os.getenv('COURSE_SERVICE_URL')
+USER_SERVICE_URL = os.getenv('USER_SERVICE_URL')
+#'http://host.docker.internal:8001/' # 'http://localhost:8001/'  
+ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
+# 'http://host.docker.internal:8002/' # 'http://localhost:8002/'
+# COURSE_SERVICE_URL = os.getenv('COURSE_SERVICE_URL') # 'http://localhost:8002/'
 
 
 class UserProfileGateway(APIView):
@@ -26,15 +30,15 @@ class UserProfileGateway(APIView):
         }
         try:
             response = requests.get(url, headers=headers)
-            print('inside api_gateway profile spe')
             print('response: ', response)
             print('response.content: ', response.content)
 
             response.raise_for_status()  # Raise exception for 4xx/5xx
             json_data = response.json() 
+            print('debug::', request.build_absolute_uri('/'), request.build_absolute_uri(''), json_data['image'])
             if json_data.get('image'):
-                json_data['image'] = request.build_absolute_uri('/') + json_data['image']
-
+                json_data['image'] = request.build_absolute_uri('/')[:-1] + json_data['image']
+            print('debug2:', json_data['image'])
             return Response(json_data, status=response.status_code)
 
         except requests.exceptions.RequestException as e:

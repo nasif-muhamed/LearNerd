@@ -16,7 +16,6 @@ env/
 
 # Ignore static and media files
 static/
-media/
 
 # Ignore database files
 *.sqlite3
