@@ -26,7 +26,7 @@ const LoginForm = ({ setLoading }) => {
                 throw new Error(response.data);
             }
             
-            dispatch(login({'access':response.data.access, 'refresh':response.data.refresh}));
+            dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'student'}));
             dispatch(fetchUserDetails());
             toast.success('Login success. Welcome back!')
             reset();

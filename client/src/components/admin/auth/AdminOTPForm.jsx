@@ -38,7 +38,11 @@ const AdminOTPForm = ({setLoading, setStep}) => {
             const otpValue = otp.join("");
             const username = sessionStorage.getItem("adminUsername");
             const usernameExpiry = sessionStorage.getItem("adminUsernameExpiry");
-            if (otpValue && username && Date.now() < parseInt(usernameExpiry)) {
+            
+            if (otpValue.length !== 4) {
+                toast.error('OTP required')
+            }
+            else if (otpValue && username && Date.now() < parseInt(usernameExpiry)) {
                 const credentials = {
                     username: username,
                     otp: otpValue,
@@ -51,8 +55,8 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                 }
                 sessionStorage.removeItem("adminUsername");
                 sessionStorage.removeItem("adminUsernameExpiry");
-                dispatch(adminLogin({'adminAccessToken':response.data.access, 'adminRefreshToken':response.data.refresh}));
-                dispatch(login({'access':response.data.user_access, 'refresh':response.data.user_refresh}));
+                // dispatch(adminLogin({'adminAccessToken':response.data.access, 'adminRefreshToken':response.data.refresh}));
+                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin'}));
                 toast.success('Login successfull')
                 reset()
                 navigate("/admin/dashboard");
@@ -78,17 +82,18 @@ const AdminOTPForm = ({setLoading, setStep}) => {
     };
 
     return (
-        <div className="flex flex-col items-center bg-gray-800 p-6 rounded-lg shadow-lg w-80 md:w-full max-w-md">
-            <div className="flex space-x-1.5 md:space-x-4 my-4">
+        <div className="flex flex-col items-center p-6 w-80 md:w-full max-w-md">
+            <div className="w-64 bg-gray-800 flex justify-between p-4 rounded-lg my-6">
                 {otp.map((digit, index) => (
                     <input
                         key={index}
                         ref={(el) => (inputRefs.current[index] = el)}
                         maxLength="1"
                         value={digit}
+                        required
                         onChange={(e) => handleChange(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-10 h-10 md:w-12 md:h-12 text-center text-xl bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500"
+                        className="w-10 h-10 md:w-12 md:h-12 text-center text-white text-xl bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500"
                     />
                 ))}
             </div>
@@ -102,11 +107,11 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                         validate: value => (!/\s/.test(value) || "No spaces allowed")
                     })
                 }
-                className='w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none'
+                className='w-64 p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none'
             />
             {errors.pass && <span className="text-sm text-red-500">{errors.pass.message}</span>}
 
-            <button onClick={handleSubmit(handleVerifyOTP)} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg mt-4">Verify</button>
+            <button onClick={handleSubmit(handleVerifyOTP)} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg mt-6">Verify</button>
         </div>
     )
 }

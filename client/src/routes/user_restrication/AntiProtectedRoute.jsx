@@ -5,7 +5,12 @@ import UserUnAuthenticatedLayout from '../../components/layout/UserUnAuthenticat
 
 const AntiProtectedRoute = () => {
     const token = useSelector((state) => state.auth.accessToken);
-    return token ? <Navigate to="/student/home" /> : <UserUnAuthenticatedLayout > <Outlet /> </UserUnAuthenticatedLayout>;
+    const role = useSelector((state) => state.auth.role);
+    console.log('role', role)
+
+    return role === 'student' ? <Navigate to="/student/home" /> 
+            : role === 'admin' ? <Navigate to={'/admin/dashboard'} /> 
+            : <UserUnAuthenticatedLayout > <Outlet /> </UserUnAuthenticatedLayout>;
 }
 
 export default AntiProtectedRoute

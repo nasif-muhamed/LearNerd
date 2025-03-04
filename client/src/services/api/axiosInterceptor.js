@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { store } from '../../redux/app/store';
 
-const BASE_URL = 'http://127.0.0.1:8000/api/v1/'; // Base URL for the APIGateway
-
+const BASE_URL = import.meta.env.VITE_BASE_URL + 'api/v1/'; // Base URL for the APIGateway
 // axios instance with the base URL
 const api = axios.create({
     baseURL: BASE_URL,

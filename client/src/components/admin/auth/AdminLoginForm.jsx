@@ -26,7 +26,6 @@ const AdminLoginForm = ({ setLoading, setStep }) => {
 
             console.log(error);
             console.log('message:', error.message);
-            console.log('data:', Object.values(error.response?.data)?.[0]);
             if (error.response?.data){
                 toast.error(Object.values(error.response?.data)?.[0]);
             } else {
@@ -42,14 +41,14 @@ const AdminLoginForm = ({ setLoading, setStep }) => {
 
 
     return (
-        <div className="max-w-md flex flex-col justify-center items-center p-10">
+        <div className="w-96 flex flex-col justify-center items-center p-10">
             <h1 className="text-3xl font-bold text-white mb-8">Admin Login</h1>
 
             <form className="space-y-6">
                 
                 <input 
                     type="text" 
-                    placeholder="username" 
+                    placeholder="Username" 
                     {
                         ...register("username", { 
                             required: "Username is required", 
@@ -59,7 +58,7 @@ const AdminLoginForm = ({ setLoading, setStep }) => {
                     }
                     className='w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:outline-none'
                 />
-                {errors.username && <span className="text-sm text-red-500">{errors.username.message}</span>}
+                {errors.username && <span className="w-full text-sm text-red-500">{errors.username.message}</span>}
 
                 <div className='w-full flex justify-center'>
                     <button onClick={handleSubmit(onSubmit)} className="px-28 bg-gray-200 text-gray-900 py-2 rounded-lg font-bold hover:bg-gray-300 transition-colors">

@@ -9,13 +9,11 @@ import { toast } from 'sonner'
 const Logout = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const token = useSelector((state) => state.auth.accessToken);
-    console.log('token:', token)
+    const role = useSelector((state) => state.auth.role);
 
     useEffect(() => {
-        if (token) {
+        if (role) {
             dispatch(logout());
-            dispatch(adminLogout())
             persistor.purge();  // Clears persisted state properly
             console.log('inside: token')
             toast('Logged Out', {
@@ -23,8 +21,9 @@ const Logout = () => {
             })
               
         }
-        navigate('/login', { replace: true });
-    }, [token, navigate, dispatch]);
+        console.log('role:', role)
+        navigate(role === 'admin' ? 'admin/login' : '/login', { replace: true })
+    }, [role, navigate, dispatch]);
     
     return null;
 }

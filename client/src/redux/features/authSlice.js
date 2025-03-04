@@ -25,6 +25,7 @@ const initialState = {
     user: null,
     accessToken: null,
     refreshToken: null,
+    role: null,
     status: 'idle',
     error: null,
 };
@@ -37,15 +38,20 @@ const authSlice = createSlice({
             state.user = action.payload.user || null;
             state.accessToken = action.payload.access;
             state.refreshToken = action.payload.refresh;
+            state.role = action.payload.role
         },
         updateAcess: (state, action) => {
             state.accessToken = action.payload.access;
+        },
+        switchRole: (state, action) => {
+            state.role = action.payload.role
         },
         logout: (state) => {
             state.user = null;
             state.accessToken = null;
             state.refreshToken = null;
             state.status = 'idle';
+            state.role = null
             state.error = null;     
             storage.removeItem("persist:auth");
         },

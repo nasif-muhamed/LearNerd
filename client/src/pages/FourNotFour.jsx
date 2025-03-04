@@ -1,6 +1,10 @@
 import { useNavigate } from "react-router-dom";
+import Header404 from "../components/layout/Header404";
+import { useSelector } from "react-redux";
 
 const FourNotFour = () => {
+    const user = useSelector((state) => state.auth.user);
+    const admin = useSelector((state) => state.adminAuth.adminAccessToken);
     const navigate = useNavigate();
 
     const handleBackClick = () => {
@@ -8,10 +12,13 @@ const FourNotFour = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl flex flex-col items-center gap-8">
+        <div className="min-h-screen bg-gray-900 flex flex-col w-full"> 
+        {/* items-center justify-center p-4 */}
+            <Header404 />
+            
+            <div className="w-full h-full flex flex-col items-center justify-center">
                 {/* Text Section */}
-                <div className="w-full text-center flex flex-col justify-center items-center ">
+                <div className="w-full max-w-4xl text-center flex flex-col justify-center items-center mt-10">
                     {/* Creative "404" Illustration */}
                     <div className="relative mb-4">
                         <svg

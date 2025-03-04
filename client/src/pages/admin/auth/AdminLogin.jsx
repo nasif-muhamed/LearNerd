@@ -8,7 +8,7 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-900 flex justify-center items-center">
+        <div className=" bg-gray-900 flex justify-center items-center">
 
             {/* Show spinner if loading */}
             {loading && <LoadingSpinner />}
