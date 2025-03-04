@@ -74,8 +74,11 @@ class UserProfileGateway(APIView):
 @api_view(['GET', 'POST', 'PATCH'])
 def proxy_to_user_service(request):
     url = USER_SERVICE_URL + request.path
-    print('url: ', url) 
+    query_params = request.GET.urlencode()  # Get query parameters as a URL-encoded string
+    if query_params:
+        url = f"{url}?{query_params}"  # Append the query parameters to the URL
 
+    print('url: ', url) 
     print("Received Data:", request.data)
     print("files:", request.FILES)
 
@@ -98,7 +101,12 @@ def proxy_to_user_service(request):
 # Proxy view to Product Service
 @api_view(['GET', 'POST', 'PATCH'])
 def proxy_to_admin_service(request):
-    url = ADMIN_SERVICE_URL + request.path
+    url = ADMIN_SERVICE_URL[:-1] + request.path
+    query_params = request.GET.urlencode()  # Get query parameters as a URL-encoded string
+    if query_params:
+        url = f"{url}?{query_params}"  # Append the query parameters to the URL
+
+    print('url: ', url) 
 
     response = requests.request(
         method=request.method,

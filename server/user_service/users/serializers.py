@@ -32,14 +32,15 @@ class RegisterSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):    
     class Meta:
         model = Profile
-        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active']
-        read_only_fields = ['id', 'email', 'is_tutor', 'is_active']
+        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at']
+        read_only_fields = ['id', 'email', 'is_tutor', 'is_active', 'created_at']
 
 
 class UserActionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ['is_active']
+        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at']
+        read_only_fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'created_at']
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

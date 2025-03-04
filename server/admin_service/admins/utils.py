@@ -69,6 +69,47 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error while getting tokens: {str(e)}")
 
+
+    # method to fetch a single user
+    def get_user(self, pk, admin):
+        if not admin:
+            raise ValueError("Admin parameter is required")
+
+        try:
+            token_obj = UserServiceToken.objects.get(admin=admin)
+        except UserServiceToken.DoesNotExist:
+            raise UserServiceException("Token not found for admin")
+
+        path = f"api/v1/users/user-action/{pk}/"
+        headers = {"Authorization": f"Bearer {token_obj.access_token}"}
+
+        try:
+            response = self._make_request("GET", headers, path)
+            
+            if response.status_code == 401:
+                # Handle token refresh in case of access token expiration
+                new_token = self._refresh_token(token_obj)
+                token_obj.access_token = new_token["access"]
+                token_obj.save()
+                
+                # Retry with new access token
+                headers["Authorization"] = f"Bearer {new_token['access']}"
+                response = self._make_request("GET", headers, path)
+
+            print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise UserServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error: {str(e)}")
+
     # method to bloack a user
     def block_user(self, pk, method="PATCH", data=None, admin=None):
         if not admin:
@@ -93,7 +134,7 @@ class CallUserService:
                 
                 # Retry with new access token
                 headers["Authorization"] = f"Bearer {new_token['access']}"
-                response = self._make_request(method, path, headers, data)
+                response = self._make_request(method, headers, path, data)
 
             print(response.ok)
             if response.status_code != 200:
@@ -111,6 +152,7 @@ class CallUserService:
         
     # method to fetch users, supports filters
     def get_users(self, admin, query_params=None):
+        print('HEre,', query_params)
         if not admin:
             raise ValueError("Admin parameter is required")
 
@@ -122,8 +164,7 @@ class CallUserService:
         path = "api/v1/users/"
         url = f"{self.USER_SERVICE_URL}{path}"
         if query_params:
-            url = f"{url}?{requests.utils.urlencode(query_params)}"
-        
+            url = f"{url}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
         headers = {"Authorization": f"Bearer {token_obj.access_token}"}
 
         try:
