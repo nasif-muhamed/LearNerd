@@ -1,13 +1,25 @@
-import React, { useState } from 'react'
-import { ListCollapse, Search, Bell, Heart, UserRound, CircleX, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from "react";
+import {
+    ListCollapse,
+    Search,
+    Bell,
+    Heart,
+    UserRound,
+    CircleX,
+    Users,
+    Settings,
+    LogOut,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import NerdOwl from '/nerdowl.png';
+import NerdOwl from "/nerdowl.png"
 
 const HeaderAuth = ({ toggleSidebar }) => {
     const user = useSelector((state) => state.auth.user);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const profileDropdownRef = useRef(null);
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
@@ -16,6 +28,26 @@ const HeaderAuth = ({ toggleSidebar }) => {
     const toggleSearch = () => {
         setIsSearchExpanded(!isSearchExpanded);
     };
+
+    const toggleProfileDropdown = () => {
+        setIsProfileDropdownOpen(!isProfileDropdownOpen);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                profileDropdownRef.current &&
+                !profileDropdownRef.current.contains(event.target)
+            ) {
+                setIsProfileDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     return (
         <header className="w-full bg-gray-800 z-40">
@@ -29,18 +61,29 @@ const HeaderAuth = ({ toggleSidebar }) => {
                     >
                         <ListCollapse />
                     </button>
-
                     {/* Logo and brand in navbar */}
-                    <Link to='/student/home'>
+                    <Link to="/student/home">
                         <div className="flex items-center mr-6">
-                            <img src={NerdOwl} alt="Logo" className="h-10 w-10" />
-                            <span className="text-white text-xl font-bold hidden md:block">LearNerds</span>
+                            <img
+                                src={NerdOwl}
+                                alt="Logo"
+                                className="h-10 w-10"
+                            />
+                            <span className="text-white text-xl font-bold hidden md:block">
+                                LearNerds
+                            </span>
                         </div>
                     </Link>
                 </div>
 
                 {/* Center Section: Search Bar - Only visible on desktop or when expanded on mobile */}
-                <div className={`${isSearchExpanded ? 'absolute inset-x-0 top-0 p-4 bg-gray-800 z-50 flex' : 'hidden md:flex'} justify-center flex-1 max-w-xl mx-auto`}>
+                <div
+                    className={`${
+                        isSearchExpanded
+                            ? "absolute inset-x-0 top-0 p-4 bg-gray-800 z-50 flex"
+                            : "hidden md:flex"
+                    } justify-center flex-1 max-w-xl mx-auto`}
+                >
                     <div className="relative w-full">
                         <input
                             type="text"
@@ -70,55 +113,184 @@ const HeaderAuth = ({ toggleSidebar }) => {
                     >
                         <Search />
                     </button>
-
                     {/* Desktop view - show all buttons */}
                     <div className="hidden md:flex items-center space-x-6">
-                        <a href="#" className="bg-gray-700 px-4 py-2 rounded-lg text-white">Tutor</a>
-                        <button className="text-white text-2xl"> <Bell /> </button>
-                        <button className="text-white text-2xl"> <Heart /> </button>
-                        <Link to='/profile' className="text-white text-2xl">
-                            {user && user.image ? (
-                                <div className='h-10 w-10 rounded-full overflow-hidden'>
-                                    <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                        <a
+                            href="#"
+                            className="bg-gray-700 px-4 py-2 rounded-lg text-white"
+                        >
+                            Tutor
+                        </a>
+                        <button className="text-white text-2xl">
+                            {" "}
+                            <Bell />{" "}
+                        </button>
+                        <button className="text-white text-2xl">
+                            {" "}
+                            <Heart />{" "}
+                        </button>
+
+                        {/* Profile dropdown - desktop */}
+                        <div className="relative" ref={profileDropdownRef}>
+                            <button
+                                onClick={toggleProfileDropdown}
+                                className="text-white text-2xl focus:outline-none"
+                            >
+                                {user && user.image ? (
+                                    <div className="h-10 w-10 rounded-full overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
+                                        <img
+                                            src={user.image}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center hover:bg-gray-600 transition-all">
+                                        <UserRound />
+                                    </div>
+                                )}
+                            </button>
+
+                            {/* Profile dropdown menu */}
+                            {isProfileDropdownOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50 transform opacity-100 scale-100 transition-all duration-150 ease-in-out">
+                                    <div className="px-4 py-3 border-b border-gray-600">
+                                        <div className="flex items-center space-x-2">
+                                            {user && user.image ? (
+                                                <div className="h-8 w-8 rounded-full overflow-hidden">
+                                                    <img
+                                                        src={user.image}
+                                                        alt="Profile"
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <UserRound className="text-white" />
+                                            )}
+                                            <div className="flex flex-col">
+                                                <span className="text-white font-medium">
+                                                    {user?.name || "User"}
+                                                </span>
+                                                <span className="text-gray-400 text-xs">
+                                                    {user?.email ||
+                                                        "user@example.com"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Link
+                                        to="/profile"
+                                        className="flex items-center px-4 py-2 text-white hover:bg-gray-600 transition-colors"
+                                    >
+                                        <UserRound className="mr-2 h-4 w-4" />
+                                        My Profile
+                                    </Link>
+                                    <Link
+                                        to="/settings"
+                                        className="flex items-center px-4 py-2 text-white hover:bg-gray-600 transition-colors"
+                                    >
+                                        <Settings className="mr-2 h-4 w-4" />
+                                        Settings
+                                    </Link>
+                                    <div className="border-t border-gray-600 my-1"></div>
+                                    <Link
+                                        to={'/logout'}
+                                        className="flex items-center w-full text-left px-4 py-2 text-red-400 hover:bg-gray-600 transition-colors"
+                                    >
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        Logout
+                                    </Link>
                                 </div>
-                            ) : (
-                                <UserRound />
                             )}
-                        </Link>
+                        </div>
                     </div>
 
                     {/* Mobile view - dropdown menu button */}
                     <div className="relative md:hidden">
-                        <button onClick={toggleMenu} className="text-white text-2xl">
+                        <button
+                            onClick={toggleMenu}
+                            className="text-white text-2xl"
+                        >
                             <UserRound />
                         </button>
-
                         {isMenuOpen && (
                             <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50">
                                 <div className="px-4 py-2 border-b border-gray-600">
                                     <div className="flex items-center space-x-2">
-                                        {/* <img src="/api/placeholder/32/32" alt="Profile" className="h-8 w-8 rounded-full" /> */}
-                                        <UserRound className='text-white' />
-                                        <span className="text-white">Profile</span>
+                                        {user && user.image ? (
+                                            <div className="h-8 w-8 rounded-full overflow-hidden">
+                                                <img
+                                                    src={user.image}
+                                                    alt="Profile"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <UserRound className="text-white" />
+                                        )}
+                                        <span className="text-white">
+                                            {user?.name || "Profile"}
+                                        </span>
                                     </div>
                                 </div>
-                                <a href="#" className="flex px-4 py-2 text-white hover:bg-gray-600">
-                                    <span className="mr-2"> <Bell /> </span> Notifications
+                                <a
+                                    href="#"
+                                    className="flex px-4 py-2 text-white hover:bg-gray-600"
+                                >
+                                    <span className="mr-2">
+                                        {" "}
+                                        <Bell />{" "}
+                                    </span>{" "}
+                                    Notifications
                                 </a>
-                                <a href="#" className="flex px-4 py-2 text-white hover:bg-gray-600">
-                                    <span className="mr-2"> <Heart /> </span> Wishlist
+                                <a
+                                    href="#"
+                                    className="flex px-4 py-2 text-white hover:bg-gray-600"
+                                >
+                                    <span className="mr-2">
+                                        {" "}
+                                        <Heart />{" "}
+                                    </span>{" "}
+                                    Wishlist
                                 </a>
-                                <a href="#" className="flex px-4 py-2 text-white hover:bg-gray-600">
-                                    <span className="mr-2"> <Users /> </span> Tutor
+                                <a
+                                    href="#"
+                                    className="flex px-4 py-2 text-white hover:bg-gray-600"
+                                >
+                                    <span className="mr-2">
+                                        {" "}
+                                        <Users />{" "}
+                                    </span>{" "}
+                                    Tutor
                                 </a>
+                                <Link
+                                    to="/profile"
+                                    className="flex px-4 py-2 text-white hover:bg-gray-600"
+                                >
+                                    <span className="mr-2">
+                                        {" "}
+                                        <UserRound />{" "}
+                                    </span>{" "}
+                                    My Profile
+                                </Link>
+                                <div className="border-t border-gray-600 my-1"></div>
+                                <Link
+                                    to={'/logout'}
+                                    className="flex w-full text-left px-4 py-2 text-red-400 hover:bg-gray-600"
+                                >
+                                    <span className="mr-2">
+                                        {" "}
+                                        <LogOut />{" "}
+                                    </span>{" "}
+                                    Logout
+                                </Link>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
         </header>
+    );
+};
 
-    )
-}
-
-export default HeaderAuth
+export default HeaderAuth;

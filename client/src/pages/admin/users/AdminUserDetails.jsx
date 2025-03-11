@@ -1,10 +1,14 @@
-import React, { useCallback, useEffect } from "react";
-import { Users, MessageCircle, Star, Flag } from "lucide-react";
+import React, { use, useState } from "react";
+import { Star, Flag } from "lucide-react";
 import { useParams } from "react-router-dom";
-import api from "../../services/api/axiosInterceptor";
+import api from "../../../services/api/axiosInterceptor";
+import { toast } from "sonner";
+import UserProfile from "../../../components/admin/users/UserProfile";
 
 const AdminUserDetails = () => {
     const { id } = useParams();
+    const BASE_URL = import.meta.env.VITE_BASE_URL;
+    const [user, setUser] = useState(null);
 
     const enrolledCourses = [
         {
@@ -45,47 +49,32 @@ const AdminUserDetails = () => {
         },
     ];
 
-    const fetchUser = useCallback(async () => {
-
-        try {
-            console.log('userId:', id)
-            const response = await api.get(`admin/user-action/${id}/`);
-            console.log(response)
-        } catch (err) {
-            console.log('err:', err);
-            setError("Failed to fetch users.");
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchUser();
-    }, [fetchUser]);
-    
     return (
         <div className="bg-gray-900 text-white min-h-screen p-6">
             <div className="max-w-6xl mx-auto">
-                {/* Profile Header */}
+                {/* Profile Header
                 <div className="flex items-center mb-8">
-                    <div className="mr-6">
+                    <div className="rounded-full w-20 h-20 md:w-32 md:h-32 overflow-hidden">
                         <img
-                            src="https://t4.ftcdn.net/jpg/03/64/21/11/360_F_364211147_1qgLVxv1Tcq0Ohz3FawUfrtONzz8nq3e.jpg"
+                            src={BASE_URL + user?.image}
                             alt="Profile"
-                            className="rounded-full w-32 h-32 object-cover"
+                            className="w-full h-full object-cover"
                         />
                     </div>
-                    <div>
-                        <h1 className="text-3xl font-bold mb-2">Rohit Das</h1>
-                        <p className="text-gray-400 mb-4">rohitdas@gmail.com</p>
+                    <div className="ml-6">
+                        <h1 className="md:text-2xl font-bold md:mb-2">{user?.first_name + " " + user?.last_name}</h1>
+                        <p className="text-gray-400 mb-1.5 md:mb-4">{user?.email}</p>
                         <div className="flex space-x-4">
-                            <button className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                            <button className="bg-red-500 text-white text-xs px-2 py-1 md:text-base md:px-4 md:py-2 rounded hover:bg-red-600">
                                 Block Student
                             </button>
-                            <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            <button className="bg-blue-500 text-white text-xs px-2 py-1 md:text-base md:px-4 md:py-2 rounded hover:bg-blue-600">
                                 Chat Student
                             </button>
                         </div>
                     </div>
-                </div>
+                </div> */}
+                <UserProfile id={id} user={user} setUser={setUser} api={api} toast={toast} BASE_URL={BASE_URL} />
 
                 {/* Enrolled Courses */}
                 <div className="mb-8">
@@ -124,8 +113,8 @@ const AdminUserDetails = () => {
                 {/* Reviews and Ratings */}
                 <div className="mb-8">
                     <h2 className="text-2xl font-semibold mb-4 flex items-center">
-                        <Star className="mr-2 text-yellow-500" /> Reviews and
-                        Ratings Given By Rohit
+                        <Star className="mr-2 text-yellow-500" />
+                        Reviews and Ratings Given
                     </h2>
                     <div className="space-y-4">
                         {reviews.map((review, index) => (
@@ -134,9 +123,9 @@ const AdminUserDetails = () => {
                                 className="bg-gray-800 p-4 rounded-lg flex items-start"
                             >
                                 <img
-                                    src="/api/placeholder/50/50?text=RD"
+                                    src={BASE_URL + user?.image}
                                     alt="Reviewer"
-                                    className="rounded-full w-12 h-12 mr-4"
+                                    className="rounded-full w-12 h-12 mr-4 hidden md:block"
                                 />
                                 <div>
                                     <h3 className="font-bold">Rohit Das</h3>
@@ -162,9 +151,9 @@ const AdminUserDetails = () => {
                                 className="bg-gray-800 p-4 rounded-lg flex items-start"
                             >
                                 <img
-                                    src="/api/placeholder/50/50?text=RD"
+                                    src={BASE_URL + user?.image}
                                     alt="Reporter"
-                                    className="rounded-full w-12 h-12 mr-4"
+                                    className="rounded-full w-12 h-12 mr-4 hidden md:block"
                                 />
                                 <div>
                                     <h3 className="font-bold">Rohit Das</h3>

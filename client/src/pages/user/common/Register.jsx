@@ -6,6 +6,7 @@ import RegisterForm from '../../../components/user/common/auth/RegisterForm';
 import OTPForm from '../../../components/user/common/auth/OTPForm';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner'
 
+
 const Register = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);

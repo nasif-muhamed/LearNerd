@@ -9,6 +9,7 @@ import SocialButton from './SocialButton';
 import InputField from './InputField';
 import api from '../../../../services/api/axiosInterceptor';
 
+
 const LoginForm = ({ setLoading }) => {
     const { register, handleSubmit, reset, formState: { errors } } = useForm({ mode: "onBlur" });
     const navigate = useNavigate();
@@ -22,6 +23,7 @@ const LoginForm = ({ setLoading }) => {
                 password: data.pass,
             }
             const response = await api.post("/users/token/", credentials);
+            // console.log('user_response_token_login:', response.data)
             if (response.status !== 200) {
                 throw new Error(response.data);
             }
@@ -87,9 +89,9 @@ const LoginForm = ({ setLoading }) => {
                     />
                     {errors.pass && <span className="text-sm text-red-500">{errors.pass.message}</span>}
                     
-                    <a href="#" className="text-blue-500 hover:text-blue-400 text-sm  inline-block w-full text-right">
+                    <Link to="/forgot-password" className="text-blue-500 hover:text-blue-400 text-sm  inline-block w-full text-right">
                         forgot password?
-                    </a>
+                    </Link>
                 </div>
                     
                 <div className='w-full flex justify-center'>

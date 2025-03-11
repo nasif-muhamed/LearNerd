@@ -12,13 +12,10 @@ const FourNotFour = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 flex flex-col w-full"> 
-        {/* items-center justify-center p-4 */}
-            <Header404 />
-            
+        <div className="min-h-full items-center justify-center p-4 bg-gray-900 flex flex-col w-full"> 
             <div className="w-full h-full flex flex-col items-center justify-center">
                 {/* Text Section */}
-                <div className="w-full max-w-4xl text-center flex flex-col justify-center items-center mt-10">
+                <div className="w-full max-w-4xl text-center flex flex-col justify-center items-center">
                     {/* Creative "404" Illustration */}
                     <div className="relative mb-4">
                         <svg

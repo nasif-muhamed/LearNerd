@@ -1,11 +1,15 @@
 import React from "react";
-import FourNotFour from "../pages/FourNotFour";
 import { Routes, Route } from "react-router-dom";
+import FourNotFour from "../pages/FourNotFour";
+import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 
 const TutorRoutes = () => {
+    console.log('tutor route')
     return (
         <Routes>
-            <Route path="*" element={<FourNotFour />} /> {/*  404 page  */}
+            <Route path="*" element={<DynamicRouter />}>
+                <Route path="*" element={<FourNotFour />} />
+            </Route>
         </Routes>
     );
 };

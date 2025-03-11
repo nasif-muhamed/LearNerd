@@ -1,21 +1,30 @@
-import React, { useState } from 'react'
-import { ListCollapse, Search, Bell, Heart, UserRound, CircleX, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState } from "react";
+import {
+    ListCollapse,
+    Search,
+    Bell,
+    Heart,
+    UserRound,
+    CircleX,
+    Users,
+    LogOut,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import NerdOwl from '/nerdowl.png';
+import NerdOwl from "/nerdowl.png";
 
 const AdminHeader = ({ toggleSidebar }) => {
     const user = useSelector((state) => state.auth.user);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    // const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
     };
 
-    const toggleSearch = () => {
-        setIsSearchExpanded(!isSearchExpanded);
-    };
+    // const toggleSearch = () => {
+    //     setIsSearchExpanded(!isSearchExpanded);
+    // };
 
     return (
         <header className="w-full bg-gray-800 z-40">
@@ -31,10 +40,16 @@ const AdminHeader = ({ toggleSidebar }) => {
                     </button>
 
                     {/* Logo and brand in navbar */}
-                    <Link to='/admin/dashboard'>
+                    <Link to="/admin/dashboard">
                         <div className="flex items-center mr-6">
-                            <img src={NerdOwl} alt="Logo" className="h-10 w-10" />
-                            <span className="text-white text-xl font-bold hidden md:block">LearNerds</span>
+                            <img
+                                src={NerdOwl}
+                                alt="Logo"
+                                className="h-10 w-10"
+                            />
+                            <span className="text-white text-xl font-bold hidden md:block">
+                                LearNerds
+                            </span>
                         </div>
                     </Link>
                 </div>
@@ -73,21 +88,44 @@ const AdminHeader = ({ toggleSidebar }) => {
 
                     {/* Desktop view - show all buttons */}
                     <div className="hidden md:flex items-center space-x-6">
-                        <button className="text-white text-2xl"> <Bell /> </button>
-                        <Link to='admin/profile' className="text-white text-2xl">
+                        <button className="text-white text-2xl">
+                            {" "}
+                            <Bell />{" "}
+                        </button>
+                        <Link
+                            to="admin/profile"
+                            className="text-white text-2xl"
+                        >
                             {user && user.image ? (
-                                <div className='h-10 w-10 rounded-full overflow-hidden'>
-                                    <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                                <div className="h-10 w-10 rounded-full overflow-hidden">
+                                    <img
+                                        src={user.image}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
                             ) : (
                                 <UserRound />
                             )}
                         </Link>
+                        <Link
+                            to={'/admin/logout'}
+                            title="logout"
+                            className="relative inline-flex items-center justify-center p-0.5 overflow-hidden text-sm font-medium text-gray-900 rounded-lg group bg-gradient-to-br from-pink-500 to-orange-400 group-hover:from-pink-500 group-hover:to-orange-400 hover:text-white dark:text-white focus:ring-4 focus:outline-none focus:ring-pink-200 dark:focus:ring-pink-800"
+                        >
+                            <span className="relative px-5 py-2.5 transition-all ease-in duration-75 bg-white dark:bg-gray-900 rounded-md group-hover:bg-transparent group-hover:dark:bg-transparent hidden md:block">
+                                Logout
+                            </span>
+                            <LogOut className="w-6 h-6 m-2 " />
+                        </Link>
                     </div>
 
                     {/* Mobile view - dropdown menu button */}
                     <div className="relative md:hidden">
-                        <button onClick={toggleMenu} className="text-white text-2xl">
+                        <button
+                            onClick={toggleMenu}
+                            className="text-white text-2xl"
+                        >
                             <UserRound />
                         </button>
 
@@ -96,21 +134,33 @@ const AdminHeader = ({ toggleSidebar }) => {
                                 <div className="px-4 py-2 border-b border-gray-600">
                                     <div className="flex items-center space-x-2">
                                         {/* <img src="/api/placeholder/32/32" alt="Profile" className="h-8 w-8 rounded-full" /> */}
-                                        <UserRound className='text-white' />
-                                        <span className="text-white">Profile</span>
+                                        <UserRound className="text-white" />
+                                        <span className="text-white">
+                                            Profile
+                                        </span>
                                     </div>
                                 </div>
-                                <a href="#" className="flex px-4 py-2 text-white hover:bg-gray-600">
-                                    <span className="mr-2"> <Bell /> </span> Notifications
-                                </a>
+                                <Link className="flex px-4 py-2 text-white hover:bg-gray-600">
+                                    <span className="mr-2">
+                                        {" "}
+                                        <Bell />{" "}
+                                    </span>{" "}
+                                    Notifications
+                                </Link>
+                                <Link to={'/admin/logout'} className="flex px-4 py-2 text-white hover:bg-gray-600">
+                                    <span className="mr-2">
+                                        {" "}
+                                        <LogOut />{" "}
+                                    </span>{" "}
+                                    Logout
+                                </Link>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
         </header>
+    );
+};
 
-    )
-}
-
-export default AdminHeader
+export default AdminHeader;

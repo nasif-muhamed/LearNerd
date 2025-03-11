@@ -2,24 +2,38 @@ import React, { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import api from "../services/api/axiosInterceptor";
-import Studs from "../assets/user-auth/studs-login.png";
-import StudsOtp from "../assets/user-auth/studs-otp.webp";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-import InputField from "../components/user/common/auth/InputField";
+import api from "../../../services/api/axiosInterceptor";
+import StudConfusion from "../../../assets/user-auth/stud-confusion.png";
+import LoadingSpinner from "../../../components/ui/LoadingSpinner";
+import InputField from "../../../components/user/common/auth/InputField";
+import { formatTimeMinSec } from "../../../utils/formatTime";
 
 const ForgotPassword = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
 
     return (
-        <>
+        <div className="flex items-center h-full">
             {/* Show spinner if loading */}
             {loading && <LoadingSpinner />}
 
             {step === 1 ? (
                 <>
-                    {/* Left Side - Form */}
+                    {/* Left Side - Illustration */}
+                    <div className="w-full md:w-1/2 max-w-md md:block hidden p-10">
+                        <div className="relative">
+                            <img
+                                src={StudConfusion}
+                                alt="Reset Password Illustration"
+                                className="w-full h-auto rounded-lg"
+                            />
+                            {/* Decorative elements */}
+                            <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-500/20 rounded-full"></div>
+                            <div className="absolute top-1/4 -left-8 w-20 h-20 bg-green-500/20 rounded-full"></div>
+                        </div>
+                    </div>
+
+                    {/* Right Side - Form */}
                     <div className="w-full md:w-1/2 max-w-md">
                         <h1 className="text-3xl font-bold text-white mb-8">
                             Reset your password
@@ -28,20 +42,6 @@ const ForgotPassword = () => {
                             setStep={setStep}
                             setLoading={setLoading}
                         />
-                    </div>
-
-                    {/* Right Side - Illustration */}
-                    <div className="w-full md:w-1/2 max-w-xl md:block hidden">
-                        <div className="relative">
-                            <img
-                                src={Studs}
-                                alt="Reset Password Illustration"
-                                className="w-full h-auto rounded-lg"
-                            />
-                            {/* Decorative elements */}
-                            <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-500/20 rounded-full"></div>
-                            <div className="absolute top-1/4 -left-8 w-20 h-20 bg-green-500/20 rounded-full"></div>
-                        </div>
                     </div>
                 </>
             ) : step === 2 ? (
@@ -53,27 +53,14 @@ const ForgotPassword = () => {
                         setStep={setStep}
                         setLoading={setLoading}
                     />
-                    <img
-                        src={StudsOtp}
-                        alt="Placeholder"
-                        className="mt-6 w-64 md:block hidden"
-                    />
                 </div>
             ) : (
                 <>
-                    {/* Left Side - Form */}
-                    <div className="w-full md:w-1/2 max-w-md">
-                        <h1 className="text-3xl font-bold text-white mb-8">
-                            Set new password
-                        </h1>
-                        <SetNewPassword setLoading={setLoading} />
-                    </div>
-
-                    {/* Right Side - Illustration */}
-                    <div className="w-full md:w-1/2 max-w-xl md:block hidden">
+                    {/* Left Side - Illustration */}
+                    <div className="w-full md:w-1/2 max-w-md md:block hidden p-10">
                         <div className="relative">
                             <img
-                                src={Studs}
+                                src={StudConfusion}
                                 alt="New Password Illustration"
                                 className="w-full h-auto rounded-lg"
                             />
@@ -82,9 +69,18 @@ const ForgotPassword = () => {
                             <div className="absolute top-1/4 -left-8 w-20 h-20 bg-green-500/20 rounded-full"></div>
                         </div>
                     </div>
+
+                    {/* Right Side - Form */}
+                    <div className="w-full md:w-1/2 max-w-md">
+                        <h1 className="text-3xl font-bold text-white mb-8">
+                            Set new password
+                        </h1>
+                        <SetNewPassword setLoading={setLoading} setStep={setStep} />
+                    </div>
+
                 </>
             )}
-        </>
+        </div>
     );
 };
 
@@ -110,7 +106,7 @@ const ForgotPasswordEmail = ({ setStep, setLoading }) => {
                 throw new Error(response.data);
             }
             toast.info(
-                `OTP sent to ${data.email}. Check your inbox.\nYou have 3 minutes to verify.`
+                `OTP sent to ${data.email}. Check your inbox.\nYou have 1 minute to verify.`
             );
             sessionStorage.setItem("userEmail", data.email);
             sessionStorage.setItem(
@@ -232,16 +228,11 @@ const ForgotPasswordOTP = ({ setStep, setLoading }) => {
                     otp: otpValue,
                 };
                 const response = await api.post(
-                    "/users/verify-reset-otp/",
+                    "/users/forgot-password/verify-otp/",
                     credentials
                 );
                 if (response.status !== 200) {
                     throw new Error(response.data);
-                }
-
-                // Store token for password reset
-                if (response.data.token) {
-                    sessionStorage.setItem("resetToken", response.data.token);
                 }
 
                 toast.success(`OTP verified successfully`);
@@ -273,9 +264,10 @@ const ForgotPasswordOTP = ({ setStep, setLoading }) => {
             if (email && Date.now() < parseInt(emailExpiry)) {
                 const credentials = {
                     email: email,
+                    flow: 'forgot_password'
                 };
                 const response = await api.post(
-                    "/users/forgot-password/resend-otp/",
+                    "/users/resend-otp/",
                     credentials
                 );
                 if (response.status !== 200) {
@@ -302,20 +294,11 @@ const ForgotPasswordOTP = ({ setStep, setLoading }) => {
             } else {
                 toast.error(error.message || "Something went wrong");
             }
-            if (error.response?.data?.code === "otp_session_expired")
-                setStep(1);
+            // if (error.response?.data?.code === "otp_session_expired")
+            //     setStep(1);
         } finally {
             setLoading(false);
         }
-    };
-
-    // Format timer to display as MM:SS
-    const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}:${
-            remainingSeconds < 10 ? "0" : ""
-        }${remainingSeconds}`;
     };
 
     return (
@@ -338,7 +321,7 @@ const ForgotPasswordOTP = ({ setStep, setLoading }) => {
                 ))}
             </div>
             <p className="text-gray-400 mb-4">
-                Time remaining: {formatTime(timer)}
+                Time remaining: {formatTimeMinSec(timer)}
             </p>
             <button
                 onClick={handleVerifyOTP}
@@ -356,7 +339,7 @@ const ForgotPasswordOTP = ({ setStep, setLoading }) => {
     );
 };
 
-const SetNewPassword = ({ setLoading }) => {
+const SetNewPassword = ({ setLoading, setStep }) => {
     const {
         register,
         handleSubmit,
@@ -366,31 +349,47 @@ const SetNewPassword = ({ setLoading }) => {
     } = useForm({ mode: "onBlur" });
     const password = watch("password");
     const navigate = useNavigate();
+    const [timer, setTimer] = useState(180); // 180 seconds = 3 minute
+
+    useEffect(() => {
+        if (timer > 0) {
+            const countdown = setInterval(() => {
+                setTimer((prev) => prev - 1);
+            }, 1000);
+            return () => clearInterval(countdown); // Cleanup on unmount or timer reset
+        } else {
+            // Timer expired
+            toast.error("Forgot password session Expired. Please try again");
+            setStep(1)
+        }
+    }, [timer]);
 
     const onSubmit = async (data) => {
         try {
             setLoading(true);
             const email = sessionStorage.getItem("userEmail");
-            const resetToken = sessionStorage.getItem("resetToken");
-
-            if (!email || !resetToken) {
+            const emailExpiry = sessionStorage.getItem("userEmailExpiry");
+        
+            if (email && Date.now() > parseInt(emailExpiry)) {
                 toast.error(
                     "Session expired. Please restart the password reset process."
                 );
-                navigate("/forgot-password");
-                return;
+                sessionStorage.removeItem("userEmail");
+                sessionStorage.removeItem("userEmailExpiry");
+                toast.error(`Reset password session expired. Please try again`);
+                setStep(1);
             }
 
             const credentials = {
                 email: email,
-                token: resetToken,
                 password: data.password,
             };
 
             const response = await api.post(
-                "/users/reset-password/",
+                "/users/forgot-password/reset/",
                 credentials
             );
+            
             if (response.status !== 200) {
                 throw new Error(response.data);
             }
@@ -398,7 +397,6 @@ const SetNewPassword = ({ setLoading }) => {
             // Clear session storage
             sessionStorage.removeItem("userEmail");
             sessionStorage.removeItem("userEmailExpiry");
-            sessionStorage.removeItem("resetToken");
 
             toast.success("Password reset successfully!");
             navigate("/login");
@@ -414,6 +412,7 @@ const SetNewPassword = ({ setLoading }) => {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="space-y-6">
@@ -469,6 +468,10 @@ const SetNewPassword = ({ setLoading }) => {
                         </span>
                     )}
                 </div>
+
+                <p className="text-gray-400 mb-4">
+                    Time remaining: {formatTimeMinSec(timer)}
+                </p>
 
                 <div className="w-full flex justify-center">
                     <button

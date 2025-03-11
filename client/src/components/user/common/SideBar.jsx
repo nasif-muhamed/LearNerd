@@ -6,11 +6,11 @@ const SideBar = ({ isSidebarOpen, toggleSidebar }) => {
     const location = useLocation(); // current URL path
     const sideContent = [
         { name: "Home", icon: House, route: '/student/home' },
-        { name: "Courses", icon: GraduationCap, route: '/student/' },
-        { name: "Study Room", icon: Presentation, route: '/student/' },
-        { name: "Tutors", icon: Users, route: '/student/' },
-        { name: "News", icon: Newspaper, route: '/student/' },
-        { name: "Chats", icon: MessageCircleMore, route: '/student/' },
+        { name: "Courses", icon: GraduationCap, route: '/student/courses' },
+        { name: "Study Room", icon: Presentation, route: '/student/study-room/badges' },
+        { name: "Tutors", icon: Users, route: '/student/tutors' },
+        { name: "News", icon: Newspaper, route: '/student/news' },
+        { name: "Chats", icon: MessageCircleMore, route: '/student/chats' },
         { name: "Profile", icon: UserRound, route: '/profile' },
     ]
 
@@ -41,7 +41,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar }) => {
                             key={index}
                             to={item.route}
                             className={`block py-4 transition-colors font-semibold text-center ${
-                                location.pathname === item.route
+                                location.pathname.startsWith(item.route)
                                     ? "bg-gray-900 text-white"
                                     : "text-gray-400 hover:bg-gray-700"
                             } ${

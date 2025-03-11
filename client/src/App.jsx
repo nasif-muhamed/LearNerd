@@ -4,6 +4,7 @@ import CommonRoutes from './routes/CommonRoutes';
 import StudentRoutes from './routes/StudentRoutes';
 import AdminRoutes from './routes/AdminRoutes'
 import FourNotFour from './pages/FourNotFour';
+import TutorRoutes from './routes/TutorRoutes';
 
 function App() {
 
@@ -11,7 +12,7 @@ function App() {
         <Router>
             <Routes>
                 <Route path="/student/*" element={<StudentRoutes />} />
-                <Route path="/tutor/*" element={<></>} />
+                <Route path="/tutor/*" element={<TutorRoutes/>} />
                 <Route path="/admin/*" element={<AdminRoutes/>} />
                 <Route path="/*" element={<CommonRoutes />} />
                 <Route path="/*" element={<FourNotFour/>} /> {/*  404 page  */}

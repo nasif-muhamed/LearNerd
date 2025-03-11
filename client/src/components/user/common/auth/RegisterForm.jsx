@@ -23,10 +23,9 @@ const RegisterForm = ({setStep, setLoading}) => {
             }
             toast.info(`OTP sent to ${data.email}. Check your inbox \nYou have 3 minutes left `);
             sessionStorage.setItem("userEmail", data.email); // Store email
-            sessionStorage.setItem("userEmailExpiry", (Date.now() + 300000).toString()); // Store expiration timestamp (5 minutes)
+            sessionStorage.setItem("userEmailExpiry", (Date.now() + 180000).toString()); // Store expiration timestamp (3 minutes)
             setStep(2);
             reset();
-
         } catch (error) {
             console.log(error);
             console.log('message:', error.message);
@@ -39,7 +38,6 @@ const RegisterForm = ({setStep, setLoading}) => {
         } finally {
             setLoading(false);  // Hide spinner
         }
-
     };
 
     return (

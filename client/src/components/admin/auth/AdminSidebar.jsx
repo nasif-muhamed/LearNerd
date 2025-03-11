@@ -1,17 +1,17 @@
 import React from "react";
-import { House, GraduationCap, Presentation, Users, Newspaper, MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Megaphone, Users, Medal, MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const AdminSideBar = ({ isSidebarOpen, toggleSidebar }) => {
     const location = useLocation(); // current URL path
     const sideContent = [
-        { name: "Dashboard", icon: House, route: '/admin/dashboard' },
-        { name: "Users", icon: GraduationCap, route: '/admin/users' },
-        { name: "Courses", icon: Presentation, route: '/admin/courses' },
-        { name: "Billboard", icon: Users, route: '/admin/billboard' },
-        { name: "Chats", icon: Newspaper, route: '/admin/chats' },
-        { name: "Badges", icon: MessageCircleMore, route: '/admin/badges' },
-        { name: "Profile", icon: UserRound, route: '/admin/profile' },
+        { name: "Dashboard", icon: LayoutDashboard, route: '/admin/dashboard' },
+        { name: "Users", icon: Users, route: '/admin/users' },
+        { name: "Courses", icon: GraduationCap, route: '/admin/courses' },
+        { name: "Billboard", icon: Megaphone, route: '/admin/billboard' },
+        { name: "Chats", icon: MessageCircleMore, route: '/admin/chats' },
+        { name: "Badges", icon: Medal, route: '/admin/badges' },
+        // { name: "Profile", icon: UserRound, route: '/admin/profile' },
     ]
 
     return (
@@ -41,7 +41,7 @@ const AdminSideBar = ({ isSidebarOpen, toggleSidebar }) => {
                             key={index}
                             to={item.route}
                             className={`block py-4 transition-colors font-semibold text-center ${
-                                location.pathname === item.route
+                                location.pathname.startsWith(item.route)
                                     ? "bg-gray-900 text-white"
                                     : "text-gray-400 hover:bg-gray-700"
                             } ${

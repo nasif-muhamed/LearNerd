@@ -9,10 +9,11 @@ export const fetchUserDetails = createAsyncThunk(
     async (_, { rejectWithValue }) => {
         try {
             const response = await api.get("/users/user/");
+            console.log('thunk-fetchUserDetails-response:', response)
             if (response.status !== 200) {
                 throw new Error("Failed to fetch user details");
             }
-            const data = await response.data;
+            const data = response.data;
             return data;
             
         } catch (error) {
@@ -21,8 +22,29 @@ export const fetchUserDetails = createAsyncThunk(
     }
 );
 
+export const fetchBadges = createAsyncThunk(
+    "auth/fetchBadges",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get("/users/badges/");
+            console.log('thunk-fetchUserDetails-response:', response)
+            if (response.status !== 200) {
+                throw new Error("Failed to fetch user details");
+            }
+            const data = response.data;
+            return data;
+            
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || error.message || 'An unknown error occurred');
+        }
+    }
+);
+
+
+
 const initialState = {
     user: null,
+    badges: null,
     accessToken: null,
     refreshToken: null,
     role: null,
@@ -48,11 +70,12 @@ const authSlice = createSlice({
         },
         logout: (state) => {
             state.user = null;
+            state.badges = null;
             state.accessToken = null;
             state.refreshToken = null;
             state.status = 'idle';
             state.role = null
-            state.error = null;     
+            state.error = null;
             storage.removeItem("persist:auth");
         },
     },
@@ -68,7 +91,19 @@ const authSlice = createSlice({
             .addCase(fetchUserDetails.rejected, (state, action) => {
                 state.status = "failed";
                 state.error = action.payload;
+            })
+            .addCase(fetchBadges.pending, (state) => {
+                state.status = "loading";
+            })
+            .addCase(fetchBadges.fulfilled, (state, action) => {
+                state.status = "succeeded";
+                state.badges = action.payload;
+            })
+            .addCase(fetchBadges.rejected, (state, action) => {
+                state.status = "failed";
+                state.error = action.payload;
             });
+
     },
 });
 

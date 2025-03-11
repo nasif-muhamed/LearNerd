@@ -4,6 +4,7 @@ import { fetchUserDetails } from "../../../../redux/features/authSlice";
 import { useDispatch } from "react-redux";
 import { toast } from 'sonner'
 import api from "../../../../services/api/axiosInterceptor";
+import { UserRoundPen } from "lucide-react";
 
 const ProfileForm = ({ user }) => {
     const dispatch = useDispatch();
@@ -23,101 +24,110 @@ const ProfileForm = ({ user }) => {
     });
 
     const onSubmit = async (data) => {
-        const credentials = {
-            first_name: data.firstName,
-            last_name: data.lastName,
-            biography: data.biography,
-        };
-
+        const credentials = {};
+        if (user.first_name != data.firstName) credentials.first_name = data.firstName;
+        if (user.last_name != data.lastName) credentials.last_name = data.lastName;
+        if (user.biography != data.biography) credentials.biography = data.biography;
+        console.log(credentials, credentials? 'yes' : 'no')
         try {
-            const response = await api.patch("users/user/", credentials);
-            if (response.status !== 200) {
-                throw new Error(response.data);
+                if (Object.keys(credentials).length > 0){
+                    const response = await api.patch("users/user/", credentials);
+                    if (response.status !== 200) {
+                        throw new Error(response.data);
+                    }
+                    if (user) {
+                        dispatch(fetchUserDetails());
+                    }
+                    toast.success(`user data updated`);
+                }else{
+                    toast.info('No changes detected.')
+                }
+            } catch (error) {
+                console.log(error);
+                console.log("message:", error.message);
+                console.log("data:", error.response?.data);
+                if (error.response?.data){
+                    toast.error(Object.values(error.response?.data)?.[0]);
+                } else {
+                    toast.error(error.message || 'Something went wrong');
+                }
+                reset();
+            } finally {
+                setIsEditing(false);
             }
-            if (user) {
-                dispatch(fetchUserDetails());
-            }
-            toast.success(`user data updated`);
-        } catch (error) {
-            console.log(error);
-            console.log("message:", error.message);
-            console.log("data:", error.response?.data);
-            toast.error(`Error: ${error.response?.data}`);
-            reset();
-        } finally {
-            setIsEditing(false);
-        }
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 w-full md:w-3/4">
             <form onSubmit={handleSubmit(onSubmit)}>
-                {/* First name */}
-                <div>
-                    <label className="block text-slate-400 mb-1">
-                        first name
-                    </label>
-                    {isEditing ? (
-                        <div className="relative">
-                            <input
-                                type="text"
-                                className="w-full border border-slate-700 rounded p-3 bg-slate-100 text-slate-900"
-                                {...register("firstName", {
-                                    required: "First name is required",
-                                    minLength: {
-                                        value: 5,
-                                        message:
-                                            "First name must be at least 5 characters",
-                                    },
-                                })}
-                            />
-                            {errors.firstName && (
-                                <span className="text-red-500 text-sm">
-                                    {errors.firstName.message}
-                                </span>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex items-center w-full bg-slate-800 text-white rounded p-3 min-h-12">
-                            <span>{user.first_name}</span>
-                        </div>
-                    )}
-                </div>
+                <div className="flex gap-10 mb-1">
+                    {/* First name */}
+                    <div className="w-1/2">
+                        <label className="block text-slate-400 mb-1">
+                            first name
+                        </label>
+                        {isEditing ? (
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    className="w-full border border-slate-700 rounded p-3 bg-slate-100 text-slate-900"
+                                    {...register("firstName", {
+                                        required: "First name is required",
+                                        minLength: {
+                                            value: 4,
+                                            message:
+                                                "First name must be at least 5 characters",
+                                        },
+                                    })}
+                                />
+                                {errors.firstName && (
+                                    <span className="text-red-500 text-sm">
+                                        {errors.firstName.message}
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center w-full bg-slate-800 text-white rounded p-3 min-h-12">
+                                <span>{user.first_name}</span>
+                            </div>
+                        )}
+                    </div>
 
-                {/* Last name */}
-                <div>
-                    <label className="block text-slate-400 mb-1">
-                        last name
-                    </label>
-                    {isEditing ? (
-                        <div className="relative">
-                            <input
-                                type="text"
-                                className="w-full bg-slate-100 text-slate-900 border border-slate-700 rounded p-3"
-                                {...register("lastName", {
-                                    required: "Last name is required",
-                                    minLength: {
-                                        value: 5,
-                                        message:
-                                            "Last name must be at least 5 characters",
-                                    },
-                                })}
-                            />
-                            {errors.lastName && (
-                                <span className="text-red-500 text-sm">
-                                    {errors.lastName.message}
-                                </span>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex items-center w-full bg-slate-800 text-white rounded p-3 min-h-12">
-                            <span>{user.last_name}</span>
-                        </div>
-                    )}
+                    {/* Last name */}
+                    <div className="w-1/2">
+                        <label className="block text-slate-400 mb-1">
+                            last name
+                        </label>
+                        {isEditing ? (
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    className="w-full bg-slate-100 text-slate-900 border border-slate-700 rounded p-3"
+                                    {...register("lastName", {
+                                        required: "Last name is required",
+                                        minLength: {
+                                            value: 4,
+                                            message:
+                                                "Last name must be at least 5 characters",
+                                        },
+                                    })}
+                                />
+                                {errors.lastName && (
+                                    <span className="text-red-500 text-sm">
+                                        {errors.lastName.message}
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center w-full bg-slate-800 text-white rounded p-3 min-h-12">
+                                <span>{user.last_name}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Email */}
-                <div>
+                <div className="mb-1">
                     <label className="block text-slate-400 mb-1">email</label>
                     <div className="flex items-center w-full bg-slate-800 text-white rounded p-3">
                         <span>{user.email}</span>
@@ -125,7 +135,7 @@ const ProfileForm = ({ user }) => {
                 </div>
 
                 {/* Biography */}
-                <div>
+                <div className="mb-1">
                     <label className="block text-slate-400 mb-1">
                         biography
                     </label>
@@ -136,7 +146,7 @@ const ProfileForm = ({ user }) => {
                                 {...register("biography", {
                                     required: "Biography is required",
                                     minLength: {
-                                        value: 20,
+                                        value: 75,
                                         message:
                                             "Biography must be at least 20 characters",
                                     },
@@ -160,9 +170,9 @@ const ProfileForm = ({ user }) => {
                     <button
                         type="button"
                         onClick={() => setIsEditing(true)}
-                        className="mt-4 bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-600"
+                        className="mt-4 flex justify-center items-center text-white px-4 py-2 rounded bg-blue-600 hover:bg-blue-700"
                     >
-                        Edit Profile
+                        <UserRoundPen className="mr-2"/> Edit Profile
                     </button>
                 )}
 
@@ -170,7 +180,7 @@ const ProfileForm = ({ user }) => {
                 {isEditing && (
                     <button
                         type="submit"
-                        className="mt-4 bg-slate-700 text-white px-4 py-2 rounded hover:bg-slate-600"
+                        className="mt-4 text-white px-4 py-2 rounded bg-blue-600 hover:bg-blue-700"
                     >
                         Update Profile
                     </button>
