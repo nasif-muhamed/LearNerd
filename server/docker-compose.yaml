@@ -63,12 +63,14 @@ services:
             - REDIS_PORT=${REDIS_PORT}
             - EMAIL_HOST_USER=${EMAIL_HOST_USER}
             - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
+            - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
         ports:
             - "8001:8001"
         volumes:
             - ./user_service:/app
         command: >
-            sh -c "python manage.py migrate &&
+            sh -c "python manage.py makemigrations &&
+                   python manage.py migrate &&
                    python manage.py runserver 0.0.0.0:8001"
         depends_on:
             - db
@@ -94,12 +96,16 @@ services:
             - EMAIL_HOST_USER=${EMAIL_HOST_USER}
             - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
             - USER_SERVICE_URL=${USER_SERVICE_URL}
+            - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+            - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+            - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
         ports:
             - "8002:8002"
         volumes:
             - ./admin_service:/app
         command: >
-            sh -c "python manage.py migrate &&
+            sh -c "python manage.py makemigrations &&
+                   python manage.py migrate &&
                    python manage.py runserver 0.0.0.0:8002"
         depends_on:
             - user_service

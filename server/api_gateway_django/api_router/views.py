@@ -90,7 +90,7 @@ def proxy_to_user_service(request):
     )
 
     print('response: ', response)
-    print('response.content: ', response.content)
+    # print('response.content: ', response.content)
     
     return HttpResponse(
         response.content,
@@ -120,6 +120,167 @@ def proxy_to_admin_service(request):
         status=response.status_code,
         content_type=response.headers['Content-Type']
     )
+
+
+@api_view(['GET', 'POST', 'PATCH', 'PUT'])
+def proxy_to_badges_service(request):
+    url = ADMIN_SERVICE_URL[:-1] + request.path
+    query_params = request.GET.urlencode()
+    if query_params:
+        url = f"{url}?{query_params}"
+
+    print('url: ', url)
+    print("files api router:", request.FILES)
+    print("data api router:", request.POST)
+
+    headers = {key: value for key, value in request.headers.items() if key.lower() not in ['host', 'content-length', 'content-type']}
+    headers['Content-Type'] = request.headers.get('Content-Type')  # Preserve original Content-Type
+
+    if request.method in ['POST', 'PATCH']:
+        if request.FILES or 'multipart/form-data' in request.headers.get('Content-Type', ''):
+            files = {key: (file.name, file, file.content_type) for key, file in request.FILES.items()}
+            data = request.POST  # Pass QueryDict directly instead of dict()
+            response = requests.request(
+                method=request.method,
+                url=url,
+                headers=headers,
+                data=data,  # Use QueryDict to preserve structure
+                files=files,
+            )
+        else:
+            response = requests.request(
+                method=request.method,
+                url=url,
+                headers=headers,
+                json=request.data,
+            )
+    else:
+        response = requests.request(
+            method=request.method,
+            url=url,
+            headers=headers,
+        )
+
+    print("Response from admin service:", response.text)
+    return HttpResponse(
+        response.content,
+        status=response.status_code,
+        content_type=response.headers.get('Content-Type', 'application/json'),
+    )
+
+
+class BadgeGateway(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
+
+    def get(self, request):
+        url = ADMIN_SERVICE_URL + request.path
+        
+        query_params = request.GET.urlencode()  # Get query parameters as a URL-encoded string
+        if query_params:
+            url = f"{url}?{query_params}"  # Append the query parameters to the URL
+        print('url, get:', url)
+
+        headers = {
+            "Authorization": request.headers.get("Authorization")  # Forward JWT
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            print('response: ', response)
+            print('response.content: ', response.content)
+
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+            json_data = response.json() 
+            print('json_data:', json_data)
+            # if json_data.get('image'):
+            #     json_data['image'] = request.build_absolute_uri('/')[:-1] + json_data['image']
+            # print('debug2:', json_data['image'])
+            return Response(json_data, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            return Response({"error": "Failed to fetch profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        url = ADMIN_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")
+        }
+        # Forward files and data
+        files = request.FILES
+        data = request.POST if files else request.data
+        print("files:", files)
+        print("data:", data)
+
+        try:
+            response = requests.post(url, headers=headers, data=data, files=files)
+            print('response: ', response)
+            # print('response.content: ', response.content)
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+
+            return Response({'message': 'user updated successfully'}, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            try:
+                error_data = response.json()  # Try to parse error details
+                return Response(error_data, status=response.status_code)
+            except (ValueError, AttributeError):
+                return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SingleBadgeGateway(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
+
+    def get(self, request, id):
+        url = ADMIN_SERVICE_URL + request.path
+        
+        query_params = request.GET.urlencode()  # Get query parameters as a URL-encoded string
+        if query_params:
+            url = f"{url}?{query_params}"  # Append the query parameters to the URL
+        print('url, get:', url)
+
+        headers = {
+            "Authorization": request.headers.get("Authorization")  # Forward JWT
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            print('response: ', response)
+            print('response.content: ', response.content)
+
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+            json_data = response.json() 
+            print('json_data:', json_data)
+            # if json_data.get('image'):
+            #     json_data['image'] = request.build_absolute_uri('/')[:-1] + json_data['image']
+            # print('debug2:', json_data['image'])
+            return Response(json_data, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            return Response({"error": "Failed to fetch profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, id):
+        url = ADMIN_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")
+        }
+        # Forward files and data
+        files = request.FILES
+        data = request.POST if files else request.data
+        print("files: ddd", files)
+        print("data:", data)
+
+        try:
+            response = requests.patch(url, headers=headers, data=data, files=files)
+            print('response: ', response)
+            # print('response.content: ', response.content)
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+
+            return Response({'message': 'user updated successfully'}, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            try:
+                error_data = response.json()  # Try to parse error details
+                return Response(error_data, status=response.status_code)
+            except (ValueError, AttributeError):
+                return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # # Proxy view to Order Service
 # @api_view(['GET', 'POST', 'PUT', 'DELETE'])

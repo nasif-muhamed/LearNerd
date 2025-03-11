@@ -47,6 +47,12 @@ INSTALLED_APPS = [
     'users',
 ]
 
+AUTHENTICATION_BACKENDS = [
+    'users.backends.CustomModelBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -118,9 +124,6 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/1", # "redis://127.0.0.1:6379/1"
-        "OPTIONS": {
-            'CLIENT_CLASS': 'path.to.your.custom.RedisClient',
-        }
     }
 }
 

@@ -36,3 +36,19 @@ class Profile(AbstractBaseUser):
 class AdminUser(models.Model):
     profile = models.ForeignKey(Profile, related_name="admins", on_delete=models.CASCADE)
     username = models.CharField(max_length=100)
+
+
+class BadgesAquired(models.Model):
+    profile = models.ForeignKey(Profile, related_name="badges_aquired", on_delete=models.CASCADE)
+    badge_id = models.BigIntegerField()
+    badge_title = models.CharField(max_length=50)
+    badge_image = models.URLField()
+    total_questions = models.IntegerField()
+    pass_mark = models.IntegerField()
+    aquired_mark = models.IntegerField()
+    attempts = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_passed(self):
+        return self.aquired_mark >= self.pass_mark
