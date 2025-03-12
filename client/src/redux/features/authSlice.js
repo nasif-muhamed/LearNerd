@@ -41,7 +41,6 @@ export const fetchBadges = createAsyncThunk(
 );
 
 
-
 const initialState = {
     user: null,
     badges: null,
@@ -107,5 +106,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { login, logout } = authSlice.actions;
+export const { login, logout, switchRole, updateAcess } = authSlice.actions;
 export default authSlice.reducer;

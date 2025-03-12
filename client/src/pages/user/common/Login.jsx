@@ -14,6 +14,7 @@ const Login = () => {
 
             {/* Login Form Section */}
             <LoginForm setLoading={setLoading} />
+            
 
             {/* Illustration Section */}
             <div className="w-full md:w-1/2 max-w-xl md:block hidden">

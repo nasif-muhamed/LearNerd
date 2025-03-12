@@ -3,8 +3,10 @@ import { Facebook, Github } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
-import { login, fetchUserDetails } from "../../../../redux/features/authSlice";
 import { toast } from 'sonner'
+import { signInWithPopup } from "firebase/auth";
+import { login, fetchUserDetails } from "../../../../redux/features/authSlice";
+import { auth, googleProvider } from "../../../../services/firebase/firebase";
 import SocialButton from './SocialButton';
 import InputField from './InputField';
 import api from '../../../../services/api/axiosInterceptor';
@@ -52,6 +54,45 @@ const LoginForm = ({ setLoading }) => {
         }
     };
 
+    const handleGoogleLogin = async () => {
+        setLoading(true);
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const idToken = await result.user.getIdToken();
+            console.log('token:', idToken)
+            // Send the ID token to your Django backend
+            const response = await api.post("/users/google-login/", {
+                token: idToken,
+            });
+            if (response.status !== 200) {
+                throw new Error("Google login failed");
+            }
+            console.log("response:", response)
+            dispatch(
+                login({
+                    access: response.data.access,
+                    refresh: response.data.refresh,
+                    role: "student", // Adjust role as needed
+                })
+            );
+
+            const msg = response.data.registered ? "registration" : "login"
+            toast.success(`${msg} successful!, ${msg === 'login' ? 'welcome back' : 'welcome to LearNerds' }`);
+            navigate("/student/home");
+        } catch (error) {
+            console.error(error);
+            
+            if (error.response?.data) {
+                toast.error(Object.values(error.response?.data)?.[0]);
+            } else if (error.code === "auth/popup-closed-by-user") {
+                toast.info("Google login was canceled. Please try again if you wish to proceed.");
+            } else {
+                toast.error(error.message || "Something went wrong");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="w-full md:w-1/2 max-w-md">
@@ -108,14 +149,18 @@ const LoginForm = ({ setLoading }) => {
                         <span className="px-4 bg-gray-900 text-gray-400">OR</span>
                     </div>
                 </div>
-
-                <div className="flex justify-center space-x-6">
-                    <SocialButton icon={Facebook} bgColor="bg-red-500" />
+            </form>
+                <div className="flex justify-center space-x-6 mt-4">
+                    <button
+                        onClick={handleGoogleLogin}
+                    >
+                        <SocialButton icon={Facebook} bgColor="bg-red-600" />
+                    </button>
                     <SocialButton icon={Facebook} bgColor="bg-blue-600" />
                     <SocialButton icon={Github} bgColor="bg-gray-700" />
                 </div>
 
-                <p className="text-center text-gray-400">
+                <p className="text-center text-gray-400 mt-4">
                     Don't have an account yet?{' '}
                     <Link to="/register">
                         <span className="text-blue-500 hover:text-blue-400">
@@ -123,7 +168,6 @@ const LoginForm = ({ setLoading }) => {
                         </span>
                     </Link>
                 </p>
-            </form>
         </div>
     )
 }

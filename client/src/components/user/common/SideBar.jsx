@@ -1,18 +1,33 @@
-import React from "react";
-import { House, GraduationCap, Presentation, Users, Newspaper, MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash } from "lucide-react";
+import { memo } from "react";
+import { House, GraduationCap, Presentation, Users, Newspaper,
+    MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash, 
+    LayoutDashboard, WalletMinimal } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
-const SideBar = ({ isSidebarOpen, toggleSidebar }) => {
+const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
     const location = useLocation(); // current URL path
-    const sideContent = [
+
+    const sideContentStudent = [
         { name: "Home", icon: House, route: '/student/home' },
         { name: "Courses", icon: GraduationCap, route: '/student/courses' },
-        { name: "Study Room", icon: Presentation, route: '/student/study-room/badges' },
+        { name: "Study Room", icon: Presentation, route: '/student/study-room/' },
         { name: "Tutors", icon: Users, route: '/student/tutors' },
         { name: "News", icon: Newspaper, route: '/student/news' },
-        { name: "Chats", icon: MessageCircleMore, route: '/student/chats' },
+        { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Profile", icon: UserRound, route: '/profile' },
     ]
+
+    const sideContentTutor = [
+        { name: "Dashboard", icon: LayoutDashboard, route: '/tutor/dashboard' },
+        { name: "My Courses", icon: GraduationCap, route: '/tutor/courses' },
+        { name: "Class Room", icon: Presentation, route: '/tutor/class-room/' },
+        { name: "Wallet", icon: WalletMinimal, route: '/tutor/wallet' },
+        { name: "Chats", icon: MessageCircleMore, route: '/chats' },
+        { name: "Profile", icon: UserRound, route: '/profile' },
+
+    ]
+
+    const sideContent = role == 'student' ? sideContentStudent : sideContentTutor
 
     return (
         <aside
@@ -40,23 +55,22 @@ const SideBar = ({ isSidebarOpen, toggleSidebar }) => {
                         <Link
                             key={index}
                             to={item.route}
-                            className={`block py-4 transition-colors font-semibold text-center ${
+                            className={`flex justify-center py-4 transition-colors font-semibold text-center ${
                                 location.pathname.startsWith(item.route)
                                     ? "bg-gray-900 text-white"
                                     : "text-gray-400 hover:bg-gray-700"
-                            } ${
-                                isSidebarOpen
-                                    ? "px-6"
-                                    : "md:block"
                             }`}
                         >
-                            {isSidebarOpen ? (
+                            {/* {isSidebarOpen ? (
                                 item.name
                             ) : item.icon ? (
                                 <item.icon className="mx-auto h-6 w-6" />
                             ) : (
                                 item.name[0]
-                            )}
+                            )} */}
+                            <div className={`w-[70%] flex items-center ${!isSidebarOpen && 'justify-center'}`}>
+                                <item.icon className="mr-2 h-6 w-6" /> {isSidebarOpen && <span>{item.name}</span>}
+                            </div>
                         </Link>
                     ))}
                 </nav>{" "}
@@ -65,4 +79,4 @@ const SideBar = ({ isSidebarOpen, toggleSidebar }) => {
     );
 };
 
-export default SideBar;
+export default memo(SideBar);

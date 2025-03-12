@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, memo } from "react";
 import {
     ListCollapse,
     Search,
@@ -10,16 +10,20 @@ import {
     Settings,
     LogOut,
 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
-import NerdOwl from "/nerdowl.png"
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
+import NerdOwl from "/nerdowl.png";
+import { switchRole } from "../../../redux/features/authSlice";
 
-const HeaderAuth = ({ toggleSidebar }) => {
+const HeaderAuth = ({ toggleSidebar, role }) => {
     const user = useSelector((state) => state.auth.user);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const profileDropdownRef = useRef(null);
+    const dispatch = useDispatch()
+    const navigate = useNavigate()
+
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
@@ -48,6 +52,14 @@ const HeaderAuth = ({ toggleSidebar }) => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
+
+    const handleSwitchRole = () => {
+        const newRole = role === 'student' ? 'tutor' : 'student';
+        dispatch(switchRole({ role: newRole })); // Update role in Redux store
+        // navigate(newRole === 'tutor' ? '/tutor/dashboard' : '/student/home'); // Navigate to the correct route
+        console.log('navigated from header');
+        return <Navigate to={newRole === 'tutor' ? '/tutor/dashboard' : '/student/home'} />;
+    }
 
     return (
         <header className="w-full bg-gray-800 z-40">
@@ -115,12 +127,13 @@ const HeaderAuth = ({ toggleSidebar }) => {
                     </button>
                     {/* Desktop view - show all buttons */}
                     <div className="hidden md:flex items-center space-x-6">
-                        <a
-                            href="#"
+                        <button
+                            onClick={handleSwitchRole}
+                            to={role=='student'? '/tutor/dashboard' : '/student/home'}
                             className="bg-gray-700 px-4 py-2 rounded-lg text-white"
                         >
-                            Tutor
-                        </a>
+                            {role=='student'? 'Teach' : 'Learn'}
+                        </button>
                         <button className="text-white text-2xl">
                             {" "}
                             <Bell />{" "}
@@ -194,7 +207,7 @@ const HeaderAuth = ({ toggleSidebar }) => {
                                     </Link>
                                     <div className="border-t border-gray-600 my-1"></div>
                                     <Link
-                                        to={'/logout'}
+                                        to={"/logout"}
                                         className="flex items-center w-full text-left px-4 py-2 text-red-400 hover:bg-gray-600 transition-colors"
                                     >
                                         <LogOut className="mr-2 h-4 w-4" />
@@ -214,9 +227,12 @@ const HeaderAuth = ({ toggleSidebar }) => {
                             <UserRound />
                         </button>
                         {isMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50">
-                                <div className="px-4 py-2 border-b border-gray-600">
-                                    <div className="flex items-center space-x-2">
+                            <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-50 overflow-hidden">
+                                <Link 
+                                    to="/profile"
+                                    className="flex px-4 py-2 text-white hover:bg-gray-600 border-b border-gray-600"
+                                >
+                                    <span className="mr-2">
                                         {user && user.image ? (
                                             <div className="h-8 w-8 rounded-full overflow-hidden">
                                                 <img
@@ -228,12 +244,13 @@ const HeaderAuth = ({ toggleSidebar }) => {
                                         ) : (
                                             <UserRound className="text-white" />
                                         )}
-                                        <span className="text-white">
-                                            {user?.name || "Profile"}
-                                        </span>
-                                    </div>
-                                </div>
-                                <a
+                                    </span>{" "}
+                                    <span className="text-white truncate max-w-full">
+                                        {user?.email || "Profile"}
+                                    </span>
+                                </Link>
+
+                                <Link
                                     href="#"
                                     className="flex px-4 py-2 text-white hover:bg-gray-600"
                                 >
@@ -242,8 +259,8 @@ const HeaderAuth = ({ toggleSidebar }) => {
                                         <Bell />{" "}
                                     </span>{" "}
                                     Notifications
-                                </a>
-                                <a
+                                </Link>
+                                <Link
                                     href="#"
                                     className="flex px-4 py-2 text-white hover:bg-gray-600"
                                 >
@@ -252,8 +269,8 @@ const HeaderAuth = ({ toggleSidebar }) => {
                                         <Heart />{" "}
                                     </span>{" "}
                                     Wishlist
-                                </a>
-                                <a
+                                </Link>
+                                <Link
                                     href="#"
                                     className="flex px-4 py-2 text-white hover:bg-gray-600"
                                 >
@@ -262,21 +279,10 @@ const HeaderAuth = ({ toggleSidebar }) => {
                                         <Users />{" "}
                                     </span>{" "}
                                     Tutor
-                                </a>
-                                <Link
-                                    to="/profile"
-                                    className="flex px-4 py-2 text-white hover:bg-gray-600"
-                                >
-                                    <span className="mr-2">
-                                        {" "}
-                                        <UserRound />{" "}
-                                    </span>{" "}
-                                    My Profile
                                 </Link>
-                                <div className="border-t border-gray-600 my-1"></div>
                                 <Link
-                                    to={'/logout'}
-                                    className="flex w-full text-left px-4 py-2 text-red-400 hover:bg-gray-600"
+                                    to={"/logout"}
+                                    className="flex w-full text-left px-4 py-2 text-red-400 hover:bg-gray-600 border-t border-gray-600"
                                 >
                                     <span className="mr-2">
                                         {" "}
@@ -293,4 +299,4 @@ const HeaderAuth = ({ toggleSidebar }) => {
     );
 };
 
-export default HeaderAuth;
+export default memo(HeaderAuth);

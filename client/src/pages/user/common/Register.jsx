@@ -42,7 +42,7 @@ const Register = () => {
                             <RegisterForm setStep={setStep} setLoading={setLoading} />
 
                             {/* Login Link */}
-                            <p className="mt-6 text-center text-gray-400">
+                            <p className="mt-4 text-center text-gray-400">
                                 Already have an account?{' '}
                                 <Link to="/login">
                                     <span className="text-blue-500 hover:text-blue-400">

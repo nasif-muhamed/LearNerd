@@ -6,8 +6,9 @@ import { useSelector, useDispatch } from "react-redux";
 import { toggleIsSidebarOpen } from '../../redux/features/uiSlice'
 
 const UserAuthenticatedLayout = () => {
-    const isSidebarOpen = useSelector((state) => state.ui.isSidebarOpen)
-    const dispatch = useDispatch()
+    const isSidebarOpen = useSelector((state) => state.ui.isSidebarOpen);
+    const role = useSelector((state) => state.auth.role);
+    const dispatch = useDispatch();
 
     const toggleSidebar = () => {
         dispatch(toggleIsSidebarOpen())
@@ -16,7 +17,7 @@ const UserAuthenticatedLayout = () => {
     return (
         <div className="h-screen flex flex-col overflow-hidden bg-gray-900">
             {/* Full-width Navbar */}
-            <HeaderAuth toggleSidebar={toggleSidebar} />
+            <HeaderAuth toggleSidebar={toggleSidebar} role={role} />
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Mobile overlay */}
@@ -28,7 +29,7 @@ const UserAuthenticatedLayout = () => {
                 )}
 
                 {/* Fixed Sidebar */}
-                <SideBar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar}/>
+                <SideBar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} role={role} />
 
                 {/* Main Content */}
                 <main className={`flex-1 overflow-y-auto text-white transition-all duration-300 ease-in-out`} >

@@ -1,495 +1,178 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import api from "../services/api/axiosInterceptor";
-import Studs from "../assets/user-auth/studs-login.png";
-import StudsOtp from "../assets/user-auth/studs-otp.webp";
-import LoadingSpinner from "../components/ui/LoadingSpinner";
-import InputField from "../components/user/common/auth/InputField";
+import React from 'react';
 
-const ForgotPassword = () => {
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
+const TutorDashboard = () => {
+  // Sample data for demonstration
+  const dashboardData = {
+    totalCourses: 5,
+    totalStudents: 345,
+    groupsCreated: 10,
+    feesCollected: "₹1,45,880",
+    courseProgress: {
+      subscribed: 150,
+      freemium: 250,
+      waitlisted: 295
+    },
+    recentStudents: [
+      { id: 1, name: "Samantha Mann", code: "#1234", status: "Subscribed" },
+      { id: 2, name: "Jasper Chongs", code: "#1234", status: "Freemium" },
+      { id: 3, name: "Gabe Lustman", code: "#1234", status: "Waitlisted" },
+      { id: 4, name: "Manuel Labor", code: "#1234", status: "Subscribed" },
+      { id: 5, name: "Sharon Needles", code: "#1234", status: "Waitlisted" }
+    ]
+  };
 
-    return (
-        <>
-            {/* Show spinner if loading */}
-            {loading && <LoadingSpinner />}
-
-            {step === 1 ? (
-                <>
-                    {/* Left Side - Form */}
-                    <div className="w-full md:w-1/2 max-w-md">
-                        <h1 className="text-3xl font-bold text-white mb-8">
-                            Reset your password
-                        </h1>
-                        <ForgotPasswordEmail
-                            setStep={setStep}
-                            setLoading={setLoading}
-                        />
-                    </div>
-
-                    {/* Right Side - Illustration */}
-                    <div className="w-full md:w-1/2 max-w-xl md:block hidden">
-                        <div className="relative">
-                            <img
-                                src={Studs}
-                                alt="Reset Password Illustration"
-                                className="w-full h-auto rounded-lg"
-                            />
-                            {/* Decorative elements */}
-                            <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-500/20 rounded-full"></div>
-                            <div className="absolute top-1/4 -left-8 w-20 h-20 bg-green-500/20 rounded-full"></div>
-                        </div>
-                    </div>
-                </>
-            ) : step === 2 ? (
-                <div className="flex flex-col items-center justify-center bg-gray-900 text-white px-4">
-                    <h1 className="text-2xl font-semibold mb-4">
-                        Verify your identity
-                    </h1>
-                    <ForgotPasswordOTP
-                        setStep={setStep}
-                        setLoading={setLoading}
-                    />
-                    <img
-                        src={StudsOtp}
-                        alt="Placeholder"
-                        className="mt-6 w-64 md:block hidden"
-                    />
-                </div>
-            ) : (
-                <>
-                    {/* Left Side - Form */}
-                    <div className="w-full md:w-1/2 max-w-md">
-                        <h1 className="text-3xl font-bold text-white mb-8">
-                            Set new password
-                        </h1>
-                        <SetNewPassword setLoading={setLoading} />
-                    </div>
-
-                    {/* Right Side - Illustration */}
-                    <div className="w-full md:w-1/2 max-w-xl md:block hidden">
-                        <div className="relative">
-                            <img
-                                src={Studs}
-                                alt="New Password Illustration"
-                                className="w-full h-auto rounded-lg"
-                            />
-                            {/* Decorative elements */}
-                            <div className="absolute -top-4 -right-4 w-16 h-16 bg-blue-500/20 rounded-full"></div>
-                            <div className="absolute top-1/4 -left-8 w-20 h-20 bg-green-500/20 rounded-full"></div>
-                        </div>
-                    </div>
-                </>
-            )}
-        </>
-    );
-};
-
-const ForgotPasswordEmail = ({ setStep, setLoading }) => {
-    const {
-        register,
-        handleSubmit,
-        reset,
-        formState: { errors },
-    } = useForm({ mode: "onBlur" });
-
-    const onSubmit = async (data) => {
-        try {
-            setLoading(true);
-            const credentials = {
-                email: data.email.trim(),
-            };
-            const response = await api.post(
-                "/users/forgot-password/",
-                credentials
-            );
-            if (response.status !== 200) {
-                throw new Error(response.data);
-            }
-            toast.info(
-                `OTP sent to ${data.email}. Check your inbox.\nYou have 3 minutes to verify.`
-            );
-            sessionStorage.setItem("userEmail", data.email);
-            sessionStorage.setItem(
-                "userEmailExpiry",
-                (Date.now() + 180000).toString()
-            ); // 3 minutes
-            setStep(2);
-            reset();
-        } catch (error) {
-            console.log(error);
-            if (error.response?.data) {
-                toast.error(Object.values(error.response?.data)?.[0]);
-            } else {
-                toast.error(error.message || "Something went wrong");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <p className="text-gray-400 mb-6">
-                Enter your email address and we'll send you an OTP to reset your
-                password
-            </p>
-            <form className="space-y-6">
-                <InputField
-                    type="email"
-                    placeholder="Email"
-                    register={{
-                        ...register("email", {
-                            required: "Email is required",
-                            pattern: {
-                                value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                                message: "Invalid email format",
-                            },
-                        }),
-                    }}
-                />
-                {errors.email && (
-                    <span className="text-sm text-red-500">
-                        {errors.email.message}
-                    </span>
-                )}
-
-                <div className="w-full flex justify-center">
-                    <button
-                        onClick={handleSubmit(onSubmit)}
-                        className="px-16 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
-                    >
-                        Send OTP
-                    </button>
-                </div>
-
-                <p className="text-center text-gray-400">
-                    Remembered your password?{" "}
-                    <Link to="/login">
-                        <span className="text-blue-500 hover:text-blue-400">
-                            Login
-                        </span>
-                    </Link>
-                </p>
-            </form>
+  return (
+      <div className="flex-1 p-4 md:p-6 overflow-y-auto text-white">
+        {/* Period Selection */}
+        <div className="mb-6">
+          <button className="px-4 py-2 bg-gray-700 rounded-md text-sm flex items-center">
+            This Month
+            <svg className="w-4 h-4 ml-2" viewBox="0 0 24 24" fill="white">
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
+          </button>
         </div>
-    );
-};
 
-const ForgotPasswordOTP = ({ setStep, setLoading }) => {
-    const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-    const [timer, setTimer] = useState(60); // 60 seconds = 1 minute
-    const inputRefs = useRef([]);
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-blue-600 p-4 rounded-md">
+            <div className="text-sm opacity-80">TOTAL COURSES</div>
+            <div className="text-3xl font-bold">05</div>
+          </div>
+          <div className="bg-red-500 p-4 rounded-md">
+            <div className="text-sm opacity-80">TOTAL STUDENTS</div>
+            <div className="text-3xl font-bold">345</div>
+          </div>
+          <div className="bg-gray-300 p-4 rounded-md text-gray-800">
+            <div className="text-sm opacity-80">GROUPS CREATED</div>
+            <div className="text-3xl font-bold">10</div>
+          </div>
+          <div className="bg-green-500 p-4 rounded-md">
+            <div className="text-sm opacity-80">FEES COLLECTED</div>
+            <div className="text-3xl font-bold">₹1,45,880</div>
+          </div>
+        </div>
 
-    // Start or reset the timer
-    useEffect(() => {
-        if (timer > 0) {
-            const countdown = setInterval(() => {
-                setTimer((prev) => prev - 1);
-            }, 1000);
-            return () => clearInterval(countdown); // Cleanup on unmount or timer reset
-        } else {
-            // Timer expired
-            toast.error("OTP Expired. Try resend OTP");
-        }
-    }, [timer]);
-
-    const handleChange = (index, value) => {
-        if (isNaN(value)) return;
-        let newOtp = [...otp];
-        newOtp[index] = value;
-        setOtp(newOtp);
-        if (value && index < otp.length - 1) {
-            inputRefs.current[index + 1].focus();
-        }
-    };
-
-    const handleKeyDown = (index, event) => {
-        if (event.key === "Backspace" && !otp[index] && index > 0) {
-            inputRefs.current[index - 1].focus();
-        }
-    };
-
-    const handleVerifyOTP = async () => {
-        setLoading(true);
-        try {
-            const otpValue = otp.join("");
-            const email = sessionStorage.getItem("userEmail");
-            const emailExpiry = sessionStorage.getItem("userEmailExpiry");
-
-            if (!otpValue || otpValue.length < 6) {
-                toast.error(`OTP is required and must be 6 digits`);
-                setLoading(false);
-                return;
-            }
-
-            if (email && Date.now() < parseInt(emailExpiry)) {
-                const credentials = {
-                    email: email,
-                    otp: otpValue,
-                };
-                const response = await api.post(
-                    "/users/verify-reset-otp/",
-                    credentials
-                );
-                if (response.status !== 200) {
-                    throw new Error(response.data);
-                }
-
-                // Store token for password reset
-                if (response.data.token) {
-                    sessionStorage.setItem("resetToken", response.data.token);
-                }
-
-                toast.success(`OTP verified successfully`);
-                setStep(3);
-            } else {
-                sessionStorage.removeItem("userEmail");
-                sessionStorage.removeItem("userEmailExpiry");
-                toast.error(`OTP session expired. Please try again`);
-                setStep(1);
-            }
-        } catch (error) {
-            console.log(error);
-            if (error.response?.data) {
-                toast.error(Object.values(error.response?.data)?.[0]);
-            } else {
-                toast.error(error.message || "Something went wrong");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleResendOTP = async () => {
-        setLoading(true);
-        const email = sessionStorage.getItem("userEmail");
-        const emailExpiry = sessionStorage.getItem("userEmailExpiry");
-
-        try {
-            if (email && Date.now() < parseInt(emailExpiry)) {
-                const credentials = {
-                    email: email,
-                };
-                const response = await api.post(
-                    "/users/forgot-password/resend-otp/",
-                    credentials
-                );
-                if (response.status !== 200) {
-                    throw new Error(response.data);
-                }
-
-                sessionStorage.setItem(
-                    "userEmailExpiry",
-                    (Date.now() + 180000).toString()
-                ); // 3 minutes
-                toast.success(`New OTP sent successfully`);
-                setTimer(60); // Reset timer to 1 minute on resend
-                setOtp(["", "", "", "", "", ""]); // Clear OTP fields
-            } else {
-                sessionStorage.removeItem("userEmail");
-                sessionStorage.removeItem("userEmailExpiry");
-                toast.error(`OTP session expired. Please try again`);
-                setStep(1);
-            }
-        } catch (error) {
-            console.log(error);
-            if (error.response?.data) {
-                toast.error(Object.values(error.response?.data)?.[0]);
-            } else {
-                toast.error(error.message || "Something went wrong");
-            }
-            if (error.response?.data?.code === "otp_session_expired")
-                setStep(1);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Format timer to display as MM:SS
-    const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}:${
-            remainingSeconds < 10 ? "0" : ""
-        }${remainingSeconds}`;
-    };
-
-    return (
-        <div className="flex flex-col items-center bg-gray-800 p-6 rounded-lg shadow-lg w-80 md:w-full max-w-md">
-            <p className="text-gray-300 mb-4 text-center">
-                Enter the 6-digit code sent to your email
-            </p>
-            <div className="flex space-x-1.5 md:space-x-4 my-4">
-                {otp.map((digit, index) => (
-                    <input
-                        key={index}
-                        ref={(el) => (inputRefs.current[index] = el)}
-                        type="text"
-                        maxLength="1"
-                        value={digit}
-                        onChange={(e) => handleChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-10 h-10 md:w-12 md:h-12 text-center text-xl bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500"
-                    />
-                ))}
+        {/* Course Progress */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Current Course */}
+          <div className="bg-gray-700 p-4 rounded-md flex items-center">
+            <div className="flex-1">
+              <div className="font-semibold mb-2">Content Delivery Network Basic explanation</div>
+              <div className="text-sm opacity-80 mb-2">Finish your course</div>
+              <div className="w-full bg-gray-600 h-2 rounded-full">
+                <div className="bg-blue-500 h-2 rounded-full w-4/5"></div>
+              </div>
+              <div className="text-xs mt-2 opacity-70">DRAFT State</div>
             </div>
-            <p className="text-gray-400 mb-4">
-                Time remaining: {formatTime(timer)}
-            </p>
-            <button
-                onClick={handleVerifyOTP}
-                className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg mt-4 w-full"
-            >
-                Verify
-            </button>
-            <p
-                onClick={handleResendOTP}
-                className="mt-3 text-sm text-gray-400 cursor-pointer hover:underline"
-            >
-                Resend OTP
-            </p>
+            <div className="ml-4">
+              <img src="/api/placeholder/150/100" alt="CDN Diagram" className="rounded-md" />
+            </div>
+          </div>
+
+          {/* Create Course */}
+          <div className="bg-gray-700 p-4 rounded-md flex items-center">
+            <div className="flex-1">
+              <div className="font-semibold mb-2">Create an Engaging Course</div>
+              <div className="text-sm opacity-80 mb-3">
+                Whether you've been teaching for years or are teaching for the first time, 
+                you can make an engaging course. We've compiled resources and best practices to help you
+                get to the next level, no matter where you're starting.
+              </div>
+              <button className="px-3 py-1 bg-blue-500 rounded text-sm hover:bg-blue-600">
+                Get Started
+              </button>
+            </div>
+            <div className="ml-4 hidden md:block">
+              <img src="/api/placeholder/150/100" alt="Course Creation" className="rounded-md" />
+            </div>
+          </div>
         </div>
-    );
+
+        {/* Charts and Recent Students */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Course Progress Chart */}
+          <div className="bg-gray-800 p-4 rounded-md">
+            <div className="flex justify-between items-center mb-4">
+              <div className="font-semibold">COURSE PROGRESS</div>
+              <button className="text-sm opacity-70">...</button>
+            </div>
+            <div className="flex justify-between mb-2">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-500 mr-1 rounded-full"></div>
+                <span className="text-xs">150 Subscribed</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 mr-1 rounded-full"></div>
+                <span className="text-xs">250 Freemium</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-yellow-500 mr-1 rounded-full"></div>
+                <span className="text-xs">295 Waitlisted</span>
+              </div>
+            </div>
+            <div className="h-64 mt-4">
+              {/* Placeholder for the chart */}
+              <div className="w-full h-full bg-gray-700 rounded-md flex items-center justify-center">
+                <div className="flex h-full w-full">
+                  {Array(12).fill(0).map((_, i) => (
+                    <div key={i} className="flex-1 flex items-end justify-center pb-8">
+                      <div className="w-2 bg-blue-500 mx-1" style={{ height: `${Math.random() * 50 + 20}%` }}></div>
+                      <div className="w-2 bg-red-500 mx-1" style={{ height: `${Math.random() * 50 + 20}%` }}></div>
+                      <div className="w-2 bg-yellow-500 mx-1" style={{ height: `${Math.random() * 50 + 20}%` }}></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Students */}
+          <div className="bg-gray-800 p-4 rounded-md">
+            <div className="flex justify-between items-center mb-4">
+              <div className="font-semibold">RECENT STUDENTS</div>
+              <button className="text-sm opacity-70">...</button>
+            </div>
+            <div className="space-y-4">
+              {dashboardData.recentStudents.map(student => (
+                <div key={student.id} className="flex items-center">
+                  <div className="w-10 h-10 bg-gray-700 rounded-full overflow-hidden mr-3">
+                    <img src="/api/placeholder/40/40" alt={student.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{student.name}</div>
+                    <div className="text-xs opacity-70">{student.code}</div>
+                  </div>
+                  <div className={`text-xs ${
+                    student.status === "Subscribed" ? "text-green-400" : 
+                    student.status === "Freemium" ? "text-red-400" : "text-purple-400"
+                  }`}>
+                    {student.status}
+                  </div>
+                  <div className="ml-3 w-16 h-8">
+                    {/* Placeholder for the mini chart */}
+                    <div className="w-full h-full bg-gray-700 rounded-md flex items-center">
+                      <svg viewBox="0 0 100 30" className="w-full h-full">
+                        <path 
+                          d={`M0,15 ${Array(10).fill(0).map((_, i) => 
+                            `L${i*10},${Math.random() * 20 + 5}`).join(' ')} L100,15`} 
+                          fill="none" 
+                          stroke={
+                            student.status === "Subscribed" ? "#4ade80" : 
+                            student.status === "Freemium" ? "#f87171" : "#c084fc"
+                          } 
+                          strokeWidth="2"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+  );
 };
 
-const SetNewPassword = ({ setLoading }) => {
-    const {
-        register,
-        handleSubmit,
-        watch,
-        reset,
-        formState: { errors },
-    } = useForm({ mode: "onBlur" });
-    const password = watch("password");
-    const navigate = useNavigate();
-
-    const onSubmit = async (data) => {
-        try {
-            setLoading(true);
-            const email = sessionStorage.getItem("userEmail");
-            const resetToken = sessionStorage.getItem("resetToken");
-
-            if (!email || !resetToken) {
-                toast.error(
-                    "Session expired. Please restart the password reset process."
-                );
-                navigate("/forgot-password");
-                return;
-            }
-
-            const credentials = {
-                email: email,
-                token: resetToken,
-                password: data.password,
-            };
-
-            const response = await api.post(
-                "/users/reset-password/",
-                credentials
-            );
-            if (response.status !== 200) {
-                throw new Error(response.data);
-            }
-
-            // Clear session storage
-            sessionStorage.removeItem("userEmail");
-            sessionStorage.removeItem("userEmailExpiry");
-            sessionStorage.removeItem("resetToken");
-
-            toast.success("Password reset successfully!");
-            navigate("/login");
-            reset();
-        } catch (error) {
-            console.log(error);
-            if (error.response?.data) {
-                toast.error(Object.values(error.response?.data)?.[0]);
-            } else {
-                toast.error(error.message || "Something went wrong");
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="space-y-6">
-            <p className="text-gray-400 mb-6">
-                Create a new password for your account
-            </p>
-            <form className="space-y-6">
-                <div>
-                    <InputField
-                        type="password"
-                        placeholder="New password"
-                        register={{
-                            ...register("password", {
-                                required: "Password is required",
-                                minLength: {
-                                    value: 8,
-                                    message:
-                                        "Password must be at least 8 characters",
-                                },
-                                validate: (value) =>
-                                    !/\s/.test(value) || "No spaces allowed",
-                                pattern: {
-                                    value: /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-                                    message:
-                                        "Password must include at least a uppercase, a number, a special character and space is not allowed",
-                                },
-                            }),
-                        }}
-                    />
-                    {errors.password && (
-                        <span className="text-sm text-red-500">
-                            {errors.password.message}
-                        </span>
-                    )}
-                </div>
-
-                <div>
-                    <InputField
-                        type="password"
-                        placeholder="Confirm new password"
-                        register={{
-                            ...register("confirmPassword", {
-                                required: "Confirm password is required",
-                                validate: (value) =>
-                                    value === password ||
-                                    "Passwords do not match",
-                            }),
-                        }}
-                    />
-                    {errors.confirmPassword && (
-                        <span className="text-sm text-red-500">
-                            {errors.confirmPassword.message}
-                        </span>
-                    )}
-                </div>
-
-                <div className="w-full flex justify-center">
-                    <button
-                        onClick={handleSubmit(onSubmit)}
-                        className="px-16 bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
-                    >
-                        Reset Password
-                    </button>
-                </div>
-
-                <p className="text-center text-gray-400">
-                    Back to{" "}
-                    <Link to="/login">
-                        <span className="text-blue-500 hover:text-blue-400">
-                            Login
-                        </span>
-                    </Link>
-                </p>
-            </form>
-        </div>
-    );
-};
-
-export default ForgotPassword;
+export default TutorDashboard;

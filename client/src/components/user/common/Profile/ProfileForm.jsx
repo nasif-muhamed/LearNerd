@@ -60,9 +60,9 @@ const ProfileForm = ({ user }) => {
     return (
         <div className="space-y-6 w-full md:w-3/4">
             <form onSubmit={handleSubmit(onSubmit)}>
-                <div className="flex gap-10 mb-1">
+                <div className="flex flex-col md:flex-row md:gap-10 mb-1">
                     {/* First name */}
-                    <div className="w-1/2">
+                    <div className="w-full md:w-1/2">
                         <label className="block text-slate-400 mb-1">
                             first name
                         </label>
@@ -94,7 +94,7 @@ const ProfileForm = ({ user }) => {
                     </div>
 
                     {/* Last name */}
-                    <div className="w-1/2">
+                    <div className="w-full md:w-1/2">
                         <label className="block text-slate-400 mb-1">
                             last name
                         </label>
