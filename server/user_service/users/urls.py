@@ -1,7 +1,7 @@
 from django.urls import path
 from . views import RegisterView, VerifyOTPView, ResendOTPView, LoginView,\
     UserView, UsersView, UserActionView, MyBadgesView, SubmitQuizView, ForgotPasswordView,\
-    ForgotPasswordOTPVerifyView, ForgotPasswordResetView
+    ForgotPasswordOTPVerifyView, ForgotPasswordResetView, GoogleLoginView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -10,6 +10,7 @@ urlpatterns = [
     path('resend-otp/', ResendOTPView.as_view(), name='resend_otp'), # used for both register and forgot password
     path('token/', LoginView.as_view(), name='get_token'),
     path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
+    path('google-login/', GoogleLoginView.as_view(), name='google_login'),  # New endpoint
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('forgot-password/verify-otp/', ForgotPasswordOTPVerifyView.as_view(), name='forgot_password_verify_otp'),
     path('forgot-password/reset/', ForgotPasswordResetView.as_view(), name='forgot_password_reset'),

@@ -16,13 +16,19 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from . firebase_auth import auth as firebase_auth
+
 
 from . models import AdminUser, BadgesAquired
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
     BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer
 
+
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
+
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -141,6 +147,38 @@ class ResendOTPView(APIView):
 
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+
+
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token')  # Firebase ID token from frontend
+        print('token:', token)
+        if not token:
+            return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Verify the Firebase token
+            decoded_token = firebase_auth.verify_id_token(token)
+            email = decoded_token.get('email')
+            print('google:', decoded_token)
+            if not email:
+                return Response({'error': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
+            # Get or create the user
+            user, created = Profile.objects.get_or_create(
+                email=email,
+            )
+
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'registered': created,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ForgotPasswordView(APIView):
