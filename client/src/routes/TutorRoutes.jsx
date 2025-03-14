@@ -5,6 +5,7 @@ import FourNotFour from "../pages/FourNotFour";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import ProtectedRoute from "./user_restrication/ProtectedRoute";
 import TutorDashboard from "../pages/user/tutor/TutorDashboard";
+import CreateCourse from "../pages/user/tutor/myCourses/CreateCourse";
 
 const TutorRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -25,6 +26,7 @@ const TutorRoutes = () => {
         <Routes>
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<TutorDashboard />} />
+                <Route path="/my-courses" element={<CreateCourse />} />
             </Route>
 
             <Route path="*" element={<DynamicRouter />}>

@@ -1,3 +1,112 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root {
+      --background: 222 47% 11%;
+      --foreground: 210 40% 98%;
+  
+      --card: 222 47% 8%;
+      --card-foreground: 210 40% 98%;
+  
+      --popover: 222 47% 9%;
+      --popover-foreground: 210 40% 98%;
+  
+      --primary: 210 100% 66%;
+      --primary-foreground: 222 47% 11%;
+  
+      --secondary: 220 16% 22%;
+      --secondary-foreground: 210 40% 98%;
+  
+      --muted: 217 33% 18%;
+      --muted-foreground: 215 20% 65%;
+  
+      --accent: 224 100% 69%;
+      --accent-foreground: 210 40% 98%;
+  
+      --destructive: 0 63% 63%;
+      --destructive-foreground: 210 40% 98%;
+  
+      --border: 215 28% 17%;
+      --input: 215 28% 17%;
+      --ring: 216 34% 32%;
+  
+      --radius: 0.75rem;
+    }
+  }
+  
+  @layer base {
+    * {
+      @apply border-border;
+    }
+  
+    body {
+      @apply bg-background text-foreground;
+      font-feature-settings: "rlig" 1, "calt" 1;
+    }
+  }
+  
+  @layer utilities {
+    .glass-effect {
+      @apply bg-white/5 backdrop-blur-md border border-white/10;
+    }
+    
+    .text-balance {
+      text-wrap: balance;
+    }
+    
+    .animated-border {
+      @apply relative;
+    }
+    
+    .animated-border::after {
+      content: "";
+      @apply absolute inset-0 rounded-md pointer-events-none;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(var(--accent), 0.3) 50%, rgba(255,255,255,0) 100%);
+      background-size: 500px 100%;
+      animation: shimmer 2s infinite linear;
+    }
+  }
+  
+  /* Custom scrollbar for webkit browsers */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground;
+  }
+  
+  /* Page transitions and animations */
+  .page-transition-enter {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  
+  .page-transition-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms, transform 300ms;
+  }
+  
+  .page-transition-exit {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .page-transition-exit-active {
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 300ms, transform 300ms;
+  }
+  

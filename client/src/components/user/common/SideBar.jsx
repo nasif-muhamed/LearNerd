@@ -10,7 +10,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
     const sideContentStudent = [
         { name: "Home", icon: House, route: '/student/home' },
         { name: "Courses", icon: GraduationCap, route: '/student/courses' },
-        { name: "Study Room", icon: Presentation, route: '/student/study-room/' },
+        { name: "Study Room", icon: Presentation, route: '/student/study-room/badges' },
         { name: "Tutors", icon: Users, route: '/student/tutors' },
         { name: "News", icon: Newspaper, route: '/student/news' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
@@ -19,7 +19,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
 
     const sideContentTutor = [
         { name: "Dashboard", icon: LayoutDashboard, route: '/tutor/dashboard' },
-        { name: "My Courses", icon: GraduationCap, route: '/tutor/courses' },
+        { name: "My Courses", icon: GraduationCap, route: '/tutor/my-courses' },
         { name: "Class Room", icon: Presentation, route: '/tutor/class-room/' },
         { name: "Wallet", icon: WalletMinimal, route: '/tutor/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
