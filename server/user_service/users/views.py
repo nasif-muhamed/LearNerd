@@ -19,11 +19,10 @@ from rest_framework import generics
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from . firebase_auth import auth as firebase_auth
-
-
 from . models import AdminUser, BadgesAquired
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
     BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer
+from .tasks import send_otp_email
 
 
 Profile = get_user_model()
@@ -44,9 +43,8 @@ class RegisterView(APIView):
             subject = 'Your One Time Password (OTP) for LearNerds'
             message = f'Your OTP code is {otp}'
             print(message)
-            email_from = settings.EMAIL_HOST_USER
             recipient_list = [email]
-            send_mail(subject, message, email_from, recipient_list, fail_silently=False)
+            send_otp_email.delay(subject, message, recipient_list)
                         
             cache_data = {
                 'otp': otp,
@@ -54,7 +52,7 @@ class RegisterView(APIView):
                 'last_sent': time.time(),  # Timestamp of when OTP was last sent
             }
             
-            cache.set(email, cache_data, timeout=180)  # 5 minutes expiry
+            cache.set(email, cache_data, timeout=180)  # 3 minutes expiry
 
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
             
@@ -135,10 +133,8 @@ class ResendOTPView(APIView):
 
         # Send the new OTP via email
         print(message)  # For debugging; replace with logging in production
-        email_from = settings.EMAIL_HOST_USER
         recipient_list = [email]
-        send_mail(subject, message, email_from, recipient_list, fail_silently=False)
-
+        send_otp_email.delay(subject, message, recipient_list)
         cache_data['last_sent'] = current_time
         cache.set(cache_key, cache_data, timeout=180)  # Reset the 3-minute expiry
 
@@ -316,6 +312,15 @@ class UserView(APIView):
 def is_admin(user):
     return AdminUser.objects.filter(profile=user).exists()
 
+# class CheckIsAdmin(APIView):
+#     permission_classes = [IsAuthenticated]
+#     def get(self, request, pk):
+#         user =  request.user
+#         if not is_admin(user):
+#             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+#         return Response({'message': 'Access granted'}, status=status.HTTP_200_OK)
+
+
 class UserActionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -332,17 +337,12 @@ class UserActionView(APIView):
         except Profile.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-
-
     def patch(self, request, pk):
         # Check if the requesting user is an admin
-        print('heree......', pk)
         user =  request.user
-        print('user_', user)
         if not is_admin(user):
             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
         
-
         try:
             user_to_modify = Profile.objects.get(pk=pk)
             if is_admin(user_to_modify):
@@ -448,8 +448,11 @@ class UsersView(APIView):
 
 
 class MyBadgesView(generics.ListAPIView):
-    queryset = BadgesAquired.objects.all()
     serializer_class = BadgeSerializer
+    permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
+
+    def get_queryset(self):
+        return BadgesAquired.objects.filter(profile=self.request.user)
 
 
 class SubmitQuizView(APIView):

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
 
     'rest_framework_simplejwt',
     'rest_framework',
+    'django_celery_results',  # it's used for showing the celery results, such as success, pending, failure, etc
 
     'users',
 ]
@@ -116,7 +117,7 @@ DATABASES = {
     }
 }
 
-# CACHE
+# CACHE Using redis
 REDIS_HOST = os.getenv('REDIS_HOST')
 REDIS_PORT = os.getenv('REDIS_PORT')
 
@@ -127,6 +128,14 @@ CACHES = {
     }
 }
 
+
+# Celery Worker using Redis
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"  # Use Redis database 0 for Celery broker
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'  # Match your project's timezone
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -177,8 +186,10 @@ AUTH_USER_MODEL = "users.Profile"
 
 
 # Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD_USER')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER 

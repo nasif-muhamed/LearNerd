@@ -72,7 +72,7 @@ services:
         command: >
             sh -c "python manage.py makemigrations &&
                    python manage.py migrate &&
-                   python manage.py runserver 0.0.0.0:8001"
+                   python manage.py runserver 0.0.0.0:8001 & celery -A user_service worker -l info"
         depends_on:
             - db
             - redis

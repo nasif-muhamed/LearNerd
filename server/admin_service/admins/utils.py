@@ -189,3 +189,6 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error fetching users: {str(e)}")
         
+
+class CallCourseService:
+    COURSE_SERVICE_URL = os.getenv('COURSE_SERVICE_URL')

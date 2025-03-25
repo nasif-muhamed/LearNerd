@@ -6,8 +6,11 @@ urlpatterns = [
     path('v1/users/user/', views.UserProfileGateway.as_view(), name='user-profile'),
     path('v1/badges/', views.BadgeGateway.as_view(), name="admin-badge"),
     path('v1/badges/<int:id>/', views.SingleBadgeGateway.as_view(), name="admin-badge-single"),
+    path('v1/courses/', views.BasicCouseCreationGateway.as_view(), name="course-creation"),
+    path('v1/courses/section-items/', views.BasicCouseCreationGateway.as_view(), name="sectionItem-creation"),
     
     re_path(r'^v1/users/.*$', views.proxy_to_user_service, name='proxy-user'),
     re_path(r'^v1/admin/.*$', views.proxy_to_admin_service, name='proxy-admin'),
     re_path(r'^v1/badges/.*$', views.proxy_to_badges_service, name='proxy-badges'),
+    re_path(r'^v1/courses/.*$', views.proxy_to_course_service, name='proxy-course'),
 ]

@@ -271,4 +271,4 @@ class AdminAuthView(APIView):
     permission_classes = [IsAdminUser]
 
     def get(self, request):
-        return Response({'message':'Permission accessed'})
+        return Response({'message':'Permission accessed', 'is_admin': True}, status=status.HTTP_200_OK)

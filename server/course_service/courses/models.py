@@ -8,7 +8,8 @@ class Category(models.Model):
     title = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=100, unique=True, blank=True)  # For SEO-friendly URLs
     description = models.TextField()
-    image = models.URLField(blank=True, null=True)  # Or use ImageField for local/cloud storage
+    image = models.URLField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -17,29 +18,40 @@ class Category(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)  # Requires 'django.utils.text.slugify'
+            self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
 class Course(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='courses')
-    title = models.CharField(max_length=255, db_index=True)
+    title = models.CharField(max_length=255, db_index=True, unique=True)
     description = models.TextField()
     thumbnail = models.URLField(blank=True, null=True)
     instructor = models.BigIntegerField()
     freemium = models.BooleanField(default=True)
     subscription = models.BooleanField(default=True)
-    subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, default=None, null=True, blank=True, validators=[MinValueValidator(0)])
     is_available = models.BooleanField(default=False)
-    video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)])
-    chat_upto = models.PositiveIntegerField(validators=[MinValueValidator(1)])  # in days
-    safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)])  # time period where a student's payment will be held by the admin
+    is_complete = models.BooleanField(default=False)
+    step = models.PositiveIntegerField(default=1)
+    video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)
+    chat_upto = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # in days
+    safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
     
+    def save(self, *args, **kwargs):
+        if not self.subscription:
+            self.subscription_amount = None
+            self.video_session = None
+            self.chat_upto = None
+            self.safe_period = None
+        super().save(*args, **kwargs)
+
     class Meta:
+        ordering = ['-created_at']
         indexes = [
             models.Index(fields=['title', 'is_available']),  # Composite index for common queries
         ]
@@ -51,6 +63,10 @@ class LearningObjective(models.Model):
 
     class Meta:
         ordering = ['order']
+        constraints = [
+            models.UniqueConstraint(fields=['course', 'objective'], name='unique_objective_per_course'),
+        ]
+
 
     def __str__(self):
         return self.objective
@@ -62,6 +78,9 @@ class CourseRequirement(models.Model):
 
     class Meta:
         ordering = ['order']
+        constraints = [
+            models.UniqueConstraint(fields=['course', 'requirement'], name='unique_requirement_per_course'),
+        ]
 
     def __str__(self):
         return self.requirement
@@ -102,7 +121,7 @@ class SectionItem(models.Model):
     
 class Video(models.Model):
     section_item = models.OneToOneField(SectionItem, on_delete=models.CASCADE, related_name='video')
-    video_url = models.URLField(blank=True, null=True)  # URL to video (e.g., hosted on S3, YouTube, etc.)
+    video_url = models.URLField(blank=True, null=True)  # URL to video hosted in claudinary
     thumbnail = models.URLField(blank=True, null=True)
     duration = models.PositiveIntegerField(default=0)  # Duration in seconds
 

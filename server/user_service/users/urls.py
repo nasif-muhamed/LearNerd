@@ -14,9 +14,13 @@ urlpatterns = [
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('forgot-password/verify-otp/', ForgotPasswordOTPVerifyView.as_view(), name='forgot_password_verify_otp'),
     path('forgot-password/reset/', ForgotPasswordResetView.as_view(), name='forgot_password_reset'),
+    
     path('', UsersView.as_view(), name='users'),
     path('user/', UserView.as_view(), name='user'),
     path('user-action/<int:pk>/', UserActionView.as_view(), name='user-block'),
+
+    # path('check_admin/', CheckIsAdmin.as_view(), name='is_admin'),
+
     path('badges/', MyBadgesView.as_view(), name='badge-list'),
     path('quiz/submit/', SubmitQuizView.as_view(), name='submit_quiz'),
 ]
