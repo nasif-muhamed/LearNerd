@@ -2,7 +2,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../services/api/axiosInterceptor";
 import storage from "redux-persist/lib/storage";
 
-
 // Fetch user details after login
 export const fetchUserDetails = createAsyncThunk(
     "auth/fetchUserDetails",
@@ -22,28 +21,28 @@ export const fetchUserDetails = createAsyncThunk(
     }
 );
 
-export const fetchBadges = createAsyncThunk(
-    "auth/fetchBadges",
-    async (_, { rejectWithValue }) => {
-        try {
-            const response = await api.get("/users/badges/");
-            console.log('thunk-fetchUserDetails-response:', response)
-            if (response.status !== 200) {
-                throw new Error("Failed to fetch user details");
-            }
-            const data = response.data;
-            return data;
+// export const fetchBadges = createAsyncThunk(
+//     "auth/fetchBadges",
+//     async (_, { rejectWithValue }) => {
+//         try {
+//             const response = await api.get("/users/badges/");
+//             console.log('thunk-fetchUserDetails-response:', response)
+//             if (response.status !== 200) {
+//                 throw new Error("Failed to fetch user details");
+//             }
+//             const data = response.data;
+//             return data;
             
-        } catch (error) {
-            return rejectWithValue(error.response?.data?.message || error.message || 'An unknown error occurred');
-        }
-    }
-);
+//         } catch (error) {
+//             return rejectWithValue(error.response?.data?.message || error.message || 'An unknown error occurred');
+//         }
+//     }
+// );
 
 
 const initialState = {
     user: null,
-    badges: null,
+    // badges: null,
     accessToken: null,
     refreshToken: null,
     role: null,
@@ -69,7 +68,7 @@ const authSlice = createSlice({
         },
         logout: (state) => {
             state.user = null;
-            state.badges = null;
+            // state.badges = null;
             state.accessToken = null;
             state.refreshToken = null;
             state.status = 'idle';
@@ -90,18 +89,18 @@ const authSlice = createSlice({
             .addCase(fetchUserDetails.rejected, (state, action) => {
                 state.status = "failed";
                 state.error = action.payload;
-            })
-            .addCase(fetchBadges.pending, (state) => {
-                state.status = "loading";
-            })
-            .addCase(fetchBadges.fulfilled, (state, action) => {
-                state.status = "succeeded";
-                state.badges = action.payload;
-            })
-            .addCase(fetchBadges.rejected, (state, action) => {
-                state.status = "failed";
-                state.error = action.payload;
             });
+            // .addCase(fetchBadges.pending, (state) => {
+            //     state.status = "loading";
+            // })
+            // .addCase(fetchBadges.fulfilled, (state, action) => {
+            //     state.status = "succeeded";
+            //     state.badges = action.payload;
+            // })
+            // .addCase(fetchBadges.rejected, (state, action) => {
+            //     state.status = "failed";
+            //     state.error = action.payload;
+            // });
 
     },
 });

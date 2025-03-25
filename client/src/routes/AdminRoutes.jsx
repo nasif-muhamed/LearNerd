@@ -11,6 +11,8 @@ import AdminUserDetails from "../pages/admin/users/AdminUserDetails";
 import AdminBadge from "../pages/admin/badges/AdminBadge";
 import AdminBadgeCreate from "../pages/admin/badges/AdminBadgeCreate";
 import AdminBadgeUpdate from "../pages/admin/badges/AdminBadgeUpdate";
+import AdminCoursesLanding from "../pages/admin/courses/AdminCoursesLanding";
+import AdminCategoriesList from "../pages/admin/courses/AdminCategoriesList";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 
 const CommonRoutes = () => {
@@ -33,6 +35,12 @@ const CommonRoutes = () => {
                     path="/badges/update-badge/:badgeId"
                     element={<AdminBadgeUpdate />}
                 />
+
+                <Route path="/courses">
+                    <Route index element={<AdminCoursesLanding />} />
+                    <Route path="categories" element={<AdminCategoriesList />} />
+                </Route>
+
                 <Route path="/logout" element={<Logout />} />
             </Route>
 

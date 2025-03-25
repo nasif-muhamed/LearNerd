@@ -8,7 +8,7 @@ const AntiProtectedRoute = () => {
     const role = useSelector((state) => state.auth.role);
     console.log('role', role)
 
-    return role === 'student' ? <Navigate to="/student/home" /> 
+    return role === 'student' || role === 'tutor' ? <Navigate to={"/student/home"} /> 
             : role === 'admin' ? <Navigate to={'/admin/dashboard'} /> 
             : <UserUnAuthenticatedLayout > <Outlet /> </UserUnAuthenticatedLayout>;
 }

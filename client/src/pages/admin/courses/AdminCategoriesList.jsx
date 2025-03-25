@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpenText, BadgeCheck } from "lucide-react";
-import api from "../../../services/api/axiosInterceptor";
 import LoadingSpinner from "../../../components/ui/LoadingSpinner";
+import api from "../../../services/api/axiosInterceptor";
 
-const AdminBadge = () => {
-    const BASE_URL = import.meta.env.VITE_BASE_URL;
+const CategoryList = () => {
     const navigate = useNavigate();
-    const [badges, setBadges] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [nextPage, setNextPage] = useState(null);
@@ -15,14 +14,14 @@ const AdminBadge = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const pageSize = 9; // Specify how many item needed in a single fetch 9 items per page
+    const pageSize = 1; // Matches your backend response (3 items per page)
 
-    const fetchBadges = useCallback(async () => {
+    const fetchCategories = useCallback(async () => {
         setLoading(true);
         setError(null);
 
         try {
-            const response = await api.get("badges/", {
+            const response = await api.get(`courses/categories`, {
                 params: {
                     page: currentPage,
                     page_size: pageSize,
@@ -30,13 +29,13 @@ const AdminBadge = () => {
                 },
             });
             console.log(response);
-            setBadges(response.data.results);
+            setCategories(response.data.results);
             setTotalCount(response.data.count);
             setNextPage(response.data.next);
             setPrevPage(response.data.previous);
         } catch (err) {
             console.log("err:", err);
-            setError("Failed to fetch badges.");
+            setError("Failed to fetch categories.");
         } finally {
             setLoading(false);
         }
@@ -57,20 +56,20 @@ const AdminBadge = () => {
     const totalPages = Math.ceil(totalCount / pageSize);
 
     useEffect(() => {
-        fetchBadges();
-    }, [fetchBadges]);
+        fetchCategories();
+    }, [fetchCategories]);
 
     return (
-        
         <div className="bg-gray-900 text-white min-h-screen p-6">
             {loading && <LoadingSpinner/>}
+
             <div className="max-w-6xl mx-auto">
                 {/* Search and Tabs */}
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
                     <div className="relative w-full sm:w-64 mb-4 sm:mb-0">
                         <input
                             type="text"
-                            placeholder="Search badges..."
+                            placeholder="Search categories..."
                             className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg py-2 px-4 pl-10"
                             value={searchQuery}
                             onChange={handleSearch}
@@ -91,27 +90,22 @@ const AdminBadge = () => {
                         </svg>
                     </div>
 
-                    <Link to={'/admin/badges/create-badge'}
-                        className={'px-6 py-2 bg-blue-600 text-whit rounded-lg'}
-                    >
-                        Add Badge
-                    </Link>
                 </div>
 
-                {/* Badges Grid */}
+                {/* Categories Grid */}
                 {error ? (
                     <div className="text-red-500 text-center">{error}</div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
-                        {badges.map((badge) => (
+                        {categories.map((badge) => (
                             <div
                                 key={badge.id}
                                 className="flex items-center hover:bg-gray-800 rounded-lg p-4 cursor-pointer overflow-hidden"
                                 onClick={() =>
-                                    navigate(`/admin/badges/update-badge/${badge.id}`)
+                                    navigate(`/student/study-room/categories/${badge.id}`)
                                 }
                             >
-                                <div className="w-16 h-16  overflow-hidden mr-4">
+                                <div className="w-16 h-16  overflow-hidden mr-4 bg-slate-800 border-2 border-slate-700">
                                     {badge.image ? (
                                         <img
                                             src={badge.image}
@@ -247,4 +241,4 @@ const AdminBadge = () => {
     );
 };
 
-export default AdminBadge;
+export default CategoryList;

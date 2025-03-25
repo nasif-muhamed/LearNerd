@@ -1,46 +1,122 @@
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import CourseUploadHeader from './CourseUploadHeader';
 import InputField from './InputField';
 import CourseFormNavigation from './CourseFormNavigation';
+import api from '../../../../../services/api/axiosInterceptor'
 
-const Step1CourseBasicInfo = ({setStep}) => {
+const Step1CourseBasicInfo = ({
+    setStep,
+    setLoading,
+    setUploadedCourse,
+    uploadedCourse,
+    title,
+    setTitle,
+    description,
+    setDescription,
+    category,
+    setCategory,
+    thumbnail,
+    setThumbnail,
+    freemium,
+    setFreemium,
+    subscription,
+    setSubscription,
+    subscriptionAmount,
+    setSubscriptionAmount,
+    videoSession,
+    setVideoSession,
+    chat_upto,
+    setChatUpto,
+    safe_period,
+    setSafePeriod,
+    categories,
+    setCategories,
+    thumbnailPreview,
+    setThumbnailPreview,
+    updateCourseThumb,
+    setUpdateCourseThumb,
+}) => {
     // Form state
+    console.log('categories:', categories, categories.length)
+    console.log('uploadedCourse', uploadedCourse)
     const { register, handleSubmit, control, watch, setValue, formState: { errors }, reset } = useForm({
         defaultValues: {
-            title: "",
-            description: "",
-            category: "",
-            thumbnail: "",
-            freemium: true,
-            subscription: true,
-            subscription_amount: "",
-            video_session: 1,
-            chat_upto: 30,
-            safe_period: 14,
+            title: title,
+            description: description,
+            category: category,
+            thumbnail: thumbnail,
+            freemium: freemium,
+            subscription: subscription,
+            subscription_amount: subscriptionAmount,
+            video_session: videoSession,
+            chat_upto: chat_upto,
+            safe_period: safe_period,
         }
     });
-    
-    const [categories, setCategories] = useState([]);
-    const [thumbnailPreview, setThumbnailPreview] = useState(null);
-    const subscription = watch("subscription");
-    console.log(watch("title"), watch("description"));
+    const subscriptionWatch = watch("subscription");
 
+    useEffect(() => {
+        if (uploadedCourse) {
+            setTitle(uploadedCourse.title || "");
+            setDescription(uploadedCourse.description || "");
+            setCategory(uploadedCourse.category || "");
+            setFreemium(uploadedCourse.freemium ?? true);
+            setSubscription(uploadedCourse.subscription ?? true);
+            setSubscriptionAmount(uploadedCourse.subscription_amount || "");
+            setVideoSession(uploadedCourse.video_session || null);
+            setChatUpto(uploadedCourse.chat_upto || null);
+            setSafePeriod(uploadedCourse.safe_period || null);
+            setThumbnailPreview(uploadedCourse.thumbnail || null);
+            reset({
+                title: uploadedCourse.title || "",
+                description: uploadedCourse.description || "",
+                category: uploadedCourse.category || "",
+                freemium: uploadedCourse.freemium ?? true,
+                subscription: uploadedCourse.subscription ?? true,
+                subscription_amount: uploadedCourse.subscription_amount || "",
+                video_session: uploadedCourse.video_session || null,
+                chat_upto: uploadedCourse.chat_upto || null,
+                safe_period: uploadedCourse.safe_period || null,
+            });
+        }
+    }, [uploadedCourse, reset]);
+
+    const fetchCategories = async () => {
+        setLoading(true)
+        try{
+            const response = await api.get('/courses/categories/user/')
+            console.log(response)
+            setCategories(response.data)
+        }catch (error) {
+            console.error("Error saving course:", error);
+            toast.error("There was a problem where fetching categories.");
+        }finally{
+            setLoading(false)
+        }
+        
+    }
 
     // Load existing data if editing
     useEffect(() => {
-        // // Fetch categories from backend
-        // fetch("/api/categories") // Change this to your API endpoint
-        //     .then((res) => res.json())
-        //     .then((data) => setCategories(data))
-        //     .catch((err) => console.error("Error fetching categories", err));
-        setCategories(['tech', 'biology', 'commerce'])
-        // const existingData = localStorage.getItem("courseBasicInfo");
-        // if (existingData) {
-        //     setFormData(JSON.parse(existingData));
-        // }
-    }, []);
+        if (!categories.length){
+            fetchCategories()
+        }
+    }, [categories]);
+
+    const handleImageUpload = (e) => {
+        console.log('here in the image upload')
+        const file = e.target.files[0];
+        if (uploadedCourse) setUpdateCourseThumb(file)
+        console.log('file:',file)
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setThumbnailPreview(reader.result);
+            reader.readAsDataURL(file);
+            setValue("thumbnail", file);
+        }
+    };
 
     // // Handle input change
     // const handleChange = (e) => {
@@ -51,61 +127,190 @@ const Step1CourseBasicInfo = ({setStep}) => {
     //     }));
     // };
 
-
-    // Handle form submission
-    const onSubmit = async (data) => {
-            // Save to localStorage for persistence between steps
-            // localStorage.setItem("courseBasicInfo", JSON.stringify(formData));
-            if (!data.thumbnail) {
-                toast.error('Thumbnail is required')
-                return
+    // Handle form upload
+    const onUpload = async (data) => {
+        console.log('data upload:', data)
+        setLoading(true)
+        if (!data.thumbnail) {
+            toast.error('Thumbnail is required')
+            setLoading(false)
+            return
+        }
+        setTitle(data.title)
+        setDescription(data.description)
+        setCategory(data.category)
+        setThumbnail(data.thumbnail)
+        setFreemium(data.freemium)
+        setSubscription(data.subscription)
+        setSubscriptionAmount(data.subscription_amount)
+        setVideoSession(data.video_session)
+        setChatUpto(data.chat_upto)
+        setSafePeriod(data.safe_period)
+        try {
+            const formData = new FormData();
+            formData.append('title', data.title);
+            formData.append('description', data.description);
+            formData.append('category', data.category);
+            formData.append('freemium', data.freemium);
+            formData.append('subscription', data.subscription);
+            if (data.subscription){
+                formData.append('subscription_amount', data.subscription_amount);
+                formData.append('video_session', data.video_session);
+                formData.append('chat_upto', data.chat_upto);
+                formData.append('safe_period', data.safe_period);
             }
-            try {
-                console.log('data:', data)
-                // API call to save basic info
-                // const response = await fetch('api/courses', {
-                //   method: 'POST',
-                //   headers: {
-                //     'Content-Type': 'application/json',
-                //   },
-                //   body: JSON.stringify(formData),
-                // });
-                // const data = await response.json();
-
-                // Mock response for now
-                // const mockResponse = { id: 1, ...formData };
-
-                // Store course ID for subsequent steps 
-                // localStorage.setItem("currentCourseId", mockResponse.id);
-
-                toast("Basic course details have been saved successfully.");
-
-                // Navigate to next step
-                setStep(2);
-            } catch (error) {
-                console.error("Error saving course:", error);
-                toast.error(
-                    "There was a problem saving your course details. Please try again."
-                );
+            formData.append('thumbnail_file', data.thumbnail);
+            
+            const response = await api.post('courses/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            const result = await response.data;
+            console.log('response:', result)
+            setUploadedCourse(result);
+            toast("Basic course details have been saved successfully.");
+        } catch (error) {
+            console.error("Error saving course:", error);
+            if (error.response?.data){
+                toast.error(Object.values(error.response?.data)?.[0]);
+            } else {
+                toast.error("There was a problem saving your course details. Please try again.");
+                toast.error(error.message || 'Something went wrong');
             }
         
-    };
-
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setThumbnailPreview(reader.result);
-            reader.readAsDataURL(file);
-            setValue("thumbnail", file);
+        } finally {
+            setLoading(false)
         }
     };
 
+    // Handle form update
+    const onUpdate = async (data) => {
+        console.log('data update:', data)
+        setLoading(true)
+        
+        // Create plain JSON object for changed data only
+        const updateData = {};
+        
+        if (data.title !== title) {
+            updateData.title = data.title;
+        }
+        if (data.description !== description) {
+            updateData.description = data.description;
+        }
+        if (data.category !== category) {
+            updateData.category = data.category;
+        }
+        if (data.freemium !== freemium) {
+            updateData.freemium = data.freemium;
+        }
+        if (data.subscription !== subscription) {
+            updateData.subscription = data.subscription;
+            if (data.subscription) {
+                updateData.subscription_amount = data.subscription_amount;
+                updateData.video_session = data.video_session;
+                updateData.chat_upto = data.chat_upto;
+                updateData.safe_period = data.safe_period;
+            }
+        }
+        console.log('obje:', updateData)
+        // Check if there are any changes
+        if (Object.keys(updateData).length === 0) {
+            toast.info("No changes detected");
+            setLoading(false);
+            return;
+        }
+        updateData.id= uploadedCourse.id
+        try {
+            const response = await api.patch('courses/', updateData);
+            const result = await response.data;
+            console.log('response:', result)
+            setUploadedCourse(result);
+            toast.success("Basic course details have been updated successfully.");
+            if (data.title !== title) {
+                setTitle(data.title)
+            }
+            if (data.description !== description) {
+                setDescription(data.description)
+            }
+            if (data.category !== category) {
+                setCategory(data.category)
+            }
+            if (data.freemium !== freemium) {
+                setFreemium(data.freemium)
+            }
+            if (data.subscription !== subscription) {
+                setSubscription(data.subscription)
+                if (data.subscription) {
+                    setSubscriptionAmount(data.subscription_amount)
+                    setVideoSession(data.video_session)
+                    setChatUpto(data.chat_upto)
+                    setSafePeriod(data.safe_period)        
+                }
+            }    
+        } catch (error) {
+            console.error("Error saving course:", error);
+            if (error.response?.data) {
+                toast.error(Object.values(error.response?.data)?.[0]);
+            } else {
+                toast.error("There was a problem saving your course details. Please try again.");
+                toast.error(error.message || 'Something went wrong');
+            }
+        } finally {
+            setLoading(false)
+        }
+    };
+
+    // Handle update image only
+    const updateThumbnail = async () => {
+        if (!updateCourseThumb) {
+            toast.info("Please select an image to update the thumbnail.");
+            return;
+        }
+        // console.log('differences',thumbnail.name, updateCourseThumb.name, thumbnail.name === updateCourseThumb.name && thumbnail.size === updateCourseThumb.size, thumbnail , updateCourseThumb)
+        if (thumbnail?.name && updateCourseThumb && thumbnail.name === updateCourseThumb.name && thumbnail.size === updateCourseThumb.size) {
+            toast.info("Thumbnail Not changed.");
+            return;
+        }
+        setLoading(true);
+        const formData = new FormData();
+        formData.append('id', uploadedCourse.id)
+        formData.append("thumbnail_file", updateCourseThumb);
+        console.log('form:', formData.entries())
+        try {
+            const response = await api.patch("courses/", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+            const result = await response.data;
+            console.log("response image upload:", result);
+            setUploadedCourse(prev => ({...prev, ...result}))
+            setThumbnail(updateCourseThumb)
+            setUpdateCourseThumb(null); // Reset on success
+            toast.success("Thumbnail updated successfully.");
+        } catch (error) {
+            console.error("Error updating thumbnail:", error);
+            const errorMessage =
+                error.response?.data && Object.values(error.response.data)[0]
+                    ? Object.values(error.response.data)[0]
+                    : "There was a problem updating the thumbnail. Please try again.";
+            toast.error(errorMessage);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Handle next button
+    const handleNext = () => {
+        setStep(2)
+    }
+
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in ">
+        <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
             <CourseUploadHeader currentStep={1} totalSteps={4} title="Course Basic Information" />
 
-            <form onSubmit={handleSubmit(onSubmit)} className="bg-card border border-border rounded-lg shadow-lg p-6">
+            <form onSubmit={handleSubmit(onUpload)} className="bg-card border border-border rounded-lg shadow-lg p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="md:col-span-2">
                         <InputField
@@ -136,7 +341,7 @@ const Step1CourseBasicInfo = ({setStep}) => {
                                 <select {...field} className="input-field text-black">
                                     <option value="">Select a category</option>
                                     {categories.map((cat, idx) => (
-                                        <option key={idx} value={cat}>{cat}</option>
+                                        <option key={idx} value={cat.id}>{cat.title}</option>
                                     ))}
                                 </select>
                                 {errors.category && <p className="text-red-400 text-sm">{errors.category.message}</p>}
@@ -157,7 +362,7 @@ const Step1CourseBasicInfo = ({setStep}) => {
 
 
 
-                    {subscription && (
+                    {subscriptionWatch && (
                         <>
                             <InputField
                                 label="Subscription Amount"
@@ -190,15 +395,27 @@ const Step1CourseBasicInfo = ({setStep}) => {
                         </>
                     )}
         
-                    <div className="">
-                        <label className="block text-sm font-medium mb-2">Thumbnail</label>
-                        <input type="file" accept="image/*" onChange={handleImageUpload} className="input-field" />
+                    <div className="flex gap-2 flex-col md:flex-row">
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Thumbnail</label>
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="input-field" />
+                            {
+                                updateCourseThumb && 
+                                <button
+                                    type="button"
+                                    onClick={updateThumbnail}
+                                    className="mt-6 px-6 py-3 bg-green-900 hover:bg-secondary/80 text-foreground rounded-md transition-colors"
+                                >
+                                    Update Thumbnail
+                                </button>
+                            }
+                        </div>
                         {thumbnailPreview && <img src={thumbnailPreview} alt="Thumbnail Preview" className="mt-2 rounded-lg max-h-48" />}
                         {errors.thumbnail && <p className="text-red-500 text-sm">{errors.thumbnail.message}</p>}
                     </div>
 
                 </div>
-                <CourseFormNavigation currentStep={1} onNext={handleSubmit(onSubmit)} />
+                <CourseFormNavigation currentStep={1} update={uploadedCourse} disableNext={!uploadedCourse} onUpsert={!uploadedCourse? handleSubmit(onUpload) : handleSubmit(onUpdate)} onNext={handleNext} uploadedCourse={uploadedCourse} />
             </form>
         </div>
     );

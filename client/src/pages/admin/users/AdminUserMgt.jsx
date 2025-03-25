@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { UserRound } from "lucide-react";
 import api from "../../../services/api/axiosInterceptor";
+import LoadingSpinner from "../../../components/ui/LoadingSpinner";
 
 const AdminUserMgt = () => {
     const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -15,7 +16,7 @@ const AdminUserMgt = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const pageSize = 3; // Matches your backend response (3 items per page)
+    const pageSize = 9; // Matches your backend response (3 items per page)
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
@@ -70,6 +71,7 @@ const AdminUserMgt = () => {
 
     return (
         <div className="bg-gray-900 text-white min-h-screen p-6">
+            {loading && <LoadingSpinner/>}
             <div className="max-w-6xl mx-auto">
                 {/* Search and Tabs */}
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
@@ -122,23 +124,19 @@ const AdminUserMgt = () => {
                 </div>
 
                 {/* User Grid */}
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                ) : error ? (
+                {error ? (
                     <div className="text-red-500 text-center">{error}</div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-hidden">
                         {users.map((user) => (
                             <div
                                 key={user.id}
-                                className="flex items-center hover:bg-gray-800 rounded-lg p-4 cursor-pointer"
+                                className="flex items-center hover:bg-gray-800 rounded-lg p-4 cursor-pointer w-full gap-4"
                                 onClick={() =>
                                     navigate(`/admin/users/${user.id}`)
                                 }
                             >
-                                <div className="w-16 h-16 rounded-full overflow-hidden mr-4 bg-slate-800 border-2 border-slate-700">
+                                <div className="w-16 h-16 rounded-full overflow-hidden bg-slate-800 border-2 border-slate-700">
                                     {user.image ? (
                                         <img
                                             src={BASE_URL + user.image}
@@ -155,15 +153,15 @@ const AdminUserMgt = () => {
                                         </div>
                                     )}
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-lg">
-                                        {user.first_name || user.last_name
+                                <div className="flex-1 truncate">
+                                    <h3 className="font-bold text-lg truncate">
+                                        {user.first_name
                                             ? `${user.first_name || ""} ${
                                                   user.last_name || ""
                                               }`.trim()
                                             : user.email}
                                     </h3>
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-gray-400 truncate">
                                         Created:{" "}
                                         {new Date(
                                             user.created_at

@@ -1,49 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { CheckCircle2, Edit, ChevronRight, ChevronDown } from "lucide-react";
+import { CheckCircle2, Edit, ChevronRight, ChevronDown, CheckSquare, Video } from "lucide-react";
 import CourseUploadHeader from "./CourseUploadHeader";
 import CourseFormNavigation from "./CourseFormNavigation";
+import handleError from "../../../../../utils/handleError";
+import api from "../../../../../services/api/axiosInterceptor";
 
-const Step4CoursePreview = ({ setStep }) => {
+const Step4CoursePreview = ({ 
+    setStep,
+    uploadedCourse,
+}) => {
     const navigate = useNavigate();
+    // // State for course data
+    // const [courseData, setCourseData] = useState({
+    //     basicInfo: null,
+    //     objectives: [],
+    //     requirements: [],
+    //     sections: [],
+    // });
 
-    // State for course data
-    const [courseData, setCourseData] = useState({
-        basicInfo: null,
-        objectives: [],
-        requirements: [],
-        sections: [],
-    });
-
+    console.log('uploadedCourse step4:', uploadedCourse)
     const [expandedSections, setExpandedSections] = useState({});
     const [loading, setLoading] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
-
-    // Load data from local storage
-    useEffect(() => {
-        const basicInfo = localStorage.getItem("courseBasicInfo");
-        const objectives = localStorage.getItem("courseObjectives");
-        const requirements = localStorage.getItem("courseRequirements");
-        const sections = localStorage.getItem("courseSections");
-
-        setCourseData({
-            basicInfo: basicInfo ? JSON.parse(basicInfo) : null,
-            objectives: objectives ? JSON.parse(objectives) : [],
-            requirements: requirements ? JSON.parse(requirements) : [],
-            sections: sections ? JSON.parse(sections) : [],
-        });
-
-        // Initialize expanded sections
-        if (sections) {
-            const sectionsData = JSON.parse(sections);
-            const expanded = {};
-            sectionsData.forEach((_, index) => {
-                expanded[index] = false;
-            });
-            setExpandedSections(expanded);
-        }
-    }, []);
 
     // Toggle section expansion
     const toggleSection = (index) => {
@@ -57,13 +36,13 @@ const Step4CoursePreview = ({ setStep }) => {
     const handleEdit = (section) => {
         switch (section) {
             case "basicInfo":
-                navigate("/course-upload/basics");
+                setStep(1);
                 break;
             case "objectives":
-                navigate("/course-upload/objectives");
+                setStep(2);
                 break;
             case "content":
-                navigate("/course-upload/content");
+                setStep(3);
                 break;
             default:
                 break;
@@ -73,39 +52,20 @@ const Step4CoursePreview = ({ setStep }) => {
     // Submit course
     const handleSubmit = async () => {
         try {
-            setSubmitting(true);
-
-            // API call to publish course
-            // const courseId = localStorage.getItem('currentCourseId');
-            // await fetch(`api/courses/${courseId}/publish`, {
-            //   method: 'PUT',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //   },
-            //   body: JSON.stringify({ is_active: true }),
-            // });
-
-            toast("Your course is now live and available to students.");
-
-            // Clear local storage after successful submission
-            localStorage.removeItem("courseBasicInfo");
-            localStorage.removeItem("courseObjectives");
-            localStorage.removeItem("courseRequirements");
-            localStorage.removeItem("courseSections");
-            localStorage.removeItem("currentCourseId");
-
+            setLoading(true);
+            const response = await api.patch('courses/', {
+                id:uploadedCourse.id,
+                is_complete: true,
+                is_available: true,
+            })
+            toast.success("Your course is now live and available to students.");
             // Navigate to dashboard or course list
-            navigate("/tutor/dashboard");
+            navigate("/tutor/my-courses");
         } catch (error) {
             console.error("Error publishing course:", error);
-            toast({
-                variant: "destructive",
-                title: "Error publishing course",
-                description:
-                    "There was a problem publishing your course. Please try again.",
-            });
+            handleError(error, "Failed Publishing course")
         } finally {
-            setSubmitting(false);
+            setLoading(false);
         }
     };
 
@@ -113,16 +73,6 @@ const Step4CoursePreview = ({ setStep }) => {
     const handlePrevious = () => {
         setStep(3);
     };
-
-    if (!courseData.basicInfo) {
-        return (
-            <div className="max-w-4xl mx-auto px-4 py-8 text-center">
-                <p className="text-lg text-muted-foreground">
-                    Loading course data...
-                </p>
-            </div>
-        );
-    }
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
@@ -154,7 +104,7 @@ const Step4CoursePreview = ({ setStep }) => {
                                 Title
                             </p>
                             <p className="font-medium">
-                                {courseData.basicInfo.title}
+                                {uploadedCourse.title}
                             </p>
                         </div>
 
@@ -163,7 +113,7 @@ const Step4CoursePreview = ({ setStep }) => {
                                 Category
                             </p>
                             <p className="font-medium">
-                                {courseData.basicInfo.category}
+                                {uploadedCourse.category}
                             </p>
                         </div>
 
@@ -172,7 +122,7 @@ const Step4CoursePreview = ({ setStep }) => {
                                 Description
                             </p>
                             <p className="font-medium">
-                                {courseData.basicInfo.description}
+                                {uploadedCourse.description}
                             </p>
                         </div>
 
@@ -180,57 +130,68 @@ const Step4CoursePreview = ({ setStep }) => {
                             <p className="text-sm text-muted-foreground">
                                 Price Model
                             </p>
-                            <div className="flex space-x-2 mt-1">
-                                {courseData.basicInfo.freemium && (
+                            <div className="flex space-x-2 mt-3">
+                                {uploadedCourse.freemium && (
                                     <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
                                         Freemium
                                     </span>
                                 )}
-                                {courseData.basicInfo.subscription && (
+                                {uploadedCourse.subscription && (
                                     <span className="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full">
-                                        Subscription ($
-                                        {
-                                            courseData.basicInfo
-                                                .subscription_amount
-                                        }
-                                        )
+                                        Subscription (₹{uploadedCourse.subscription_amount})
                                     </span>
                                 )}
                             </div>
                         </div>
 
-                        <div>
-                            <p className="text-sm text-muted-foreground">
-                                Support Details
-                            </p>
-                            <div className="grid grid-cols-3 gap-2 mt-1">
-                                <div className="text-center px-2 py-1 bg-secondary/80 rounded-md">
-                                    <p className="text-xs text-muted-foreground">
-                                        Video Sessions
-                                    </p>
-                                    <p className="font-medium">
-                                        {courseData.basicInfo.video_session}
-                                    </p>
+                        {uploadedCourse.subscription &&
+                            (<div>
+                                <p className="text-sm text-muted-foreground">
+                                    Support Details
+                                </p>
+                                <div className="grid grid-cols-3 gap-2 mt-1">
+                                    <div className="text-center px-2 py-1 bg-secondary/80 rounded-md">
+                                        <p className="text-xs text-muted-foreground">
+                                            Video Sessions
+                                        </p>
+                                        <p className="font-medium">
+                                            {uploadedCourse.video_session}
+                                        </p>
+                                    </div>
+                                    <div className="text-center px-2 py-1 bg-secondary/80 rounded-md">
+                                        <p className="text-xs text-muted-foreground">
+                                            Chat Available
+                                        </p>
+                                        <p className="font-medium">
+                                            {uploadedCourse.chat_upto} days
+                                        </p>
+                                    </div>
+                                    <div className="text-center px-2 py-1 bg-secondary/80 rounded-md">
+                                        <p className="text-xs text-muted-foreground">
+                                            Safe Period
+                                        </p>
+                                        <p className="font-medium">
+                                            {uploadedCourse.safe_period} days
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="text-center px-2 py-1 bg-secondary/80 rounded-md">
-                                    <p className="text-xs text-muted-foreground">
-                                        Chat Available
-                                    </p>
-                                    <p className="font-medium">
-                                        {courseData.basicInfo.chat_upto} days
-                                    </p>
-                                </div>
-                                <div className="text-center px-2 py-1 bg-secondary/80 rounded-md">
-                                    <p className="text-xs text-muted-foreground">
-                                        Safe Period
-                                    </p>
-                                    <p className="font-medium">
-                                        {courseData.basicInfo.safe_period} days
-                                    </p>
-                                </div>
-                            </div>
+                            </div>)
+                        }
+
+                    </div>
+
+                    <div className="md:col-span-2">
+                    <p className="text-sm text-muted-foreground my-2">Thumbnail</p>
+                    <div className="flex justify-center">
+                        <div className="w-full max-w-md aspect-video overflow-hidden">
+                            <img
+                                src={uploadedCourse.thumbnail}
+                                alt="Course Thumbnail"
+                                className="w-full h-full object-cover object-center"
+                            />
                         </div>
                     </div>
+                    </div>                
                 </div>
 
                 {/* Objectives & Requirements Section */}
@@ -254,10 +215,10 @@ const Step4CoursePreview = ({ setStep }) => {
                                 Learning Objectives
                             </p>
                             <ul className="list-disc list-inside space-y-1 pl-2">
-                                {courseData.objectives.map(
+                                {uploadedCourse?.objectives.map(
                                     (objective, index) => (
                                         <li key={index} className="text-sm">
-                                            {objective}
+                                            {objective.objective}
                                         </li>
                                     )
                                 )}
@@ -269,10 +230,10 @@ const Step4CoursePreview = ({ setStep }) => {
                                 Course Requirements
                             </p>
                             <ul className="list-disc list-inside space-y-1 pl-2">
-                                {courseData.requirements.map(
+                                {uploadedCourse?.requirements.map(
                                     (requirement, index) => (
                                         <li key={index} className="text-sm">
-                                            {requirement}
+                                            {requirement.requirement}
                                         </li>
                                     )
                                 )}
@@ -295,7 +256,7 @@ const Step4CoursePreview = ({ setStep }) => {
                     </div>
 
                     <div className="space-y-4">
-                        {courseData.sections.map((section, sectionIndex) => (
+                        {uploadedCourse.sections.map((section, sectionIndex) => (
                             <div
                                 key={sectionIndex}
                                 className="border border-border rounded-lg overflow-hidden"
@@ -329,15 +290,15 @@ const Step4CoursePreview = ({ setStep }) => {
                                                         key={itemIndex}
                                                         className="text-sm flex items-start pl-4"
                                                     >
-                                                        <div className="min-w-[20px] mt-0.5 mr-2">
+                                                        <div className="min-w-[20px] mt-0.5 mr-4">
                                                             {item.item_type ===
                                                             "video" ? (
                                                                 <span className="text-primary">
-                                                                    •
+                                                                    <Video size={18}/>
                                                                 </span>
                                                             ) : (
                                                                 <span className="text-accent">
-                                                                    ■
+                                                                    <CheckSquare size={18}/>
                                                                 </span>
                                                             )}
                                                         </div>

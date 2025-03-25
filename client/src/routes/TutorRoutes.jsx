@@ -5,6 +5,7 @@ import FourNotFour from "../pages/FourNotFour";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import ProtectedRoute from "./user_restrication/ProtectedRoute";
 import TutorDashboard from "../pages/user/tutor/TutorDashboard";
+import MyCoursesLanding from "../pages/user/tutor/myCourses/MyCoursesLanding";
 import CreateCourse from "../pages/user/tutor/myCourses/CreateCourse";
 
 const TutorRoutes = () => {
@@ -26,7 +27,11 @@ const TutorRoutes = () => {
         <Routes>
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<TutorDashboard />} />
-                <Route path="/my-courses" element={<CreateCourse />} />
+                <Route path="/my-courses">
+                    <Route index element={<MyCoursesLanding />} />
+                    <Route path="create-course" element={<CreateCourse />} />
+                    <Route path="create-course/:draftId" element={<CreateCourse />} />
+                </Route>
             </Route>
 
             <Route path="*" element={<DynamicRouter />}>

@@ -70,7 +70,6 @@ function QuizAttempt() {
             const response = await api.post("users/quiz/submit/", body);
             const { badge_acquired, is_passed, aquired_mark } = response.data; // Assuming score is returned
             setResult({ badge_acquired, is_passed, aquired_mark: aquired_mark || 0 }); // Default score to 0 if not provided
-            // dispatch(fetchBadges())
             setIsQuizCompleted(true); // Show result on the same page
             if (is_passed) {
                 toast.success("Congratulations! You earned the badge!");

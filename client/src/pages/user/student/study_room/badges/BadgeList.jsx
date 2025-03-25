@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpenText, BadgeCheck } from "lucide-react";
 import api from "../../../../../services/api/axiosInterceptor";
+import LoadingSpinner from "../../../../../components/ui/LoadingSpinner";
 import axios from "axios";
 
 const BadgeList = () => {
@@ -62,6 +63,8 @@ const BadgeList = () => {
 
     return (
         <div className="bg-gray-900 text-white min-h-screen p-6">
+            {loading && <LoadingSpinner/>}
+
             <div className="max-w-6xl mx-auto">
                 {/* Search and Tabs */}
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
@@ -92,11 +95,7 @@ const BadgeList = () => {
                 </div>
 
                 {/* Badges Grid */}
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                ) : error ? (
+                {error ? (
                     <div className="text-red-500 text-center">{error}</div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">

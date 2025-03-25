@@ -166,29 +166,16 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
 
                             {/* Profile dropdown menu */}
                             {isProfileDropdownOpen && (
-                                <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-50 transform opacity-100 scale-100 transition-all duration-150 ease-in-out">
-                                    <div className="px-4 py-3 border-b border-gray-600">
-                                        <div className="flex items-center space-x-2">
-                                            {user && user.image ? (
-                                                <div className="h-8 w-8 rounded-full overflow-hidden">
-                                                    <img
-                                                        src={user.image}
-                                                        alt="Profile"
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <UserRound className="text-white" />
-                                            )}
-                                            <div className="flex flex-col">
-                                                <span className="text-white font-medium">
-                                                    {user?.name || "User"}
-                                                </span>
-                                                <span className="text-gray-400 text-xs">
-                                                    {user?.email ||
-                                                        "user@example.com"}
-                                                </span>
-                                            </div>
+                                <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg  z-50 transform opacity-100 scale-100 transition-all duration-150 ease-in-out">
+                                    <div className="flex items-center px-4 py-3 border-b border-gray-600">
+                                        <div className="flex flex-col">
+                                            <span className="text-white truncate max-w-full font-medium">
+                                                {user?.first_name || "User"}
+                                            </span>
+                                            <span className="truncate max-w-full text-gray-400 text-xs">
+                                                {user?.email ||
+                                                    "user@example.com"}
+                                            </span>
                                         </div>
                                     </div>
                                     <Link

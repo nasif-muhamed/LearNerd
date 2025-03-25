@@ -189,11 +189,11 @@ const RegisterForm = ({ setStep, setLoading }) => {
 
             </form>
             <div className="flex justify-center space-x-4 mt-4">
-                <button
+                <div
                     onClick={handleGoogleLogin}
                 >
                     <SocialButton icon={Facebook} bgColor="bg-red-600" />
-                </button>
+                </div>
                 <SocialButton icon={Facebook} bgColor="bg-blue-600" />
                 <SocialButton icon={Github} bgColor="bg-gray-700" />
             </div>

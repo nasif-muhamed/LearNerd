@@ -1,19 +1,21 @@
-import React, {useEffect, useRef} from 'react'
+import React, {useEffect, useRef, useState} from 'react'
 import { ImageUp, UserRound } from 'lucide-react';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchBadges } from '../../../../redux/features/authSlice';
-
+import api from '../../../../services/api/axiosInterceptor';
 
 const ImageUpload = ({ user, setSelectedFile, setPreviewImage, setShowModal }) => {
     const fileInputRef = useRef(null);
-    const badges = useSelector((state) => state.auth.badges)
-    const dispatch = useDispatch()
+    const [badges, setBadges] = useState(null)
+
+    const fetchBadges = async () => {
+        const response = await api.get("/users/badges/");
+        setBadges(response.data)
+    }
 
     useEffect(() => {
         if(!badges){
-            dispatch(fetchBadges())
+            fetchBadges()
         }
-    }, [badges, dispatch])
+    }, [badges])
     
     // Handler for uploading profile picture
     const handleUpload = () => {
