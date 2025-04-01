@@ -1,53 +1,63 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { BookOpenText, BadgeCheck } from "lucide-react";
-import api from "../../../../../services/api/axiosInterceptor";
-import LoadingSpinner from "../../../../../components/ui/LoadingSpinner";
-import axios from "axios";
+import React, {useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import handleError from "../../../../utils/handleError";
+import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
+import api from "../../../../services/api/axiosInterceptor";
+import formatPrice from "../../../../utils/formatPrice"
 
-const BadgeList = () => {
-    const BASE_URL = import.meta.env.VITE_BASE_URL;
-    const navigate = useNavigate();
-    const [badges, setBadges] = useState([]);
+const StudentCourses = () => {
+    const [courses, setCourses] = useState([])
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [nextPage, setNextPage] = useState(null);
     const [prevPage, setPrevPage] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const pageSize = 3; // Matches your backend response (3 items per page)
+    const location = useLocation();
+    const pageSize = 3; // Matches your backend response (9 items per page)
 
-    const fetchBadges = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+    console.log('search query course list:', searchQuery)
+    useEffect(() => {
+        const stateSearchQuery = location.state?.searchQuery;
+        if (stateSearchQuery !== searchQuery) {
+            setSearchQuery(stateSearchQuery);
+            setCurrentPage(1)
+            console.log('search query course list location state:', searchQuery)
+        }
+    }, [location.state, setSearchQuery]);
 
-        try {
-            const response = await axios.get(`${BASE_URL}api/v1/badges/`, {
+    const fetchCourses = async () => {
+        try{
+            setLoading(true)
+            setError(null);
+            console.log("CURRENT PAge:", currentPage, pageSize)
+            const response = await api.get('courses/', {
                 params: {
                     page: currentPage,
                     page_size: pageSize,
                     search: searchQuery,
                 },
-            });
-            console.log(response);
-            setBadges(response.data.results);
-            setTotalCount(response.data.count);
-            setNextPage(response.data.next);
-            setPrevPage(response.data.previous);
-        } catch (err) {
-            console.log("err:", err);
-            setError("Failed to fetch badges.");
-        } finally {
-            setLoading(false);
+            })
+            console.log('My Course response:', response)
+            const result = response.data?.results
+            setCourses(result)
+            setTotalCount(response.data?.count);
+            setNextPage(response.data?.next);
+            setPrevPage(response.data?.previous);
+        }catch (error) {
+            console.log('Couses Error:', error)
+            handleError(error, "Error fetching Couses")
+            setError("Failed to fetch courses.");
+        }finally{
+            setLoading(false)
         }
-    }, [currentPage, searchQuery]);
+    }
 
-    // Handle search input
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1);
-    };
+    useEffect(() => {
+        fetchCourses()
+    }, [currentPage, searchQuery])
+
 
     // Handle pagination
     const handlePageChange = (page) => {
@@ -57,81 +67,77 @@ const BadgeList = () => {
     // Calculate total pages
     const totalPages = Math.ceil(totalCount / pageSize);
 
-    useEffect(() => {
-        fetchBadges();
-    }, [fetchBadges]);
 
     return (
-        <div className="bg-gray-900 text-white min-h-screen p-6">
+        <div className="min-h-screen text-white px-6 py-10">
             {loading && <LoadingSpinner/>}
+            <div className="md:container mx-auto max-w-7xl">
 
-            <div className="max-w-6xl mx-auto">
-                {/* Search and Tabs */}
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
-                    <div className="relative w-full sm:w-64 mb-4 sm:mb-0">
-                        <input
-                            type="text"
-                            placeholder="Search badges..."
-                            className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg py-2 px-4 pl-10"
-                            value={searchQuery}
-                            onChange={handleSearch}
-                        />
-                        <svg
-                            className="w-5 h-5 absolute left-3 top-2.5 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            ></path>
-                        </svg>
-                    </div>
-                </div>
-
-                {/* Badges Grid */}
+                {/* Courses Grid */}
                 {error ? (
                     <div className="text-red-500 text-center">{error}</div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
-                        {badges.map((badge) => (
-                            <div
-                                key={badge.id}
-                                className="flex items-center hover:bg-gray-800 rounded-lg p-4 cursor-pointer overflow-hidden"
-                                onClick={() =>
-                                    navigate(`/student/study-room/badges/${badge.id}`)
-                                }
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {courses.map((course) => (
+                            <Link
+                                key={course.id}
+                                to={`/student/courses/${course.id}`}
+                                className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-xl"
                             >
-                                <div className="w-16 h-16  overflow-hidden mr-4">
-                                    {badge.image ? (
-                                        <img
-                                            src={badge.image}
-                                            alt={badge.title }
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center">
-                                            <BookOpenText className="w-full h-full p-5" />
-                                        </div>
-                                    )}
+                                <div className="relative">
+                                    <img
+                                        src={course.thumbnail}
+                                        alt={course.title}
+                                        className="w-full h-48 object-cover"
+                                    />
                                 </div>
-                                <div>
-                                    <h3 className="font-bold text-lg flex items-center justify-between w-full">
-                                        {badge.title} <span className="ml-2">{badge.community && <BadgeCheck className="text-blue-700 w-4 h-4" />}</span>
+                                <div className="p-4">
+                                    <h3 className="text-md font-bold mb-2 line-clamp-2">
+                                        {course.title}
                                     </h3>
-                                    <p className="text-sm text-gray-400">
-                                        Questions:{badge.total_questions}
+                                    <p className="h-12 truncate text-wrap mb-2 font-extralight">
+                                        {course.description}
                                     </p>
-                                    <p className="text-sm text-gray-400">
-                                        To Pass:{badge.pass_mark}
-                                    </p>
+                                    <div className="flex items-center mb-2">
+                                        <span className="text-amber-400 font-semibold">
+                                            {course.rating}
+                                        </span>
+                                        <div className="flex text-amber-400 ">
+                                            {"★★★★★"
+                                                .split("")
+                                                .map((star, i) => (
+                                                    <span
+                                                        key={i}
+                                                        className={
+                                                            i <
+                                                            Math.floor(
+                                                                course.rating
+                                                            )
+                                                                ? "text-amber-400"
+                                                                : "text-gray-400"
+                                                        }
+                                                    >
+                                                        ★
+                                                    </span>
+                                                ))}
+                                        </div>
+                                        <span className="text-gray-400 text-xs ml-1">
+                                            {/* ({course.reviews.toLocaleString()}) */}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-bold">
 
+                                            {course.subscription_amount && formatPrice(course.subscription_amount)}
+                                        </p>
+                                        {course.freemium && (
+                                            <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                                                Fremium
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 )}
@@ -237,9 +243,11 @@ const BadgeList = () => {
                         </div>
                     </div>
                 )}
+
+
             </div>
         </div>
     );
 };
 
-export default BadgeList;
+export default StudentCourses;

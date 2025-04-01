@@ -169,7 +169,7 @@ const SectionItemForm = ({
                 <div className="mb-4">
                     <label className="block text-sm font-medium text-foreground mb-1">Item Type <span className="text-destructive">*</span></label>
                     <div className="flex space-x-4">
-                        <button type="button" onClick={() => setItemType("video")} className={`px-4 py-2 rounded-md transition-all ${itemType === "video" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>Video</button>
+                        <button type="button" onClick={() => setItemType("video")} className={`px-4 py-2 rounded-md transition-all ${itemType === "video" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}> Video</button>
                         <button type="button" onClick={() => setItemType("assessment")} className={`px-4 py-2 rounded-md transition-all ${itemType === "assessment" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>Assessment</button>
                     </div>
                 </div>

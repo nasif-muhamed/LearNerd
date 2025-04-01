@@ -1,103 +1,141 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api/axiosInterceptor';
+// QuizForm.jsx
+import React, { useState } from 'react';
 
-const CategoryAdmin = () => {
-  const [categories, setCategories] = useState([]);
-  const [form, setForm] = useState({ title: '', description: '', image: '' });
-  const [editingId, setEditingId] = useState(null);
+const QuizForm = () => {
+  const [formData, setFormData] = useState({
+    title: '',
+    passPercentage: '',
+    hours: '',
+    minutes: '',
+    seconds: ''
+  });
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    const res = await api.get('courses/categories/');
-    setCategories(res.data.results);
+  // Convert time components to seconds
+  const convertToSeconds = (hours, minutes, seconds) => {
+    const h = parseInt(hours) || 0;
+    const m = parseInt(minutes) || 0;
+    const s = parseInt(seconds) || 0;
+    return (h * 3600) + (m * 60) + s;
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (editingId) {
-      await api.patch(`courses/categories/${editingId}/`, form);
-    } else {
-      await api.post('courses/categories/', form);
+    const { name, value } = e.target;
+    // Only allow numbers and empty string
+    if (value === '' || /^\d*$/.test(value)) {
+      setFormData({ ...formData, [name]: value });
     }
-    setForm({ title: '', description: '', image: '' });
-    setEditingId(null);
-    fetchCategories();
   };
 
-  const handleEdit = (category) => {
-    setForm({ title: category.title, description: category.description, image: category.image });
-    setEditingId(category.slug);
-  };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    const backendData = {
+      title: formData.title,
+      passPercentage: Number(formData.passPercentage),
+      durationInSeconds: convertToSeconds(formData.hours, formData.minutes, formData.seconds)
+    };
 
-  const handleDelete = async (slug) => {
-    await api.delete(`courses/categories/${slug}/`);
-    fetchCategories();
+    console.log('Data to send to backend:', backendData);
+    // Your API call here
   };
-
-  const fetchSingleCategory = async (slugOrId) => {
-    const res = await api.get(`courses/categories/${slugOrId}/`);
-    alert(`Title: ${res.data.title}\nDescription: ${res.data.description}`);
-  };  
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">{editingId ? 'Edit Category' : 'Add Category'}</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          name="title"
-          placeholder="Title"
-          value={form.title}
-          onChange={handleChange}
-          className="border p-2 w-full text-black"
-          required
-        />
-        <textarea
-          name="description"
-          placeholder="Description"
-          value={form.description}
-          onChange={handleChange}
-          className="border p-2 w-full text-black"
-          required
-        />
-        <input
-          type="url"
-          name="image"
-          placeholder="Image URL"
-          value={form.image}
-          onChange={handleChange}
-          className="border p-2 w-full text-black"
-        />
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-          {editingId ? 'Update' : 'Add'}
+    <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow-md">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Title Input */}
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            Quiz Title
+          </label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Enter quiz title"
+          />
+        </div>
+
+        {/* Pass Percentage Input */}
+        <div>
+          <label htmlFor="passPercentage" className="block text-sm font-medium text-gray-700 mb-1">
+            Pass Percentage
+          </label>
+          <input
+            type="number"
+            id="passPercentage"
+            name="passPercentage"
+            value={formData.passPercentage}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Enter pass percentage"
+            min="0"
+            max="100"
+          />
+        </div>
+
+        {/* Duration Inputs */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Duration
+          </label>
+          <div className="flex space-x-2">
+            <div className="flex-1">
+              <input
+                type="text"
+                name="hours"
+                value={formData.hours}
+                onChange={handleChange}
+                className="w-full text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="HH"
+                maxLength={2}
+              />
+              <p className="mt-1 text-xs text-gray-500 text-center">Hours</p>
+            </div>
+            <div className="flex-1">
+              <input
+                type="text"
+                name="minutes"
+                value={formData.minutes}
+                onChange={handleChange}
+                className="w-full text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="MM"
+                maxLength={2}
+              />
+              <p className="mt-1 text-xs text-gray-500 text-center">Minutes</p>
+            </div>
+            <div className="flex-1">
+              <input
+                type="text"
+                name="seconds"
+                value={formData.seconds}
+                onChange={handleChange}
+                className="w-full text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="SS"
+                maxLength={2}
+              />
+              <p className="mt-1 text-xs text-gray-500 text-center">Seconds</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <button
+          type="submit"
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+        >
+          Create Quiz
         </button>
+      <a className='text-black' href="https://res.cloudinary.com/ddlw92hp6/raw/upload/fl_attachment/v1743415348/course/documents/doc_kuniyil_ashref-model.pdf" download="doc_kuniyil_ashref-model.pdf">
+        Download PDF
+      </a>
+
       </form>
 
-      <h2 className="text-2xl font-bold mt-8 mb-4">Categories</h2>
-      <ul className="space-y-2">
-        {categories.map((cat) => (
-          <li key={cat.id} className="flex justify-between items-center border p-2">
-            <div>
-              <p className="font-semibold">{cat.title}</p>
-              <p className="text-sm">{cat.description}</p>
-            </div>
-            <div className="space-x-2">
-              <button onClick={() => handleEdit(cat)} className="text-blue-500">Edit</button>
-              <button onClick={() => handleDelete(cat.slug)} className="text-red-500">Delete</button>
-              <button onClick={() => fetchSingleCategory(cat.slug)} className="text-green-500">View</button>
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 };
 
-export default CategoryAdmin;
+export default QuizForm;

@@ -7,6 +7,8 @@ import BadgeParticipation from "../pages/user/student/study_room/badges/BadgePar
 import ProtectedRoute from "./user_restrication/ProtectedRoute";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import FourNotFour from "../pages/FourNotFour";
+import StudentCourses from "../pages/user/student/courses/StudentCourses";
+import StudentCourseDetails from "../pages/user/student/courses/StudentCourseDetails";
 
 const StudentRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -27,12 +29,19 @@ const StudentRoutes = () => {
         <Routes>
             <Route element={<ProtectedRoute />}>
                 <Route path="/home" element={<Home />} />
-                <Route path="/study-room/badges" element={<BadgeList />} />
-                <Route
-                    path="/study-room/badges/:id"
-                    element={<BadgeParticipation />}
-                />
+
+                <Route path="/study-room">
+                    {/* <Route index element={<MyCoursesLanding />} /> */}
+                    <Route path="badges" element={<BadgeList />} />
+                    <Route path="badges/:id" element={<BadgeParticipation />} />
+                </Route>
+
+                <Route path="/courses">
+                    <Route index element={<StudentCourses />} />
+                    <Route path=":id" element={<StudentCourseDetails/>} />
+                </Route>
             </Route>
+            
             <Route path="*" element={<DynamicRouter />}>
                 {/*  404 page  */}
                 <Route path="*" element={<FourNotFour />} />

@@ -1,10 +1,11 @@
 import React, {useState, useEffect} from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import handleError from "../../../../utils/handleError";
 import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
 import api from "../../../../services/api/axiosInterceptor";
 import tutorNoCourse from "../../../../assets/tutor/tutor-no-course-bg.png"
-import { toast } from "sonner";
+import formatPrice from "../../../../utils/formatPrice"
 
 const MyCoursesLanding = () => {
     const [drafts, setDraft] = useState([])
@@ -38,8 +39,8 @@ const MyCoursesLanding = () => {
                 setMyCourses(result)
             }
         }catch (error) {
-            console.log('Drafts Error:', error)
-            handleError(error, "Error fetching Drafts")
+            console.log('Mycourse Error:', error)
+            handleError(error, "Error fetching uploaded courses")
         }finally{
             setLoading(false)
         }
@@ -53,11 +54,6 @@ const MyCoursesLanding = () => {
             fetchMyCourses()
         }
     }, [drafts, myCourses])
-
-    // Function to format price
-    const formatPrice = (price) => {
-        return `₹${price.toLocaleString()}`;
-    };
 
     const deleteDraft = async (id, index) => {
         try{
@@ -75,7 +71,7 @@ const MyCoursesLanding = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="min-h-screen text-white p-6">
             {loading && <LoadingSpinner/>}
             <div className="md:container mx-auto max-w-7xl">
                 {/* Draft Section */}
@@ -132,7 +128,27 @@ const MyCoursesLanding = () => {
 
                 {/* Completed Courses Section */}
                 <div className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">Uploaded Courses</h2>
+                    <div className="my-8 flex flex-col md:flex-row justify-between items-center">
+                        <h2 className="text-2xl font-semibold mb-4 md:mb-0">
+                            Uploaded Courses
+                        </h2>
+                        <Link to={"create-course"} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors">
+                            <span>Add New Course</span>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5 ml-2"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                        </Link>
+                    </div>
+
                     
                     {myCourses.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -206,29 +222,6 @@ const MyCoursesLanding = () => {
                     )}
                 </div>
 
-                {/* Add New Course Section */}
-                <div className="my-8">
-                    <div className="flex flex-col md:flex-row justify-between items-center">
-                        <h2 className="text-2xl font-semibold mb-4 md:mb-0">
-                            Add a new Course
-                        </h2>
-                        <Link to={"create-course"} className="flex items-center bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md transition-colors">
-                            <span>Add New Course</span>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5 ml-2"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fillRule="evenodd"
-                                    d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                                    clipRule="evenodd"
-                                />
-                            </svg>
-                        </Link>
-                    </div>
-                </div>
             </div>
         </div>
     );

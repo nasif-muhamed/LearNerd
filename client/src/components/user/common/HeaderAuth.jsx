@@ -20,9 +20,10 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const profileDropdownRef = useRef(null);
-    const dispatch = useDispatch()
-    const navigate = useNavigate()
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
 
 
     const toggleMenu = () => {
@@ -60,6 +61,15 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
         console.log('navigated from header');
         return <Navigate to={newRole === 'tutor' ? '/tutor/dashboard' : '/student/home'} />;
     }
+
+    const handleSearch = (e) => {
+        if(role == 'student'){
+            console.log('search query:', searchQuery)
+            navigate('/student/courses', {
+                state: { searchQuery: searchQuery },
+            });
+        }
+    };
 
     return (
         <header className="w-full bg-gray-800 z-40">
@@ -101,8 +111,10 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
                             type="text"
                             placeholder="Search Courses"
                             className="w-full bg-gray-200 rounded-full py-2 px-10 text-gray-800"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <button className="absolute right-0 top-0 h-full px-4 bg-gray-400 rounded-r-full">
+                        <button onClick={handleSearch} className="absolute right-0 top-0 h-full px-4 bg-gray-400 hover:bg-gray-500 rounded-r-full">
                             <Search />
                         </button>
                         {isSearchExpanded && (
