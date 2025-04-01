@@ -1,10 +1,11 @@
 from rest_framework import serializers
 import cloudinary.uploader
 from django.db import transaction
+from django.db.models import Sum
 import json
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem,
-    Video, Assessment, Question, Choice
+    Video, Assessment, Question, Choice, SupportingDocument
 )
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -27,7 +28,6 @@ class CategorySerializerUser(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'title', 'slug', 'description', 'image']
         read_only_fields = ('id', 'title', 'slug', 'description', 'image')
-
 
 class CourseSerializer(serializers.ModelSerializer):
     thumbnail_file = serializers.ImageField(write_only=True, required=True)
@@ -57,7 +57,6 @@ class CourseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Subscription amount is required and should be greater than 0 if subscription is enabled.")
         return data
 
-
 class LearningObjectiveSerializer(serializers.ModelSerializer):
     # id = serializers.IntegerField(read_only=True)
     objective = serializers.CharField(max_length=300)
@@ -68,7 +67,6 @@ class LearningObjectiveSerializer(serializers.ModelSerializer):
         extra_kwargs = {'order': {'required': True}}
         read_only_fields = ('id',)
 
-
 class CourseRequirementSerializer(serializers.ModelSerializer):
     # id = serializers.IntegerField(read_only=True)
     requirement = serializers.CharField(max_length=300)
@@ -78,7 +76,6 @@ class CourseRequirementSerializer(serializers.ModelSerializer):
         fields = ['id', 'requirement', 'order']
         extra_kwargs = {'order': {'required': True}}
         read_only_fields = ('id',)
-
 
 class CourseObjectivesRequirementsSerializer(serializers.Serializer):
     course_id = serializers.IntegerField()
@@ -114,6 +111,28 @@ class SectionSerializer(serializers.ModelSerializer):
             'course': {'required': True}
         }
 
+class SupportingDocumentSerializer(serializers.ModelSerializer):
+    pdf_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    pdf_url = serializers.URLField(read_only=True, source='pdf_file')
+
+    class Meta:
+        model = SupportingDocument
+        fields = ['id', 'title', 'pdf_file', 'pdf_url']
+
+    def create(self, validated_data):
+        pdf_file = validated_data.pop('pdf_file', None)
+        if pdf_file:
+            # Upload to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                pdf_file,
+                resource_type="raw",
+                folder="course/documents/",
+                public_id=f"doc_{validated_data.get('title').lower().replace(' ', '_')}",
+                overwrite=True
+            )
+            validated_data['pdf_file'] = upload_result['secure_url']
+        return super().create(validated_data)
+    
 class ChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Choice
@@ -207,10 +226,13 @@ class SectionItemSerializer(serializers.ModelSerializer):
     thumbnail_file = serializers.FileField(write_only=True, required=False, allow_null=True)
     video_data = serializers.CharField(write_only=True, required=False)
     assessment_data = serializers.CharField(write_only=True, required=False)
-    # documents = SupportingDocumentSerializer(many=True, required=False)
+    document_data = serializers.CharField(write_only=True, required=False)
+    document_file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    
     class Meta:
         model = SectionItem
-        fields = ['id', 'section', 'title', 'order', 'item_type', 'thumbnail_file', 'video_file', 'video_data', 'assessment_data']
+        fields = ['id', 'section', 'title', 'order', 'item_type', 'thumbnail_file', 'video_file', 
+                'video_data', 'assessment_data', 'document_data', 'document_file']
         extra_kwargs = {
             'section': {'required': True}
         }
@@ -227,6 +249,8 @@ class SectionItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Assessment data should not be provided for video item type")
         if item_type == 'assessment' and 'video_file' in data:
             raise serializers.ValidationError("Video data should not be provided for assessment item type")
+        if 'document_data' in data and 'document_file' not in data:
+            raise serializers.ValidationError("Document file is required when supporting document data is provided")
         print('outside valid SectionItem')  
         return data
 
@@ -237,8 +261,9 @@ class SectionItemSerializer(serializers.ModelSerializer):
             thumbnail_file = validated_data.pop('thumbnail_file', None)
             video_data = validated_data.pop('video_data', None)  # will contain duration
             assessment_json = validated_data.pop('assessment_data', None)
-            
-            
+            document_json = validated_data.pop('document_data', None)
+            document_file = validated_data.pop('document_file', None)
+            print('docs:', document_file, document_json)
             section_item = SectionItem.objects.create(**validated_data)
             
             if video_data:
@@ -261,6 +286,12 @@ class SectionItemSerializer(serializers.ModelSerializer):
                     
                 #     for choice_data in choices_data:
                 #         Choice.objects.create(question=question, **choice_data)
+            
+            if document_json:
+                document_data = json.loads(document_json)
+                document_data['section_item'] = section_item
+                document_data['pdf_file'] = document_file
+                SupportingDocumentSerializer().create(document_data)
             print('outside create SectionItem')
             return section_item
 
@@ -279,10 +310,11 @@ class AssessmentDetailSerializer(serializers.ModelSerializer):
 class SectionItemDetailSerializer(serializers.ModelSerializer):
     video = VideoDetailSerializer(read_only=True)
     assessment = AssessmentDetailSerializer(read_only=True)
+    documents = SupportingDocumentSerializer(read_only=True)
 
     class Meta:
         model = SectionItem
-        fields = ['id', 'title', 'order', 'item_type', 'video', 'assessment']
+        fields = ['id', 'title', 'order', 'item_type', 'video', 'assessment', 'documents']
 
 class SectionDetailSerializer(serializers.ModelSerializer):
     items = SectionItemDetailSerializer(many=True, read_only=True)
@@ -299,3 +331,83 @@ class CourseDetailSerializer(serializers.ModelSerializer):
         fields = ["id", "category", "title", "description", "thumbnail", "instructor", "freemium", 
                   "subscription", "subscription_amount", "is_available", "is_complete", "step", 
                   "video_session", "chat_upto", "safe_period", "created_at", "updated_at", "sections"]
+        
+class CourseAnalyticsSerializer(serializers.ModelSerializer):
+    section_count = serializers.SerializerMethodField()
+    video_count = serializers.SerializerMethodField()
+    assessment_count = serializers.SerializerMethodField()
+    total_video_duration = serializers.SerializerMethodField()
+    document_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Course
+        fields = [
+            'id',
+            'title',
+            'section_count',
+            'video_count',
+            'assessment_count',
+            'total_video_duration',
+            'document_count'
+        ]
+
+    def get_section_count(self, obj):
+        return obj.sections.count()
+
+    def get_video_count(self, obj):
+        return SectionItem.objects.filter(
+            section__course=obj,
+            item_type='video'
+        ).count()
+
+    def get_assessment_count(self, obj):
+        return SectionItem.objects.filter(
+            section__course=obj,
+            item_type='assessment'
+        ).count()
+
+    def get_total_video_duration(self, obj):
+        total_duration = Video.objects.filter(
+            section_item__section__course=obj
+        ).aggregate(total_duration=Sum('duration'))['total_duration'] or 0
+        
+        # Convert to hours, minutes, seconds format
+        hours = total_duration // 3600
+        minutes = (total_duration % 3600) // 60
+        seconds = total_duration % 60
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+    def get_document_count(self, obj):
+        return SupportingDocument.objects.filter(
+            section_item__section__course=obj
+        ).count()
+
+class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
+    objectives = LearningObjectiveSerializer(many=True, read_only=True)
+    requirements = CourseRequirementSerializer(many=True, read_only=True)
+    analytics = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Course
+        fields = [
+            'id',
+            'title',
+            'description',
+            'thumbnail',
+            'instructor',
+            'freemium',
+            'subscription',
+            'subscription_amount',
+            'video_session',
+            'chat_upto',
+            'safe_period',
+            'created_at',
+            'updated_at',
+            'objectives',
+            'requirements',
+            'analytics'
+        ]
+
+    def get_analytics(self, obj):
+        analytics_serializer = CourseAnalyticsSerializer(obj)
+        return analytics_serializer.data

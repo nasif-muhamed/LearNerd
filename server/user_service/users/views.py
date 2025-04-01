@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.contrib.auth import get_user_model
 
 from rest_framework.views import APIView
+from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -21,7 +22,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from . firebase_auth import auth as firebase_auth
 from . models import AdminUser, BadgesAquired
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
-    BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer
+    BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer, \
+    ProfileDetailsSerializer
 from .tasks import send_otp_email
 
 
@@ -307,6 +309,13 @@ class UserView(APIView):
         
         print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
+    queryset = Profile.objects.all()
+    serializer_class = ProfileDetailsSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'pk'
 
 
 def is_admin(user):

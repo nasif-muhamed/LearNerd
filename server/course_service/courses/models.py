@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, FileExtensionValidator, MaxLengthValidator
 from django.core.exceptions import ValidationError
+from cloudinary.models import CloudinaryField
 
 class Category(models.Model):
     title = models.CharField(max_length=100, unique=True)
@@ -147,6 +148,9 @@ class Question(models.Model):
 
     class Meta:
         ordering = ['order']
+        constraints = [
+            models.UniqueConstraint(fields=['text', 'assessment'], name='unique_question_text_per_assesment'),
+        ]
 
     def __str__(self):
         return self.text
@@ -171,21 +175,9 @@ def validate_pdf(value):
         raise ValidationError('Unsupported file type. Only PDFs are allowed.')
     
 class SupportingDocument(models.Model):
-    section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='documents')
+    section_item = models.OneToOneField(SectionItem, on_delete=models.CASCADE, related_name='documents')
     title = models.CharField(max_length=255)
-    file = models.FileField(
-        upload_to='course/supporting_documents/',
-        validators=[
-            FileExtensionValidator(allowed_extensions=['pdf']),
-            MaxLengthValidator(5 * 1024 * 1024),  # 5MB limit
-        ]
-    )    
-    size = models.PositiveIntegerField(blank=True, null=True)  # Store file size in bytes
+    pdf_file = CloudinaryField('pdf', resource_type='raw', blank=True, null=True)
 
     def __str__(self):
         return self.title
-
-    def save(self, *args, **kwargs):
-        if self.file:
-            self.size = self.file.size
-        super().save(*args, **kwargs)

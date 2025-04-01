@@ -77,6 +77,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at']  # 'badges_aquired'
         read_only_fields = ['id', 'email', 'is_tutor', 'is_active', 'created_at'] # 'badges_aquired'
 
+class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to see the profile details
+    class Meta:
+        model = Profile
+        fields = ['email', 'first_name', 'last_name', 'biography', 'image']
 
 class UserActionSerializer(serializers.ModelSerializer):
     is_profile_completed = serializers.SerializerMethodField()

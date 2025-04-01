@@ -2,6 +2,7 @@ import cloudinary.uploader
 import jwt
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.db.models import Q, Count
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -15,10 +16,14 @@ from .models import Category, Course, LearningObjective, CourseRequirement, Sect
 from .serializers import (
     CategorySerializer, CategorySerializerUser, CourseSerializer, LearningObjectiveSerializer, 
     CourseRequirementSerializer, CourseObjectivesRequirementsSerializer, SectionSerializer,
-    SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer
+    SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
+    CourseUnAuthDetailSerializer
 )
 from .permissions import IsAdminUserCustom
+from .services import CallUserService
 
+
+call_user_service = CallUserService()
 
 class CustomPagination(PageNumberPagination):
     page_size = 1  # The default page size
@@ -70,7 +75,8 @@ class UserCategoryView(APIView):
             return Response({'detail': 'Categories not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class CourseCreateAPIView(APIView):
-    parser_classes = [MultiPartParser, FormParser, JSONParser]  # to handle file uploads
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # to handle file uploads, because this view contain multipart data
+    pagination_class = CustomPagination
 
     def get_object(self, course_id, user_id):
         try:
@@ -95,10 +101,51 @@ class CourseCreateAPIView(APIView):
         if error_response:
             return error_response
 
+        # Base queryset
         courses = Course.objects.filter(is_complete=True, is_available=True)
-        serializer = CourseSerializer(courses, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
+        # Search functionality
+        search_query = request.query_params.get('search', None)
+        if search_query:
+            print('inside search')
+            courses = courses.filter(
+                Q(title__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+
+        # Filter by category
+        category = request.query_params.get('category', None)
+        if category:
+            courses = courses.filter(category=category)
+
+        # Sorting functionality
+        sort_by = request.query_params.get('sort_by', None)
+        if sort_by:
+            valid_sorts = {
+                'amount': 'subscription_amount',
+                '-amount': '-subscription_amount',
+                'recent': 'created_at',
+                '-recent': '-created_at',
+                # 'popular': '-popularity',  # Assuming popularity is based on enrollments
+            }
+            if sort_by in valid_sorts:
+                # For popularity, we need to annotate first
+                if 'popular' in sort_by:
+                    courses = courses.annotate(popularity=Count('enrollments'))  # Adjust 'enrollments' to your actual related field
+                courses = courses.order_by(valid_sorts[sort_by])
+            else:
+                return Response({'detail': f'Invalid sort_by value. Use: {list(valid_sorts.keys())}'}, 
+                              status=status.HTTP_400_BAD_REQUEST)
+
+        # Pagination
+        paginator = self.pagination_class()
+        try:
+            page = paginator.paginate_queryset(courses, request)
+            serializer = CourseSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        except Exception as e:
+            return Response({'detail': f'Error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        
     def post(self, request, *args, **kwargs):
         print('here in the post')
         user_id, error_response = self.get_user_id_from_token(request)
@@ -253,7 +300,6 @@ class DeleteDraftView(APIView):
         print('course deleted')
         return Response({'detail': 'Draft deleted successfully'}, status=status.HTTP_204_NO_CONTENT)
 
-
 # Create Objectives and Requirements
 class CreateObjectivesRequirementsView(APIView):
     permission_classes = [AllowAny]
@@ -395,7 +441,6 @@ class SectionDeleteView(generics.DestroyAPIView):
         serializer = SectionDetailSerializer(remaining_sections, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
 # class SectionItemCreateView(APIView):
 #     def post(self, request, *args, **kwargs):
 #         serializer = SectionItemSerializer(data=request.data)
@@ -477,3 +522,38 @@ class CourseInCompleteView(generics.RetrieveAPIView):
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
+class CourseUnAuthDetailView(generics.RetrieveAPIView):
+    queryset = Course.objects.prefetch_related(
+        'objectives',
+        'requirements',
+        'sections__items__video',
+        'sections__items__documents'
+    )
+    serializer_class = CourseUnAuthDetailSerializer
+    lookup_field = 'id'
+
+    def get(self, request, *args, **kwargs):
+        print('here in get')
+        response = super().get(request, *args, **kwargs)
+        course = self.get_object()
+        print('Course:', course, course.id)
+        # Fetch instructor details from user_service
+        response_user_service = call_user_service.get_user_details(course.instructor)
+        instructor_details = response_user_service.json()
+        print('instructor_details:', instructor_details)
+        # Append instructor details to response
+        response.data['instructor_details'] = instructor_details
+        return response
+
+    # def get_instructor_details(self, instructor_id):
+    #     """
+    #     Fetch instructor details from user_service API.
+    #     """
+    #     user_service_url = f"{settings.USER_SERVICE_URL}/api/users/{instructor_id}/"
+    #     try:
+    #         response = requests.get(user_service_url, timeout=5)
+    #         if response.status_code == 200:
+    #             return response.json()  # Return the instructor details as a dict
+    #     except requests.RequestException:
+    #         pass
+    #     return None  # Return None if the request fails

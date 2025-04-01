@@ -4,6 +4,7 @@ from .views import (
     AdminCategoryViewSet, UserCategoryView, CourseCreateAPIView, CreateObjectivesRequirementsView, ObjectiveListView, TutorCourseListAPIView,
     RequirementListView, ObjectiveUpdateView, RequirementUpdateView, ObjectiveDeleteView, RequirementDeleteView, SectionCreateView,
     SectionItemCreateView, SectionContentView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
+    CourseUnAuthDetailView, 
 )
 
 router = DefaultRouter()
@@ -11,7 +12,8 @@ router.register(r'categories', AdminCategoryViewSet)
 
 urlpatterns = [
     path('', CourseCreateAPIView.as_view(), name='course-creation'),
-
+    path('<int:id>/', CourseUnAuthDetailView.as_view(), name='course-detail'),
+    
     path('tutor/uploaded-courses/', TutorCourseListAPIView.as_view(), name='tutor-courses'),
     path('drafts/', ListDraftsView.as_view(), name='list-drafts'),
     path('draft/<int:course_id>', DeleteDraftView.as_view(), name='delete-draft'),

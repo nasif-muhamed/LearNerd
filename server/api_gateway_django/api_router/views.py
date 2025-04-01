@@ -343,6 +343,7 @@ def proxy_to_course_service(request):
         url = f"{url}?{query_params}"
 
     print('url:', url)
+    print('query_params:', query_params)
     print("files api router:", request.FILES)
     print("data post api router:", request.POST)
     print("data api router:", request.data)
@@ -391,8 +392,12 @@ class BasicCouseCreationGateway(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
 
     def get(self, request):
-        print('request get:')
         url = COURSE_SERVICE_URL + request.path  # Construct the external service URL
+        query_params = request.GET.urlencode()
+        if query_params:
+            url = f"{url}?{query_params}"
+        print('gateway courses request get:')
+        print('url:', url)
         headers = {
             "Authorization": request.headers.get("Authorization")
         }
