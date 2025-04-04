@@ -181,3 +181,34 @@ class SupportingDocument(models.Model):
 
     def __str__(self):
         return self.title
+
+class Purchase(models.Model):
+    PURCHASE_TYPE_CHOICES = (
+        ('subscription', 'Subscription'),
+        ('freemium', 'Freemium')
+    )
+    user = models.BigIntegerField()
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="purchases")
+    purchase_type = models.CharField(max_length=20, choices=PURCHASE_TYPE_CHOICES)
+    subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    payment_status = models.CharField(max_length=20, default=None, null=True, blank=True)  # Pending, Completed, Failed
+    video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)
+    chat_upto = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # in days
+    safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
+    completed = models.BooleanField(default=False)  # Mark if the course is completed
+    purchased_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  # Track purchase date
+
+    class Meta:
+         unique_together = ('user', 'course')
+
+    def __str__(self):
+        return f"{self.user} + {self.course.title}"
+
+class SectionItemCompletion(models.Model):
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE)
+    section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name="section_item_completion")
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('purchase', 'section_item')

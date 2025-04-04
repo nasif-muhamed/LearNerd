@@ -5,8 +5,12 @@ from django.db.models import Sum
 import json
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem,
-    Video, Assessment, Question, Choice, SupportingDocument
+    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion
 )
+from .services import CallUserService, UserServiceException
+
+
+call_user_service = CallUserService()
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -338,6 +342,7 @@ class CourseAnalyticsSerializer(serializers.ModelSerializer):
     assessment_count = serializers.SerializerMethodField()
     total_video_duration = serializers.SerializerMethodField()
     document_count = serializers.SerializerMethodField()
+    total_admission = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -348,7 +353,8 @@ class CourseAnalyticsSerializer(serializers.ModelSerializer):
             'video_count',
             'assessment_count',
             'total_video_duration',
-            'document_count'
+            'document_count',
+            'total_admission',
         ]
 
     def get_section_count(self, obj):
@@ -381,12 +387,16 @@ class CourseAnalyticsSerializer(serializers.ModelSerializer):
         return SupportingDocument.objects.filter(
             section_item__section__course=obj
         ).count()
+    
+    def get_total_admission(self, obj):
+        return Purchase.objects.filter(course=obj).count()
 
 class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
     objectives = LearningObjectiveSerializer(many=True, read_only=True)
     requirements = CourseRequirementSerializer(many=True, read_only=True)
     analytics = serializers.SerializerMethodField()
-
+    instructor_details = serializers.SerializerMethodField()
+    
     class Meta:
         model = Course
         fields = [
@@ -405,9 +415,217 @@ class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
             'updated_at',
             'objectives',
             'requirements',
-            'analytics'
+            'analytics',
+            'instructor_details',
         ]
 
     def get_analytics(self, obj):
         analytics_serializer = CourseAnalyticsSerializer(obj)
         return analytics_serializer.data
+    
+    def get_instructor_details(self, obj):
+            try:
+                response_user_service = call_user_service.get_user_details(obj.instructor)
+                return response_user_service.json()
+            except UserServiceException as e:
+                # You might want to handle this error differently based on your requirements
+                return {"error": str(e)}
+            except Exception as e:
+                return {"error": "Failed to fetch instructor details"}
+        
+class PurchaseCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Purchase
+        fields = '__all__'
+        read_only_fields = ['purchased_at', 'completed']
+
+    def validate(self, data):
+        print('inside validate')
+        try:
+            course = data.get('course')
+            purchase_type= data.get('purchase_type')
+            subscription_amount= data.get('subscription_amount')
+            video_session= data.get('video_session')
+            chat_upto= data.get('chat_upto')
+            safe_period= data.get('safe_period')
+            print('inside try:', course, purchase_type, subscription_amount, video_session, chat_upto, safe_period)
+        except TypeError:
+            raise serializers.ValidationError('Invalid data format')
+        except KeyError as e:
+            raise serializers.ValidationError(f"Missing field: {str(e)}")
+
+        if purchase_type == 'freemium' and not course.freemium:
+            raise serializers.ValidationError('Freemium option is not available for this course')
+        
+        if purchase_type == 'subscription' and not course.subscription:
+            raise serializers.ValidationError('Subscription option is not available for this course')
+
+        if subscription_amount is not None and subscription_amount != course.subscription_amount:
+            raise serializers.ValidationError('Invalid subscription amount')
+        
+        if video_session is not None and video_session != course.video_session:
+            raise serializers.ValidationError('Invalid video session')
+        
+        if chat_upto is not None and chat_upto != course.chat_upto:
+            raise serializers.ValidationError('Invalid chat limit')
+        
+        if safe_period is not None and safe_period != course.safe_period:
+            raise serializers.ValidationError('Invalid safe period')
+        
+        # Check if the course is available and complete
+        if not course.is_available or not course.is_complete:
+            raise serializers.ValidationError('This course is not available')
+
+        return data
+
+    def create(self, validated_data):
+        return Purchase.objects.create(**validated_data)
+
+class StudentMyCourseSerializer(serializers.ModelSerializer):
+    course_id = serializers.CharField(source='course.id')
+    course_title = serializers.CharField(source='course.title')
+    course_description = serializers.CharField(source='course.description')
+    course_thumbnail = serializers.URLField(source='course.thumbnail')
+    course_total_section_items = serializers.SerializerMethodField()
+    purchase_type = serializers.CharField()
+    completed_section_items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Purchase
+        fields = [
+            'id',
+            'course_id',
+            'course_title',
+            'course_description',
+            'course_thumbnail',
+            'course_total_section_items',
+            'purchase_type',
+            'completed_section_items'
+        ]
+
+    def get_completed_section_items(self, obj):
+        # Count how many section items are completed for this purchase
+        return SectionItemCompletion.objects.filter(
+            purchase=obj,
+            completed=True
+        ).count()
+    
+    def get_course_total_section_items(self, obj):
+        # Count total section items for the course related to this purchase
+        return SectionItem.objects.filter(section__course=obj.course).count()
+
+# class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
+#     objectives = LearningObjectiveSerializer(many=True, read_only=True)
+#     requirements = CourseRequirementSerializer(many=True, read_only=True)
+#     sections = SectionDetailSerializer(many=True, read_only=True)
+#     analytics = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = Course
+#         fields = [
+#             'id',
+#             'category',
+#             'title',
+#             'description',
+#             'thumbnail',
+#             'instructor',
+#             'freemium',
+#             'subscription',
+#             'subscription_amount',
+#             'video_session',
+#             'chat_upto',
+#             'safe_period',
+#             'created_at',
+#             'updated_at',
+#             'objectives',
+#             'requirements',
+#             'sections',
+#             'analytics',
+#         ]
+
+#     def get_analytics(self, obj):
+#         analytics_serializer = CourseAnalyticsSerializer(obj)
+#         return analytics_serializer.data
+
+class SectionItemCompletionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SectionItemCompletion
+        fields = ['section_item', 'completed', 'completed_at']
+
+class SectionItemDetailWithCompletionSerializer(serializers.ModelSerializer):
+    video = VideoDetailSerializer(read_only=True)
+    assessment = AssessmentDetailSerializer(read_only=True)
+    documents = SupportingDocumentSerializer(read_only=True)
+    completion = serializers.SerializerMethodField()
+
+    class Meta:
+        model = SectionItem
+        fields = ['id', 'title', 'order', 'item_type', 'video', 'assessment', 'documents', 'completion']
+
+    def get_completion(self, obj):
+        # Get the purchase object from the context (passed from parent serializer)
+        purchase = self.context.get('purchase')
+        if purchase:
+            try:
+                completion = SectionItemCompletion.objects.get(
+                    purchase=purchase,
+                    section_item=obj
+                )
+                return SectionItemCompletionSerializer(completion).data
+            except SectionItemCompletion.DoesNotExist:
+                return {'section_item': obj.id, 'completed': False, 'completed_at': None}
+        return None
+
+class SectionDetailWithItemsSerializer(serializers.ModelSerializer):
+    items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Section
+        fields = ['id', 'title', 'order', 'items']
+
+    def get_items(self, obj):
+        # Pass the purchase context to the SectionItemDetailWithCompletionSerializer
+        items = obj.items.all()
+        return SectionItemDetailWithCompletionSerializer(
+            items,
+            many=True,
+            context={'purchase': self.context.get('purchase')}
+        ).data
+
+class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
+    course = serializers.SerializerMethodField()
+    course_total_section_items = serializers.SerializerMethodField()
+    purchase_type = serializers.CharField()
+    completed_section_items = serializers.SerializerMethodField()
+    sections = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Purchase
+        fields = [
+            'course',
+            'course_total_section_items',
+            'purchase_type',
+            'completed_section_items',
+            'sections',
+        ]
+
+    def get_course_total_section_items(self, obj):
+        return SectionItem.objects.filter(section__course=obj.course).count()
+
+    def get_completed_section_items(self, obj):
+        return SectionItemCompletion.objects.filter(
+            purchase=obj,
+            completed=True
+        ).count()
+
+    def get_sections(self, obj):
+        sections = Section.objects.filter(course=obj.course)
+        return SectionDetailWithItemsSerializer(
+            sections,
+            many=True,
+            context={'purchase': obj}  # Pass the purchase object to nested serializers
+        ).data
+   
+    def get_course(self, obj):
+        course = obj.course
+        return CourseUnAuthDetailSerializer(course).data

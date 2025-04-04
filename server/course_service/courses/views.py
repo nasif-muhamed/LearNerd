@@ -12,18 +12,32 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework import serializers
 
-from .models import Category, Course, LearningObjective, CourseRequirement, Section, SectionItem
+from .models import (
+    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
+    SectionItemCompletion, Assessment,
+)
 from .serializers import (
     CategorySerializer, CategorySerializerUser, CourseSerializer, LearningObjectiveSerializer, 
     CourseRequirementSerializer, CourseObjectivesRequirementsSerializer, SectionSerializer,
     SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
-    CourseUnAuthDetailSerializer
+    CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer
 )
 from .permissions import IsAdminUserCustom
 from .services import CallUserService
 
-
 call_user_service = CallUserService()
+
+def get_user_id_from_token(request):
+    try:
+        access_token = request.headers.get('Authorization', '').split(' ')[1]
+        payload = jwt.decode(access_token, options={"verify_signature": False})
+        user_id = payload.get('user_id')
+        if not user_id:
+            return None, Response({'detail': 'User ID not found in token'}, status=status.HTTP_401_UNAUTHORIZED)
+        return user_id, None
+    except Exception as e:
+        return None, Response({'detail': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 class CustomPagination(PageNumberPagination):
     page_size = 1  # The default page size
@@ -534,26 +548,242 @@ class CourseUnAuthDetailView(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         print('here in get')
+        user_id, error_response = get_user_id_from_token(request)
+        if error_response:
+            return error_response
+
         response = super().get(request, *args, **kwargs)
         course = self.get_object()
         print('Course:', course, course.id)
-        # Fetch instructor details from user_service
-        response_user_service = call_user_service.get_user_details(course.instructor)
-        instructor_details = response_user_service.json()
-        print('instructor_details:', instructor_details)
-        # Append instructor details to response
-        response.data['instructor_details'] = instructor_details
+
+        if not course.is_available or not course.is_complete:
+            return Response({'detail': 'This course is not available'}, status=status.HTTP_403_FORBIDDEN)
+        
+        # # Fetch instructor details from user_service
+        # response_user_service = call_user_service.get_user_details(course.instructor)
+        # instructor_details = response_user_service.json()
+        # print('instructor_details:', instructor_details)
+        # # Append instructor details to response
+        # response.data['instructor_details'] = instructor_details
+        purchase = Purchase.objects.filter(user=user_id, course=course)
+        # Check if the user has already purchased the course
+        response.data['is_enrolled'] = 'No' if not purchase.exists() else purchase.first().purchase_type
+
+        response.data['purchase_id'] = purchase.first().id if purchase.exists() else None
+        # Check if the course is available or complete
+        if not course.is_available or not course.is_complete:
+            return Response({'detail': 'This course is not available'}, status=status.HTTP_403_FORBIDDEN)
         return response
 
-    # def get_instructor_details(self, instructor_id):
-    #     """
-    #     Fetch instructor details from user_service API.
-    #     """
-    #     user_service_url = f"{settings.USER_SERVICE_URL}/api/users/{instructor_id}/"
-    #     try:
-    #         response = requests.get(user_service_url, timeout=5)
-    #         if response.status_code == 200:
-    #             return response.json()  # Return the instructor details as a dict
-    #     except requests.RequestException:
-    #         pass
-    #     return None  # Return None if the request fails
+class CoursePurchaseView(APIView):
+    # permission_classes = [IsAuthenticated]
+        
+    def post(self, request, course_id):
+        user_id, error_response = get_user_id_from_token(request)
+        if error_response:
+            return error_response
+
+        try:
+            course = Course.objects.get(id=course_id)
+        except Course.DoesNotExist:
+            return Response({'detail': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if the user has already purchased the course
+        if Purchase.objects.filter(user=user_id, course=course).exists():
+            return Response({'detail': 'You have already purchased this course'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if course.instructor == user_id:
+            return Response({'detail': 'You cannot purchase your own course'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        print('course_id:', course_id)
+        print('user_id:', user_id)
+        request.data['course'] = course_id
+        request.data['user'] = user_id
+        serializer = PurchaseCreateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail': 'Course purchased successfully'}, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+
+class StudentMyCoursesListView(APIView): 
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        user_id, error_response = get_user_id_from_token(request)
+        if error_response:
+            return error_response
+
+        if not student_id == user_id:
+            return Response({'detail': 'Unauthorized access'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            # Get all purchases for the user with related course data
+            purchases = Purchase.objects.filter(user=user_id).select_related('course')
+            
+            # Serialize the data
+            serializer = StudentMyCourseSerializer(purchases, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# class CourseAuthDetailView(generics.RetrieveAPIView):
+#     queryset = Course.objects.all()
+#     serializer_class = StudentMyCourseDetailSerializer
+#     lookup_field = 'id'
+
+#     def get(self, request, *args, **kwargs):
+#         user_id, error_response = get_user_id_from_token(request)
+#         if error_response:
+#             return error_response
+
+#         response = super().get(request, *args, **kwargs)
+#         course = self.get_object()
+#         print('Course:', course, course.id)
+
+#         if not Purchase.objects.filter(user=user_id, course=course).exists():
+#             return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+                    
+#         # Fetch instructor details from user_service
+#         response_user_service = call_user_service.get_user_details(course.instructor)
+#         instructor_details = response_user_service.json()
+#         print('instructor_details:', instructor_details)
+#         # Append instructor details to response
+#         response.data['instructor_details'] = instructor_details
+#         purchase = Purchase.objects.filter(user=user_id, course=course)
+#         response.data['is_enrolled'] = 'No' if not purchase.exists() else purchase.first().purchase_type
+#         return response
+    
+class StudentMyCourseDetailView(APIView):
+    def get(self, request, purchase_id):
+        try:
+            user_id, error_response = get_user_id_from_token(request)
+            if error_response:
+                return error_response
+
+            purchase = Purchase.objects.get(id=purchase_id, user=user_id)
+            serializer = StudentMyCourseDetailSerializer(purchase)
+            return Response(serializer.data)
+        except Purchase.DoesNotExist:
+            return Response({"error": "Course purchase not found"}, status=404)
+
+class StudentAssessmentSubmitView(APIView):
+    # permission_classes = [IsAuthenticated]
+    def post(self, request, assessment_id):
+        try:
+            user_id, error_response = get_user_id_from_token(request)
+            if error_response:
+                return error_response
+            
+            user_answers = request.data.get('answers')
+            assement = Assessment.objects.get(id=assessment_id)
+            # Check if the user has already purchased the course
+            purchase = Purchase.objects.get(course=assement.section_item.section.course, user=user_id)
+            questions = assement.questions.all()
+            passing_score = assement.passing_score
+            correct_answers = 0
+            for question in questions:
+                user_answer_id = user_answers.get(str(question.id))
+                if user_answer_id:
+                    correct_answer = question.choices.filter(is_correct=True).first()
+                    if int(user_answer_id) == correct_answer.id:
+                        correct_answers += 1
+
+            # Update the purchase record to indicate the assessment was passed
+            if correct_answers >= (questions.count() * passing_score / 100):
+                section_item_completion, created = SectionItemCompletion.objects.get_or_create(
+                    purchase=purchase, section_item=assement.section_item
+                )
+                if created or not section_item_completion.completed:
+                    section_item_completion.completed = True
+                    section_item_completion.save()
+                    serializer = StudentMyCourseDetailSerializer(purchase)
+                    return Response({'purchase': serializer.data, 'score': correct_answers}, status=status.HTTP_200_OK)
+            return Response({'score':correct_answers}, status=status.HTTP_200_OK)
+
+        except Assessment.DoesNotExist:
+            return Response({"error": "Assessment not found"}, status=404)
+        except Purchase.DoesNotExist:
+            return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+
+class StudentLectureSubmitView(APIView):
+    # permission_classes = [IsAuthenticated]
+    def post(self, request, lecture_id):
+        try:
+            user_id, error_response = get_user_id_from_token(request)
+            if error_response:
+                return error_response
+            
+            section_item = SectionItem.objects.get(id=lecture_id)
+            # Check if the user has already purchased the course
+            purchase = Purchase.objects.get(course=section_item.section.course, user=user_id)
+
+            section_item_completion, created = SectionItemCompletion.objects.get_or_create(
+                purchase=purchase, section_item=section_item
+            )
+            if created or not section_item_completion.completed:
+                section_item_completion.completed = True
+                section_item_completion.save()
+                serializer = StudentMyCourseDetailSerializer(purchase)
+                return Response({'purchase': serializer.data}, status=status.HTTP_200_OK)
+            return Response({'details':"section item is already completed"}, status=status.HTTP_400_BAD_REQUEST)
+
+        except SectionItem.DoesNotExist:
+            return Response({"error": "Item not found"}, status=404)
+        except Purchase.DoesNotExist:
+            return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+
+# class EvaluateQuizView(APIView):
+#     permission_classes = [AllowAny]
+#     def post(self, request):
+#         badge_id = request.data.get('badge_id')
+#         user_answers = request.data.get('answers') 
+#         print('here evaluadt______________=====')
+#         try:
+#             badge = Badges.objects.get(id=badge_id)
+#             questions = Questions.objects.filter(badge_id=badge_id)
+#             total_questions = badge.total_questions
+#             pass_mark = badge.pass_mark
+
+#             # Calculate score
+#             correct_answers = 0
+#             for question in questions:
+#                 user_answer_id = user_answers.get(str(question.id))
+#                 if user_answer_id:
+#                     correct_answer = Answers.objects.get(
+#                         question_id=question.id, 
+#                         is_correct=True
+#                     )
+#                     if int(user_answer_id) == correct_answer.id:
+#                         correct_answers += 1
+#             print('came up here1')
+#             serializer = BadgeSerializer(badge)
+#             print('came up here')
+#             print(serializer.data['image_url'])
+#             # Prepare response
+#             result = {
+#                 'image': serializer.data['image_url'],
+#                 'title': serializer.data['title'],
+#                 'badge_id': badge_id,
+#                 'total_questions': total_questions,
+#                 'pass_mark': pass_mark,
+#                 'acquired_mark': correct_answers,
+#                 'is_passed': correct_answers >= pass_mark
+#             }
+#             print('result:', result)
+#             return Response(result, status=status.HTTP_200_OK)
+
+#         except Badges.DoesNotExist:
+#             return Response(
+#                 {"error": "Badge not found"}, 
+#                 status=status.HTTP_404_NOT_FOUND
+#             )
+#         except Exception as e:
+#             return Response(
+#                 {"error": str(e)}, 
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
