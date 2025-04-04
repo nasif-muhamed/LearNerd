@@ -18,7 +18,7 @@ const SectionItemForm = ({
     const [thumbnailFile, setThumbnailFile] = useState(null);
     const [instructions, setInstructions] = useState("");
     const [passingScore, setPassingScore] = useState("70");
-    const [pdfs, setPdfs] = useState([]);
+    const [pdfFile, setPdfFile] = useState(null);
     const [questions, setQuestions] = useState([
         { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }]},
     ]);
@@ -39,6 +39,7 @@ const SectionItemForm = ({
         
         if (itemType === "video") {
             if (!videoFile) newErrors.video = "Video file is required";
+            if (!thumbnailFile) newErrors.thumbnail = "Thumbnail file is required";
         } else {
             if (!instructions.trim()) newErrors.instructions = "Instructions are required";
             if (questions.length === 0) newErrors.questions = "At least one question is required";
@@ -110,7 +111,7 @@ const SectionItemForm = ({
 
     const handlePdfUpload = (event) => {
         const file = event.target.files[0];
-        if (file && file.type === "application/pdf") setPdfs([{ title: file.name, file: file, size: file.size }]);
+        if (file && file.type === "application/pdf") setPdfFile({ title: file.name, file: file, size: file.size });
     };
 
     const handleSubmit = async (e) => {
@@ -140,10 +141,9 @@ const SectionItemForm = ({
             formData.append('assessment_data', JSON.stringify(assessmentData));
         }
 
-        if (pdfs.length > 0) {
-            const pdf = pdfs[0];
-            formData.append('document_file', pdf.file);
-            formData.append('document_data', JSON.stringify({ title: pdf.title }));
+        if (pdfFile) {
+            formData.append('document_file', pdfFile.file);
+            formData.append('document_data', JSON.stringify({ title: pdfFile.title }));
         }
         setLoading(true)
         try {
@@ -159,6 +159,7 @@ const SectionItemForm = ({
             setLoading(false)
         }
     };
+    console.log('videoFile:', videoFile)
 
     // Render form (same as original, omitting itemToEdit checks)
     return (
@@ -182,7 +183,17 @@ const SectionItemForm = ({
                         <label className="block text-sm font-medium text-foreground mb-2">Upload Video <span className="text-destructive">*</span></label>
                         <input type="file" id="video-upload" accept="video/*" onChange={handleVideoUpload} className="hidden" />
                         <label htmlFor="video-upload" className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md cursor-pointer inline-block transition-colors">Browse Files</label>
-                        {videoFile && <div className="mt-4"><span>{videoFile.name}</span></div>}
+                        {videoFile && (
+                            <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md max-w-xs mt-2">
+                                <span className="text-sm truncate max-w-[250px]">
+                                    {videoFile?.name}
+                                </span>
+                                <span className="text-xs text-muted-foreground ml-2">
+                                    ({Math.round(videoFile?.size / 1024)} KB)
+                                </span>
+                            </div>
+                        )}
+
                         {errors.video && <p className="mt-2 text-sm text-destructive">{errors.video}</p>}
                     </div>
                     <div className="mb-4">
@@ -190,6 +201,7 @@ const SectionItemForm = ({
                         <input type="file" id="thumbnail-upload" accept="image/*" onChange={handleThumbnailUpload} className="hidden" />
                         <label htmlFor="thumbnail-upload" className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md cursor-pointer inline-block transition-colors">Browse Files</label>
                         {thumbnailFile && <div className="mt-4"><img src={URL.createObjectURL(thumbnailFile)} alt="Thumbnail preview" className="w-full max-w-xs mx-auto rounded-lg object-cover" /></div>}
+                        {errors.thumbnail && <p className="mt-2 text-sm text-destructive">{errors.thumbnail}</p>}
                     </div>
                 </div>
             ) : (
@@ -220,9 +232,18 @@ const SectionItemForm = ({
 
             <div className="mb-6">
                 <h3 className="text-lg font-medium mb-4">Supporting Document (Optional)</h3>
-                <input type="file" id="pdf-upload" accept=".pdf" onChange={handlePdfUpload} className="hidden" disabled={pdfs.length > 0} />
-                <label htmlFor="pdf-upload" className={`px-4 py-2 rounded-md cursor-pointer inline-block transition-colors ${pdfs.length > 0 ? "bg-secondary/50 text-foreground/50 cursor-not-allowed" : "bg-secondary hover:bg-secondary/80 text-foreground"}`}>Browse File</label>
-                {pdfs.length > 0 && <div className="mt-4"><span>{pdfs[0].title}</span></div>}
+                <input type="file" id="pdf-upload" accept=".pdf" onChange={handlePdfUpload} className="hidden"/>
+                <label htmlFor="pdf-upload" className={`px-4 py-2 rounded-md cursor-pointer inline-block transition-colors ${pdfFile ? "bg-secondary/50 text-foreground/50 cursor-not-allowed" : "bg-secondary hover:bg-secondary/80 text-foreground"}`}>Browse File</label>
+                {pdfFile && 
+                    <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md max-w-xs mt-2">
+                            <span className="text-sm truncate max-w-[250px]">
+                                {pdfFile.title}
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                                ({Math.round(pdfFile.size / 1024)} KB)
+                            </span>
+                    </div>
+                }
             </div>
 
             <div className="flex justify-end space-x-3 mt-6">

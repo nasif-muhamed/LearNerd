@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    /* Keeping your original color scheme and adding sidebar variables from AI code */
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
   
@@ -35,7 +34,6 @@
   
     --radius: 0.75rem;
 
-    /* Adding sidebar variables from AI code */
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 224 100% 69%;

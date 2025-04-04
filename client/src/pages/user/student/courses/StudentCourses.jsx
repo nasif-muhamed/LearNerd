@@ -82,7 +82,7 @@ const StudentCourses = () => {
                             <Link
                                 key={course.id}
                                 to={`/student/courses/${course.id}`}
-                                className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-xl"
+                                className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-xl "
                             >
                                 <div className="relative">
                                     <img
@@ -91,11 +91,11 @@ const StudentCourses = () => {
                                         className="w-full h-48 object-cover"
                                     />
                                 </div>
-                                <div className="p-4">
-                                    <h3 className="text-md font-bold mb-2 line-clamp-2">
+                                <div className="p-4 flex flex-col justify-between h-40">
+                                    <h3 className="text-md font-bold mb-2 truncate">
                                         {course.title}
                                     </h3>
-                                    <p className="h-12 truncate text-wrap mb-2 font-extralight">
+                                    <p className="truncate mb-2 font-extralight">
                                         {course.description}
                                     </p>
                                     <div className="flex items-center mb-2">

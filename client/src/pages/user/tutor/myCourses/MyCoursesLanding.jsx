@@ -128,7 +128,7 @@ const MyCoursesLanding = () => {
 
                 {/* Completed Courses Section */}
                 <div className="mb-8">
-                    <div className="my-8 flex flex-col md:flex-row justify-between items-center">
+                    <div className="mb-8 flex flex-col md:flex-row justify-between items-center">
                         <h2 className="text-2xl font-semibold mb-4 md:mb-0">
                             Uploaded Courses
                         </h2>
@@ -153,9 +153,10 @@ const MyCoursesLanding = () => {
                     {myCourses.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {myCourses.map((course) => (
-                            <div
+                            <Link
+                                to={`/tutor/my-courses/${course.id}`}
                                 key={course.id}
-                                className="bg-gray-800 rounded-lg overflow-hidden shadow-lg"
+                                className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-xl"
                             >
                                 <div className="relative">
                                     <img
@@ -210,7 +211,7 @@ const MyCoursesLanding = () => {
                                         )}
                                     </div>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                         </div>
                     ) : (

@@ -1,0 +1,848 @@
+import { useEffect, useState, useRef } from "react";
+import {
+    FiVideo ,
+    FiCheck,
+    FiBook,
+    FiAward,
+    FiClock,
+    FiStar,
+    FiChevronDown,
+    FiChevronUp,
+    FiArrowLeft,
+    FiArrowRight,
+    FiX ,
+    FiRefreshCw,
+    FiDownload,
+} from "react-icons/fi";
+import { useParams } from "react-router-dom";
+import api from "../../../../services/api/axiosInterceptor";
+import handleError from "../../../../utils/handleError";
+import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
+import { toast } from "sonner";
+
+const StreamCourse = () => {
+    const { purchaseId } = useParams();
+    const [loading, setLoading] = useState(null);
+    const [myCourse, setCourse] = useState(null);
+    const [error, setError] = useState("");
+
+    const [activeTab, setActiveTab] = useState("overview");
+    const [expandedSections, setExpandedSections] = useState({});
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [rating, setRating] = useState(0);
+    const [review, setReview] = useState("");
+    const [currentItem, setCurrentItem] = useState(null);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [selectedAnswers, setSelectedAnswers] = useState({});
+    const [assessmentComplete, setAssessmentComplete] = useState(false);
+    const [assessmentScore, setAssessmentScore] = useState({ score: 0, total: 0, percentage: 0, passed: false });
+    
+    const contentRef = useRef(null);
+
+    const fetchCourse = async () => {
+        try {
+            setLoading(true);
+            const response = await api.get(`courses/stream/${purchaseId}/`);
+            console.log("My Course response:", response);
+            const result = response.data;
+            setCourse(result);
+        } catch (error) {
+            console.log("Couses Error:", error);
+            handleError(error, "Error fetching Couses");
+            setError("Failed to fetch courses.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        // Fetch course data based on courseId
+        fetchCourse();
+    }, []);
+    // Dummy course data
+
+    const toggleSection = (sectionId) => {
+        setExpandedSections((prev) => ({
+            ...prev,
+            [sectionId]: !prev[sectionId],
+        }));
+    };
+
+    const handleItemClick = (item) => {
+        setCurrentItem(item);
+        console.log("currentItem", item);
+
+        if (item?.item_type === "assessment") {
+            if (item?.assessment?.id !== assessmentScore.assementId) {
+                setAssessmentComplete(false);
+            }
+            setCurrentQuestionIndex(0);
+            setSelectedAnswers({});
+        }
+        // Scroll to the content area using the ref
+        contentRef.current.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+        });
+    };
+
+    const submitFeedback = (e) => {
+        e.preventDefault();
+        // Handle feedback submission
+        console.log({ rating, review });
+        setShowFeedbackModal(false);
+        setRating(0);
+        setReview("");
+    };
+
+    const handleAnswerSelect = (questionId, answerId) => {
+        setSelectedAnswers((prev) => ({
+            ...prev,
+            [questionId]: answerId,
+        }));
+    };
+
+    const handleNextQuestion = () => {
+        if (currentQuestionIndex < currentItem?.assessment?.questions.length - 1) {
+            setCurrentQuestionIndex((prev) => prev + 1);
+        }
+    };
+
+    const handlePrevQuestion = () => {
+        if (currentQuestionIndex > 0) {
+            setCurrentQuestionIndex((prev) => prev - 1);
+        }
+    };
+
+    const submitAssessment = async (assessmentId) => {
+        try {
+            setLoading(true);
+            const body = {
+                answers: selectedAnswers,
+            }
+            console.log('selectedAnswers:', body);
+            const response = await api.post(`courses/assessments/${assessmentId}/submit/`, body);
+            console.log('Assessment response:', response);
+            const result = response.data;
+            if (result?.purchase) setCourse(result.purchase);
+    
+            // Calculate score
+            const totalQuestions = currentItem?.assessment?.questions.length;
+            const correctAnswers = result?.score || 0
+            
+            // Calculate percentage
+            const percentage = (correctAnswers / totalQuestions) * 100;
+            const passed = percentage >= currentItem?.assessment?.passing_score;
+            
+            // Save score to state
+            setAssessmentScore({
+                assementId: assessmentId,
+                score: correctAnswers,
+                total: totalQuestions,
+                percentage: percentage.toFixed(0),
+                passed
+            });
+            
+            // Set assessment as complete to trigger results display
+            setAssessmentComplete(true);
+    
+        } catch (error) {
+            console.log("Couses Error:", error);
+            handleError(error, "Error submitting assessment");
+            setError("Failed to submit assessment.");
+        } finally {
+            setLoading(false);
+        }
+
+    };
+
+    const submitVideo = async (videoId, isCompleted=false) => {
+        if (!isCompleted){
+            try {
+                setLoading(true);
+                const body = {
+                    completed: true, // Example: mark video as completed
+                };
+        
+                const response = await api.post(`courses/lecture/${videoId}/submit/`, body);
+                console.log('Video response:', response);
+                const result = response.data;
+        
+                if (result?.purchase) setCourse(result.purchase);
+                toast.success("Video marked as completed successfully!");
+            } catch (error) {
+                console.log("Courses Error:", error);
+                handleError(error, "Error submitting assessment");
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    return (
+        <div className="min-h-screen text-foreground">
+            {loading && <LoadingSpinner />}
+
+            {/* for scrolling to the top on click of section item */}
+            <div ref={contentRef}> </div>
+            {/* Content Display Area */}
+            {currentItem && (
+                <div  className="container mx-auto px-10 pt-6">
+                    <h2 className="text-xl font-bold mb-2">
+                        {currentItem.title}
+                    </h2>
+
+                    {currentItem?.item_type === "video" && (
+                        <div className="relative w-full max-w-3xl mx-auto mb-4">
+                            <div className="rounded-lg overflow-hidden shadow-md aspect-video">
+                                <video
+                                    className="w-full h-full object-cover"
+                                    src={currentItem?.video?.video_url}
+                                    controls
+                                    poster={currentItem?.video?.thumbnail || ""}
+                                    onEnded={() => submitVideo(currentItem?.id, currentItem?.completion?.completed)}
+                                >
+                                    Your browser does not support the video tag.
+                                    Try with another browser.
+                                </video>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentItem?.item_type === "assessment" && (
+                        <div className="max-w-3xl mx-auto mb-6 bg-gradient-to-br from-primary/5 to-secondary/10 rounded-xl shadow-lg overflow-hidden">
+                            {/* Progress bar */}
+                            {!assessmentComplete && (<div className="w-full bg-muted h-1">
+                                <div
+                                    className="bg-primary h-full transition-all duration-300 ease-in-out"
+                                    style={{
+                                        width: `${
+                                            ((currentQuestionIndex + 1) /
+                                                currentItem?.assessment?.questions.length) * 100
+                                        }%`,
+                                    }}
+                                ></div>
+                            </div>)}
+
+                            {assessmentComplete ? (
+                                <div className="p-6 text-center">
+                                    <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full mb-4 ${
+                                        assessmentScore.passed 
+                                            ? "bg-green-100 text-green-600" 
+                                            : "bg-red-100 text-red-600"
+                                    }`}>
+                                        {assessmentScore.passed ? (
+                                            <FiCheck className="w-10 h-10" />
+                                        ) : (
+                                            <FiX className="w-10 h-10" />
+                                        )}
+                                    </div>
+                                    
+                                    <h2 className="text-2xl font-bold mb-2">
+                                        {assessmentScore.passed ? "Congratulations!" : "Better Luck Next Time"}
+                                    </h2>
+                                    
+                                    <p className="text-lg mb-4">
+                                        {assessmentScore.passed 
+                                            ? "You've successfully passed the assessment." 
+                                            : `You didn't meet the passing score of ${currentItem?.assessment?.passing_score}%.`}
+                                    </p>
+                                    
+                                    <div className="flex justify-center mb-6">
+                                        <div className="bg-background rounded-lg p-4 shadow-sm">
+                                            <div className="text-sm text-muted-foreground mb-2">Your Score</div>
+                                            <div className="text-3xl font-bold">
+                                                {assessmentScore.percentage}%
+                                            </div>
+                                            <div className="text-sm text-muted-foreground mt-1">
+                                                {assessmentScore.score} out of {assessmentScore.total} correct
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-center gap-3">
+                                        <button 
+                                            className="px-4 py-2 rounded-lg font-medium text-sm bg-muted hover:bg-muted/80 transition-all"
+                                            onClick={() => {
+                                                // Reset assessment state to try again
+                                                setAssessmentComplete(false);
+                                                setCurrentQuestionIndex(0);
+                                                setSelectedAnswers({});
+                                            }}
+                                        >
+                                            <span className="flex items-center">
+                                                <FiRefreshCw className="mr-2 w-4 h-4" />
+                                                Try Again
+                                            </span>
+                                        </button>
+                                        
+                                        {/* <button 
+                                            className="px-4 py-2 rounded-lg font-medium text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+                                            onClick={() => {
+                                                // Navigate back to course or whatever is appropriate in your app
+                                                // This might look different based on your navigation structure
+                                                router.push(`/course/${currentItem.course_id}`);
+                                            }}
+                                        >
+                                            <span className="flex items-center">
+                                                Continue
+                                                <FiArrowRight className="ml-2 w-4 h-4" />
+                                            </span>
+                                        </button> */}
+                                    </div>
+                                </div>
+                            ):(
+                                <div className="p-5">
+                                    {/* Compact header with instructions in popover/dropdown */}
+                                    <div className="flex justify-between items-center mb-3">
+                                        <div className="relative group">
+                                            <button className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded-md cursor-help">
+                                                Instructions
+                                            </button>
+                                            {/* Custom tooltip that appears on hover */}
+                                            <div className="absolute left-0 top-full mt-1 z-10 bg-background border border-border rounded-md shadow-lg p-3 w-96 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                                                <p className="text-xs mb-2">{currentItem?.assessment?.instructions}</p>
+                                                <p className="text-xs">You have to score atleast {currentItem?.assessment?.passing_score}% to pass the assessment.</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Navigation with question counter in center */}
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                className={`rounded-full p-1.5 transition-colors ${
+                                                    currentQuestionIndex === 0
+                                                        ? "text-muted-foreground bg-muted cursor-not-allowed"
+                                                        : "text-primary hover:bg-primary/10"
+                                                }`}
+                                                onClick={handlePrevQuestion}
+                                                disabled={currentQuestionIndex === 0}
+                                                aria-label="Previous question"
+                                            >
+                                                <FiArrowLeft className="w-4 h-4" />
+                                            </button>
+                                            
+                                            <h3 className="text-sm font-medium px-2">
+                                                {currentQuestionIndex + 1} of {currentItem?.assessment?.questions.length}
+                                            </h3>
+                                            
+                                            <button
+                                                className={`rounded-full p-1.5 transition-colors ${
+                                                    currentQuestionIndex === currentItem?.assessment?.questions.length - 1
+                                                        ? "text-muted-foreground bg-muted cursor-not-allowed"
+                                                        : "text-primary hover:bg-primary/10"
+                                                }`}
+                                                onClick={handleNextQuestion}
+                                                disabled={currentQuestionIndex === currentItem?.assessment?.questions.length - 1}
+                                                aria-label="Next question"
+                                            >
+                                                <FiArrowRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Question content with number */}
+                                    <div className="mb-4">
+                                        <p className="text-lg font-medium mb-3 text-wrap">
+                                            <span className="inline-flex items-center justify-center w-6 h-6 bg-primary/10 text-primary rounded-full text-xs mr-2">
+                                                Q{currentQuestionIndex + 1}
+                                            </span>
+                                            {currentItem?.assessment?.questions[currentQuestionIndex].text}
+                                        </p>
+
+                                        <div className="space-y-2">
+                                            {currentItem?.assessment?.questions[currentQuestionIndex].choices?.map((option, index) => (
+                                                <div
+                                                    key={option.id}
+                                                    className={`p-3 rounded-lg cursor-pointer transition-all duration-200 flex items-center ${
+                                                        selectedAnswers[currentItem?.assessment?.questions[currentQuestionIndex].id] === option.id
+                                                            ? "bg-primary text-primary-foreground shadow-md translate-y-px"
+                                                            : "bg-background border border-border hover:border-primary/30 hover:bg-primary/5"
+                                                    }`}
+                                                    onClick={() => handleAnswerSelect(
+                                                        currentItem?.assessment?.questions[currentQuestionIndex].id,
+                                                        option.id
+                                                    )}
+                                                >
+                                                    <div
+                                                        className={`w-6 h-6 rounded-full mr-3 flex items-center justify-center shrink-0 ${
+                                                            selectedAnswers[currentItem?.assessment?.questions[currentQuestionIndex].id] === option.id
+                                                                ? "bg-white/20"
+                                                                : "bg-muted"
+                                                        }`}
+                                                    >
+                                                        {String.fromCharCode(65 + index)}
+                                                    </div>
+                                                    <span className="text-sm">{option.text}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Submit button or progress indicator */}
+                                    <div className="flex justify-between items-center">
+                                        <div className="text-xs text-muted-foreground">
+                                            {Object.keys(selectedAnswers).length} of {currentItem?.assessment?.questions.length} answered
+                                        </div>
+
+                                        {currentQuestionIndex === currentItem?.assessment?.questions.length - 1 ? (
+                                            <button
+                                                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                                                    Object.keys(selectedAnswers).length < currentItem?.assessment?.questions.length
+                                                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                                                        : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg"
+                                                }`}
+                                                onClick={() => submitAssessment(currentItem?.assessment?.id)}
+                                                disabled={Object.keys(selectedAnswers).length < currentItem?.assessment?.questions.length}
+                                            >
+                                                <span className="flex items-center">
+                                                    Submit Assessment
+                                                    <FiCheck className="ml-2 w-3 h-3" />
+                                                </span>
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="px-4 py-2 rounded-lg font-medium text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-all"
+                                                onClick={handleNextQuestion}
+                                            >
+                                                <span className="flex items-center">
+                                                    Next Question
+                                                    <FiArrowRight className="ml-2 w-3 h-3" />
+                                                </span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {/* <div className="flex justify-between items-center">
+                        <p className="text-muted-foreground text-sm">
+                            {currentItem.item_type === "video"
+                                ? "Video"
+                                : "Assessment"}{" "}
+                            • {currentItem.duration}
+                        </p>
+                        <button className="btn-outline">
+                            {currentItem.completed ? 'Mark as incomplete' : 'Mark as complete'}
+                        </button>
+                    </div> */}
+                </div>
+            )}
+
+            {/* Main Content */}
+            <div className="container mx-auto px-4 py-8">
+                <div className="flex flex-col lg:flex-row gap-8">
+                    {/* Left Column - Course Content */}
+                    <div className="lg:w-2/3">
+                        <div className="flex border-b border-border mb-6">
+                            <button
+                                className={`px-4 py-2 font-medium ${
+                                    activeTab === "content"
+                                        ? "text-primary border-b-2 border-primary"
+                                        : "text-muted-foreground"
+                                }`}
+                                onClick={() => setActiveTab("content")}
+                            >
+                                Content
+                            </button>
+                            <button
+                                className={`px-4 py-2 font-medium ${
+                                    activeTab === "overview"
+                                        ? "text-primary border-b-2 border-primary"
+                                        : "text-muted-foreground"
+                                }`}
+                                onClick={() => setActiveTab("overview")}
+                            >
+                                Overview
+                            </button>
+                            <button
+                                className={`px-4 py-2 font-medium ${
+                                    activeTab === "reviews"
+                                        ? "text-primary border-b-2 border-primary"
+                                        : "text-muted-foreground"
+                                }`}
+                                onClick={() => setActiveTab("reviews")}
+                            >
+                                Reviews
+                            </button>
+                        </div>
+
+                        {activeTab === "content" && (
+                            <div className="bg-card rounded-lg overflow-hidden">
+                                {myCourse?.sections?.map((section, idx) => (
+                                    <div key={idx} className="course-section">
+                                        <div
+                                            className="flex justify-between items-center cursor-pointer px-4"
+                                            onClick={() => toggleSection(idx)}
+                                        >
+                                            <div>
+                                                <h3 className="font-semibold">
+                                                    <span className="font-extralight text-gray-400 ">
+                                                        Section {idx + 1} - 
+                                                    </span>{" "}
+                                                    {section.title}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {section.items.length}{" "}
+                                                    lessons • {section.duration}
+                                                </p>
+                                            </div>
+                                            {expandedSections[idx] ? (
+                                                <FiChevronUp />
+                                            ) : (
+                                                <FiChevronDown />
+                                            )}
+                                        </div>
+
+                                        {expandedSections[idx] && (
+                                            <div className="mt-4 px-4">
+                                                {section.items?.map((item) => (
+                                                    <div
+                                                        key={item.id}
+                                                        className={`flex items-center p-3 rounded-md mb-2 cursor-pointer hover:bg-secondary border ${
+                                                            currentItem?.id ===
+                                                            item.id
+                                                                ? "bg-secondary"
+                                                                : ""
+                                                        }`}
+                                                        onClick={() =>
+                                                            handleItemClick(
+                                                                item
+                                                            )
+                                                        }
+                                                    >
+                                                        <div className="mr-3 flex gap-2 items-center">
+                                                            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${item?.completion?.completed ? "bg-primary" : "bg-muted"}`}>
+                                                                {item?.completion?.completed && (
+                                                                    <FiCheck className="text-primary-foreground" size={12} />
+                                                                )}
+                                                            </div>
+                                                            <div className="w-6 h-6 flex items-center justify-center">
+                                                                {item?.item_type ===
+                                                                    "video" ? (
+                                                                    <FiVideo 
+                                                                        className="text-muted-foreground"
+                                                                    />
+                                                                ) : (
+                                                                    <FiAward
+                                                                        className="text-muted-foreground"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="font-medium">
+                                                                {item.title}
+                                                            </p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                {item?.duration}
+                                                            </p>
+                                                            
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {item?.documents && (
+                                                                <div 
+                                                                    className="p-1 rounded-md hover:bg-muted"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        const url = item.documents.pdf_url.endsWith('.pdf') ? item.documents.pdf_url : item.documents.pdf_url + '.pdf';
+                                                                        window.open(url, '_blank');
+                                                                    }}
+                                                                    title={`Download ${item.documents.title}`}
+                                                                >
+                                                                    <FiDownload size={16} className="text-primary" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === "overview" && (
+                            <div className="bg-card rounded-lg p-6">
+                                <div className="">
+                                    <h1 className="text-2xl md:text-3xl font-bold mb-2">
+                                        {myCourse?.course?.title}
+                                    </h1>
+                                    <p className="text-muted-foreground mb-4">
+                                        {myCourse?.course?.description}
+                                    </p>
+
+                                    <div className="flex items-center mb-4">
+                                        <div className="rating-stars mr-2">
+                                            {[...Array(5)]?.map((_, i) => (
+                                                <FiStar
+                                                    key={i}
+                                                    className={`${
+                                                        i <
+                                                        Math.floor(
+                                                            myCourse?.course?.rating
+                                                        )
+                                                            ? "fill-current"
+                                                            : ""
+                                                    }`}
+                                                />
+                                            ))}
+                                        </div>
+                                        <span className="text-muted-foreground text-sm">
+                                            {myCourse?.course?.rating} (
+                                            {myCourse?.course?.totalRatings} ratings) •{" "}
+                                            {Number(myCourse?.course?.analytics?.total_admission)?.toLocaleString()}{" "}
+                                            students
+                                        </span>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2 mb-4">
+                                        <span className="tag">
+                                            <FiClock className="mr-1" />{" "}
+                                            {myCourse?.course?.analytics?.total_video_duration}
+                                        </span>
+                                        <span className="tag">
+                                            <FiBook className="mr-1" />{" "}
+                                            {myCourse?.course?.analytics?.section_count} sections
+                                        </span>
+                                        <span className="tag">
+                                            <FiAward className="mr-1" />{" "}
+                                            {myCourse?.course?.analytics?.video_count + myCourse?.course?.analytics?.assessment_count} Lectures
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <h2 className="text-xl font-bold mb-4">
+                                    What you'll learn
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                    {myCourse?.course?.objectives?.map(
+                                        (item, index) => (
+                                            <div
+                                                key={index}
+                                                className="checklist-item"
+                                            >
+                                                <FiCheck className="text-primary mt-1 flex-shrink-0" />
+                                                <span>{item.objective}</span>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+
+                                <h2 className="text-xl font-bold mb-4">
+                                    Requirements
+                                </h2>
+                                <ul className="list-disc pl-5 mb-8">
+                                    {myCourse?.course?.requirements?.map((req, index) => (
+                                        <li key={index} className="mb-2">
+                                            {req.requirement}
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                <h2 className="text-xl font-bold mb-4">
+                                    Course Details
+                                </h2>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div>
+                                        <p className="text-muted-foreground">
+                                            Video Sessions
+                                        </p>
+                                        <p>{myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-muted-foreground">
+                                            Chat up to
+                                        </p>
+                                        <p>
+                                        {(() => {
+                                            const date = new Date(myCourse?.course?.created_at);
+                                            date.setDate(date.getDate() + myCourse?.course?.chat_upto); // Adds 30 days to the current date
+                                            return date.toLocaleDateString(); // Formats the date into a readable string
+                                        })()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-muted-foreground">
+                                            Uploaded at
+                                        </p>
+                                        <p>{new Date(myCourse?.course?.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-muted-foreground">
+                                            Last updated at
+                                        </p>
+                                        <p>{new Date(myCourse?.course?.updated_at).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === "reviews" && (
+                            <div className="bg-card rounded-lg p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-xl font-bold">
+                                        Student Reviews
+                                    </h2>
+                                    <button
+                                        className="btn-primary"
+                                        onClick={() =>
+                                            setShowFeedbackModal(true)
+                                        }
+                                    >
+                                        Leave a Review
+                                    </button>
+                                </div>
+
+                                {myCourse?.course?.reviews?.map((review) => (
+                                    <div
+                                        key={review.id}
+                                        className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0"
+                                    >
+                                        <div className="flex items-center mb-3">
+                                            <img
+                                                src={review.avatar}
+                                                alt={review.user}
+                                                className="w-10 h-10 rounded-full mr-3"
+                                            />
+                                            <div>
+                                                <p className="font-medium">
+                                                    {review.user}
+                                                </p>
+                                                <div className="flex items-center">
+                                                    <div className="rating-stars mr-2">
+                                                        {[...Array(5)]?.map(
+                                                            (_, i) => (
+                                                                <FiStar
+                                                                    key={i}
+                                                                    className={`${
+                                                                        i <
+                                                                        review.rating
+                                                                            ? "fill-current"
+                                                                            : ""
+                                                                    }`}
+                                                                />
+                                                            )
+                                                        )}
+                                                    </div>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        {review.date}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p>{review.comment}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Column - Instructor & More */}
+                    <div className="lg:w-1/3">
+                        <div className="bg-card rounded-lg p-6 mb-6">
+                            <h2 className="text-xl font-bold mb-4">
+                                Instructor
+                            </h2>
+                            <div className="flex items-center mb-4">
+                                <div className="w-16 h-16 mr-4 rounded-full overflow-hidden hover:ring-2 hover:ring-indigo-500 transition-all">
+                                    <img
+                                        src={myCourse?.course?.instructor_details?.image}
+                                        alt={myCourse?.course?.instructor_details?.email}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div>
+                                    <p className="font-bold">
+                                        {myCourse?.course?.instructor_details?.first_name + " " + myCourse?.course?.instructor_details?.last_name}
+                                    </p>
+                                    <p className="text-muted-foreground text-sm">
+                                        {myCourse?.course?.instructor_details?.email}
+                                    </p>
+                                </div>
+                            </div>
+                            <p className="text-sm mb-4">
+                                {myCourse?.course?.instructor_details?.biography}                            
+                            </p>
+                            <button className="btn-outline w-full">
+                                View Profile
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            {/* Feedback Modal */}
+            {showFeedbackModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-card rounded-lg max-w-md w-full p-6">
+                        <h2 className="text-xl font-bold mb-4">
+                            Course Feedback
+                        </h2>
+
+                        <form onSubmit={submitFeedback}>
+                            <div className="mb-4">
+                                <label className="block mb-2">Rating</label>
+                                <div className="flex">
+                                    {[1, 2, 3, 4, 5]?.map((star) => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setRating(star)}
+                                            className="text-2xl mr-2"
+                                        >
+                                            <FiStar
+                                                className={
+                                                    star <= rating
+                                                        ? "text-yellow-400 fill-current"
+                                                        : "text-muted-foreground"
+                                                }
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <label htmlFor="review" className="block mb-2">
+                                    Review
+                                </label>
+                                <textarea
+                                    id="review"
+                                    rows="4"
+                                    className="w-full bg-muted border border-border rounded-md p-3 text-foreground"
+                                    placeholder="Share your experience with this course ..."
+                                    value={review}
+                                    onChange={(e) => setReview(e.target.value)}
+                                ></textarea>
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    className="btn-outline"
+                                    onClick={() => setShowFeedbackModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={rating === 0}
+                                >
+                                    Submit Review
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default StreamCourse;
