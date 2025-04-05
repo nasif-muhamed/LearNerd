@@ -15,6 +15,7 @@ import { toast } from "sonner";
 // import api from "../../../../../services/api/axiosInterceptor";
 
 const SectionItemEditForm = ({
+    update,
     sectionIndex,
     sectionItem,
     getItemIcon,
@@ -23,8 +24,9 @@ const SectionItemEditForm = ({
 }) => {
     const [expanded, setExpanded] = useState(false);
     const [errors, setErrors] = useState({})
-    
+
     const onDeleteItem = async (sectionIndex, sectionItemId) => {
+        if (update) return
         try{
             setLoading(true)
             const response = await api.delete(`courses/section-items/${sectionItemId}/delete`)
@@ -38,6 +40,7 @@ const SectionItemEditForm = ({
             setLoading(false)
         }
     }
+
     return (
         <div className="p-3 bg-secondary/30 rounded-md">
             <div 
@@ -48,7 +51,7 @@ const SectionItemEditForm = ({
                 </button>
                 <div className="mr-3">{getItemIcon(sectionItem.item_type)}</div>
                 <span className="flex-1 text-sm">{sectionItem.title}</span>
-                <div className="opacity-100 group-hover:opacity-100 transition-opacity flex space-x-1">
+                {!update && (<div className="opacity-100 group-hover:opacity-100 transition-opacity flex space-x-1">
                     <button
                         title="delete"
                         type="button"
@@ -57,7 +60,7 @@ const SectionItemEditForm = ({
                     >
                         <Trash2 size={14} />
                     </button>
-                </div>
+                </div>)}
             </div>
         
             {expanded && 

@@ -6,6 +6,7 @@ import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
 import api from "../../../../services/api/axiosInterceptor";
 import tutorNoCourse from "../../../../assets/tutor/tutor-no-course-bg.png"
 import formatPrice from "../../../../utils/formatPrice"
+import { GiReturnArrow } from "react-icons/gi";
 
 const MyCoursesLanding = () => {
     const [drafts, setDraft] = useState([])
@@ -18,9 +19,9 @@ const MyCoursesLanding = () => {
             const response = await api.get('courses/drafts/')
             console.log('Drafts response:', response)
             const result = response.data
-            if (result.length){
+            // if (result.length){
                 setDraft(result)
-            }
+            // }
         }catch (error) {
             console.log('Drafts Error:', error)
             handleError(error, "Error fetching Drafts")
@@ -53,7 +54,7 @@ const MyCoursesLanding = () => {
         if (!myCourses.length){
             fetchMyCourses()
         }
-    }, [drafts, myCourses])
+    }, [])
 
     const deleteDraft = async (id, index) => {
         try{
@@ -61,6 +62,9 @@ const MyCoursesLanding = () => {
             const response = await api.delete(`courses/draft/${id}`)
             if (response.status === 204){
                 toast.success('Deleted successfully')
+                // window.location.reload();
+                fetchDrafts();
+                return
             }
             toast.error('something went wrong')
         }catch (error){
@@ -152,69 +156,92 @@ const MyCoursesLanding = () => {
                     
                     {myCourses.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {myCourses.map((course) => (
-                            <Link
-                                to={`/tutor/my-courses/${course.id}`}
-                                key={course.id}
-                                className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-xl"
-                            >
-                                <div className="relative">
-                                    <img
-                                        src={course.thumbnail}
-                                        alt={course.title}
-                                        className="w-full h-48 object-cover"
-                                    />
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="text-md font-bold mb-2 line-clamp-2">
-                                        {course.title}
-                                    </h3>
-                                    <p className="h-12 truncate text-wrap mb-2 font-extralight">
-                                        {course.description}
-                                    </p>
-                                    <div className="flex items-center mb-2">
-                                        <span className="text-amber-400 font-semibold">
-                                            {course.rating}
-                                        </span>
-                                        <div className="flex text-amber-400 ">
-                                            {"★★★★★"
-                                                .split("")
-                                                .map((star, i) => (
-                                                    <span
-                                                        key={i}
-                                                        className={
-                                                            i <
-                                                            Math.floor(
-                                                                course.rating
-                                                            )
-                                                                ? "text-amber-400"
-                                                                : "text-gray-400"
-                                                        }
-                                                    >
-                                                        ★
-                                                    </span>
-                                                ))}
+                            {myCourses.map((course) => (
+                                <div
+                                    key={course.id}
+                                    className={`rounded-lg overflow-hidden shadow-lg transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-xl ${!course.is_available ? "opacity-60 bg-gray-700" : "bg-gray-800"}`}
+                                >
+                                    <div className="relative group">
+                                        <img
+                                            src={course.thumbnail}
+                                            alt={course.title}
+                                            className="w-full h-48 object-cover"
+                                        />
+                                        {/* Hover overlay with buttons */}
+                                        <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-300">
+                                            <Link 
+                                                to={'/tutor/my-courses/' + course.id}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                                            >
+                                                Update
+                                            </Link>
+                                            <Link 
+                                                to={'/tutor/my-courses/preview/' + course.id}
+                                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
+                                            >
+                                                Preview
+                                            </Link>
                                         </div>
-                                        <span className="text-gray-400 text-xs ml-1">
-                                            {/* ({course.reviews.toLocaleString()}) */}
-                                        </span>
                                     </div>
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-bold">
-
-                                            {course.subscription_amount && formatPrice(course.subscription_amount)}
+                                    <div className="p-4">
+                                        <h3 className="text-md font-bold mb-2 line-clamp-2">
+                                            {course.title}
+                                        </h3>
+                                        <p className="h-12 truncate text-wrap mb-2 font-extralight">
+                                            {course.description}
                                         </p>
-                                        {course.freemium && (
-                                            <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
-                                                Fremium
-                                            </span>
-                                        )}
+                                        <div className="flex justify-between mb-2">
+                                            <div className="flex items-center mb-2">
+                                                <span className="text-amber-400 font-semibold">
+                                                    {course.rating}
+                                                </span>
+                                                <div className="flex text-amber-400 ">
+                                                    {"★★★★★"
+                                                        .split("")
+                                                        .map((star, i) => (
+                                                            <span
+                                                                key={i}
+                                                                className={
+                                                                    i <
+                                                                    Math.floor(
+                                                                        course.average_rating
+                                                                    )
+                                                                        ? "text-amber-400"
+                                                                        : "text-gray-400"
+                                                                }
+                                                            >
+                                                                ★
+                                                            </span>
+                                                        ))}
+                                                </div>
+                                                <span className="text-gray-400 text-xs ml-1">
+                                                    ({course.total_reviews} reviews) 
+                                                </span>
+                                            </div>
+
+                                            <div>
+                                                {!course.is_available && (
+                                                    <span className="border border-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                                        Deactivated
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <p className="font-bold">
+                                                {course.subscription_amount && formatPrice(course.subscription_amount)}
+                                            </p>
+                                            {course.freemium && (
+                                                <span className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                                                    Fremium
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            </Link>
-                        ))}
+                            ))}
                         </div>
-                    ) : (
+                        ) : (
                         <div className="flex flex-col items-center justify-center text-center p-6 rounded-lg">
                             <h3 className="text-lg font-semibold text-gray-200">No Courses Uploaded Yet</h3>
                             <p className="text-gray-400 mb-4">Looks like there are no courses available. Start sharing knowledge now!</p>

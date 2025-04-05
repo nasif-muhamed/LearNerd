@@ -11,6 +11,8 @@ import StudentCourses from "../pages/user/student/courses/StudentCourses";
 import StudentCourseDetails from "../pages/user/student/courses/StudentCourseDetails";
 import StudyRoomLanding from "../pages/user/student/study_room/StudyRoomLanding";
 import StreamCourse from "../pages/user/student/study_room/StreamCourse";
+import ListTutorsLandingPage from "../pages/user/student/tutors/ListTutorsLandingPage";
+import TutorDetails from "../pages/user/student/tutors/TutorDetails";
 
 const StudentRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -32,14 +34,19 @@ const StudentRoutes = () => {
             <Route element={<ProtectedRoute />}>
                 <Route path="/home" element={<Home />} />
 
+                <Route path="/courses">
+                    <Route index element={<StudentCourses />} />
+                    <Route path=":id" element={<StudentCourseDetails/>} />
+                </Route>
+
                 <Route path="/study-room">
                     <Route index element={<StudyRoomLanding />} />
                     <Route path="my-course/:purchaseId" element={<StreamCourse/>} />
                 </Route>
 
-                <Route path="/courses">
-                    <Route index element={<StudentCourses />} />
-                    <Route path=":id" element={<StudentCourseDetails/>} />
+                <Route path="/tutors">
+                    <Route index element={<ListTutorsLandingPage />} />
+                    <Route path=":id" element={<TutorDetails/>} />
                 </Route>
 
                 <Route path="/badges">

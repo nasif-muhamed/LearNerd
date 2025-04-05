@@ -110,6 +110,7 @@ const StudentCourseDetails = () => {
             const isEnrolled = purchaseType === "freemium" ? "freemium" : "subscription";
             setCourse((prevCourse) => ({
                 ...prevCourse,
+                purchase_id: response.data.purchase_id,
                 is_enrolled: isEnrolled,
             }));
         } catch (error) {
@@ -306,8 +307,9 @@ const StudentCourseDetails = () => {
                         />
 
                         <CourseStats
-                            rating={courseData.rating}
-                            students={courseData.students}
+                            rating={course?.average_rating}
+                            totalRatings={course?.total_reviews}
+                            students={course?.analytics?.total_admission}
                             hours={
                                 course?.analytics?.total_video_duration &&
                                 formatTimeHMS(

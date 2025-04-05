@@ -31,6 +31,8 @@ const StreamCourse = () => {
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [rating, setRating] = useState(0);
     const [review, setReview] = useState("");
+    const [myReview, setMyReview] = useState(null);
+    const [reviews, setReviews] = useState(null);
     const [currentItem, setCurrentItem] = useState(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedAnswers, setSelectedAnswers] = useState({});
@@ -43,7 +45,7 @@ const StreamCourse = () => {
         try {
             setLoading(true);
             const response = await api.get(`courses/stream/${purchaseId}/`);
-            console.log("My Course response:", response);
+            console.log("My Purchase response:", response);
             const result = response.data;
             setCourse(result);
         } catch (error) {
@@ -61,6 +63,25 @@ const StreamCourse = () => {
     }, []);
     // Dummy course data
 
+    const fetchReviews = async () => {
+        if (!reviews || !myReview) {
+            try{
+                setLoading(true);
+                const response = await api.get(`courses/my-course/${myCourse?.course?.id}/reviews/`);
+                console.log("My reviews response:", response);
+                const result = response.data;
+
+                if(result.reviews?.length) setReviews(result.reviews);
+                if(result.my_review) setMyReview(result.my_review);
+            }catch (error) {
+                console.log("Couses Error:", error);
+                handleError(error, "Error fetching reviews");
+                setError("Failed to fetch reviews.");
+            } finally {
+                setLoading(false);
+            }
+        }
+    }
     const toggleSection = (sectionId) => {
         setExpandedSections((prev) => ({
             ...prev,
@@ -86,10 +107,23 @@ const StreamCourse = () => {
         });
     };
 
-    const submitFeedback = (e) => {
+    const submitFeedback = async (e) => {
         e.preventDefault();
-        // Handle feedback submission
-        console.log({ rating, review });
+        try {
+            setLoading(true);
+            const response = await api.post(`courses/${myCourse?.course?.id}/reviews/`, { rating, review });
+            console.log("My feedback response:", response);
+            toast.success("Feedback submitted successfully!");
+            fetchReviews();
+        } catch (error) {
+            console.log("Couses Error:", error);
+            handleError(error, "Error submitting feedback");
+            setError("Failed to submit feedback.");
+        } finally {
+            setLoading(false);
+        }
+
+        console.log('ratings:', { rating, review });
         setShowFeedbackModal(false);
         setRating(0);
         setReview("");
@@ -172,7 +206,7 @@ const StreamCourse = () => {
                 toast.success("Video marked as completed successfully!");
             } catch (error) {
                 console.log("Courses Error:", error);
-                handleError(error, "Error submitting assessment");
+                handleError(error, "Error submitting video");
             } finally {
                 setLoading(false);
             }
@@ -461,7 +495,10 @@ const StreamCourse = () => {
                                         ? "text-primary border-b-2 border-primary"
                                         : "text-muted-foreground"
                                 }`}
-                                onClick={() => setActiveTab("reviews")}
+                                onClick={() => {
+                                    setActiveTab("reviews")
+                                    fetchReviews()
+                                }}
                             >
                                 Reviews
                             </button>
@@ -581,7 +618,7 @@ const StreamCourse = () => {
                                                     className={`${
                                                         i <
                                                         Math.floor(
-                                                            myCourse?.course?.rating
+                                                            myCourse?.course?.average_rating
                                                         )
                                                             ? "fill-current"
                                                             : ""
@@ -590,8 +627,8 @@ const StreamCourse = () => {
                                             ))}
                                         </div>
                                         <span className="text-muted-foreground text-sm">
-                                            {myCourse?.course?.rating} (
-                                            {myCourse?.course?.totalRatings} ratings) •{" "}
+                                            {myCourse?.course?.average_rating} (
+                                            {myCourse?.course?.total_reviews} ratings) •{" "}
                                             {Number(myCourse?.course?.analytics?.total_admission)?.toLocaleString()}{" "}
                                             students
                                         </span>
@@ -644,7 +681,7 @@ const StreamCourse = () => {
                                 <h2 className="text-xl font-bold mb-4">
                                     Course Details
                                 </h2>
-                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                {myCourse?.purchase_type == 'subscription' && (<div className="grid grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <p className="text-muted-foreground">
                                             Video Sessions
@@ -663,7 +700,7 @@ const StreamCourse = () => {
                                         })()}
                                         </p>
                                     </div>
-                                </div>
+                                </div>)}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-muted-foreground">
@@ -683,34 +720,81 @@ const StreamCourse = () => {
 
                         {activeTab === "reviews" && (
                             <div className="bg-card rounded-lg p-6">
-                                <div className="flex justify-between items-center mb-6">
+                                {myReview && (
+                                    <div className="mb-4">
+                                        <h2 className="text-xl font-bold mb-2">
+                                            Your Review
+                                        </h2>
+
+                                        <div className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0">
+                                            <div className="flex items-center mb-3">
+                                                {/* <img
+                                                    src={review.avatar}
+                                                    alt={review.user}
+                                                    className="w-10 h-10 rounded-full mr-3"
+                                                /> */}
+                                                <div>
+                                                    <p className="text-gray-400 font-light">
+                                                        {myReview.review}
+                                                    </p>
+                                                    <div className="flex items-center">
+                                                        <div className="rating-stars mr-2">
+                                                            {[...Array(5)]?.map(
+                                                                (_, i) => (
+                                                                    <FiStar
+                                                                        key={i}
+                                                                        className={`${
+                                                                            i <
+                                                                            myReview.rating
+                                                                                ? "fill-current"
+                                                                                : ""
+                                                                        }`}
+                                                                    />
+                                                                )
+                                                            )}
+                                                        </div>
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {myReview?.created_at && new Date(
+                                                                myReview?.created_at
+                                                            ).toLocaleDateString()
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p>{review.comment}</p>
+                                        </div>
+
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center mb-2">
                                     <h2 className="text-xl font-bold">
-                                        Student Reviews
+                                        Students Reviews
                                     </h2>
-                                    <button
+                                    {!myReview && (<button
                                         className="btn-primary"
                                         onClick={() =>
                                             setShowFeedbackModal(true)
                                         }
                                     >
                                         Leave a Review
-                                    </button>
+                                    </button>)}
                                 </div>
 
-                                {myCourse?.course?.reviews?.map((review) => (
+                                {reviews && reviews.map((review) => (
                                     <div
                                         key={review.id}
                                         className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0"
                                     >
                                         <div className="flex items-center mb-3">
-                                            <img
+                                            {/* <img
                                                 src={review.avatar}
                                                 alt={review.user}
                                                 className="w-10 h-10 rounded-full mr-3"
-                                            />
+                                            /> */}
                                             <div>
-                                                <p className="font-medium">
-                                                    {review.user}
+                                                <p className="text-gray-400 font-light">
+                                                    {review.review}
                                                 </p>
                                                 <div className="flex items-center">
                                                     <div className="rating-stars mr-2">
@@ -729,7 +813,9 @@ const StreamCourse = () => {
                                                         )}
                                                     </div>
                                                     <span className="text-sm text-muted-foreground">
-                                                        {review.date}
+                                                        {myReview?.created_at && new Date(
+                                                                myReview?.created_at
+                                                            ).toLocaleDateString()}
                                                     </span>
                                                 </div>
                                             </div>

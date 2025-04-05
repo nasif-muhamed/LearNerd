@@ -12,6 +12,7 @@ import SectionItemForm from "./SectionItemForm";
 import SectionItemEditForm from "./SectionItemEditForm"
 
 const SectionCard = ({
+    update,
     section,
     setLoading,
     sectionIndex,
@@ -139,10 +140,12 @@ const SectionCard = ({
                     </button>
                     <h3 className="text-lg font-medium">Section {sectionIndex + 1}: {section.title}</h3>
                 </div>
-                <div className="flex items-center space-x-2">
+                {!update && (<div className="flex items-center space-x-2">
                     {/* <button type="button" onClick={() => onEditSection(sectionIndex)} className="p-1.5 text-muted-foreground hover:text-foreground rounded-full bg-secondary/30 hover:bg-secondary/70 transition-colors"><Edit size={16} /></button> */}
-                    <button type="button" onClick={() => onDeleteSection(section.id, sectionIndex)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-full bg-secondary/30 hover:bg-secondary/70 transition-colors"><Trash2 size={16} /></button>
-                </div>
+                    <button type="button" onClick={() => onDeleteSection(section.id, sectionIndex)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-full bg-secondary/30 hover:bg-secondary/70 transition-colors">
+                        <Trash2 size={16} />
+                    </button>
+                </div>)}
             </div>
 
             {expanded && (
@@ -150,7 +153,7 @@ const SectionCard = ({
                     {localItems.length > 0 ? (
                         <div className="space-y-4 mb-4">
                             {localItems.map((item, index) => (
-                                <SectionItemEditForm key={index} sectionIndex={sectionIndex} setLoading={setLoading} sectionItem={item} getItemIcon={getItemIcon} onDelete={onDeleteItem} />
+                                <SectionItemEditForm update={update} key={index} sectionIndex={sectionIndex} setLoading={setLoading} sectionItem={item} getItemIcon={getItemIcon} onDelete={onDeleteItem} />
                             ))}
                         </div>
                     ) : (

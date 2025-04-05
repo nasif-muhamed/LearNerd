@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useForm, Controller } from "react-hook-form";
 import CourseUploadHeader from './CourseUploadHeader';
@@ -7,6 +7,7 @@ import CourseFormNavigation from './CourseFormNavigation';
 import api from '../../../../../services/api/axiosInterceptor'
 
 const Step1CourseBasicInfo = ({
+    update=false,
     setStep,
     setLoading,
     setUploadedCourse,
@@ -56,7 +57,9 @@ const Step1CourseBasicInfo = ({
         }
     });
     const subscriptionWatch = watch("subscription");
-
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAvailable, setIsAvailable] = useState(uploadedCourse?.is_available ?? true);
+    console.log('isAvailable:', isAvailable)
     useEffect(() => {
         if (uploadedCourse) {
             setTitle(uploadedCourse.title || "");
@@ -69,6 +72,7 @@ const Step1CourseBasicInfo = ({
             setChatUpto(uploadedCourse.chat_upto || null);
             setSafePeriod(uploadedCourse.safe_period || null);
             setThumbnailPreview(uploadedCourse.thumbnail || null);
+            setIsAvailable(uploadedCourse.is_available ?? true);
             reset({
                 title: uploadedCourse.title || "",
                 description: uploadedCourse.description || "",
@@ -301,6 +305,26 @@ const Step1CourseBasicInfo = ({
         }
     };
 
+    const handleToggleActive = async () => {
+        setLoading(true);
+        try {
+          const response = await api.patch('courses/toggle-activation/', {
+            course_id: uploadedCourse.id,
+            is_available: !isAvailable,
+          });
+          const result = await response.data;
+          setUploadedCourse(prev => ({...prev, ...result}))
+          setIsAvailable(!isAvailable);
+          toast.success(`Course ${isAvailable ? 'deactivated' : 'activated'} successfully.`);
+        } catch (error) {
+          console.error("Error toggling course status:", error);
+          toast.error("Failed to update course status. Please try again.");
+        } finally {
+          setLoading(false);
+          setIsModalOpen(false);
+        }
+    };
+
     // Handle next button
     const handleNext = () => {
         setStep(2)
@@ -413,10 +437,52 @@ const Step1CourseBasicInfo = ({
                         {thumbnailPreview && <img src={thumbnailPreview} alt="Thumbnail Preview" className="mt-2 rounded-lg max-h-48" />}
                         {errors.thumbnail && <p className="text-red-500 text-sm">{errors.thumbnail.message}</p>}
                     </div>
-
+                    
                 </div>
+                {uploadedCourse && update && (
+                    <button
+                        type="button"
+                        onClick={() => setIsModalOpen(true)}
+                        className={`mt-4 px-6 py-3 ${
+                        isAvailable ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                        } text-white rounded-md transition-colors font-semibold`}
+                    >
+                        {isAvailable ? 'Deactivate Course' : 'Activate Course'}
+                    </button>
+                )}
                 <CourseFormNavigation currentStep={1} update={uploadedCourse} disableNext={!uploadedCourse} onUpsert={!uploadedCourse? handleSubmit(onUpload) : handleSubmit(onUpdate)} onNext={handleNext} uploadedCourse={uploadedCourse} />
             </form>
+
+            {isModalOpen && update && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h2 className="text-xl font-bold text-red-600 mb-4">
+                        {isAvailable ? 'Deactivate Course' : 'Activate Course'}
+                    </h2>
+                    <p className="text-gray-700 mb-6">
+                        {isAvailable
+                        ? 'Are you sure you want to deactivate this course? This action will make it unavailable to users.'
+                        : 'Are you sure you want to activate this course? This will make it available to users again.'}
+                    </p>
+                    <div className="flex justify-end gap-4">
+                        <button
+                        onClick={() => setIsModalOpen(false)}
+                        className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-md"
+                        >
+                        Cancel
+                        </button>
+                        <button
+                        onClick={handleToggleActive}
+                        className={`px-4 py-2 ${
+                            isAvailable ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                        } text-white rounded-md`}
+                        >
+                        {isAvailable ? 'Deactivate' : 'Activate'}
+                        </button>
+                    </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

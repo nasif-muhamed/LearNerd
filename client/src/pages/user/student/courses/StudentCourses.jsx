@@ -13,8 +13,8 @@ const StudentCourses = () => {
     const [totalCount, setTotalCount] = useState(0);
     const [nextPage, setNextPage] = useState(null);
     const [prevPage, setPrevPage] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
     const location = useLocation();
+    const [searchQuery, setSearchQuery] = useState(location.state?.searchQuery || "");
     const pageSize = 3; // Matches your backend response (9 items per page)
 
     console.log('search query course list:', searchQuery)
@@ -69,9 +69,10 @@ const StudentCourses = () => {
 
 
     return (
-        <div className="min-h-screen text-white px-6 py-10">
+        <div className="min-h-screen text-white px-6 py-6">
             {loading && <LoadingSpinner/>}
             <div className="md:container mx-auto max-w-7xl">
+                <h2 className="text-2xl font-bold mb-6">Courses</h2>
 
                 {/* Courses Grid */}
                 {error ? (
@@ -111,7 +112,7 @@ const StudentCourses = () => {
                                                         className={
                                                             i <
                                                             Math.floor(
-                                                                course.rating
+                                                                course.average_rating
                                                             )
                                                                 ? "text-amber-400"
                                                                 : "text-gray-400"
@@ -122,7 +123,7 @@ const StudentCourses = () => {
                                                 ))}
                                         </div>
                                         <span className="text-gray-400 text-xs ml-1">
-                                            {/* ({course.reviews.toLocaleString()}) */}
+                                            ({course.total_reviews} reviews)
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">

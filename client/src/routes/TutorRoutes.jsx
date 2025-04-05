@@ -7,6 +7,8 @@ import ProtectedRoute from "./user_restrication/ProtectedRoute";
 import TutorDashboard from "../pages/user/tutor/TutorDashboard";
 import MyCoursesLanding from "../pages/user/tutor/myCourses/MyCoursesLanding";
 import CreateCourse from "../pages/user/tutor/myCourses/CreateCourse";
+import UpdateCourse from "../pages/user/tutor/myCourses/UpdateCourse";
+import PreviewCourse from "../pages/user/tutor/myCourses/PreviewCourse";
 
 const TutorRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -29,8 +31,10 @@ const TutorRoutes = () => {
                 <Route path="/dashboard" element={<TutorDashboard />} />
                 <Route path="/my-courses">
                     <Route index element={<MyCoursesLanding />} />
+                    <Route path=":courseId" element={<UpdateCourse/>} />
                     <Route path="create-course" element={<CreateCourse />} />
                     <Route path="create-course/:draftId" element={<CreateCourse />} />
+                    <Route path="preview/:courseId" element={<PreviewCourse/>} />
                 </Route>
             </Route>
 
