@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Sum
 import json
 from .models import (
-    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem,
+    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review,
     Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion
 )
 from .services import CallUserService, UserServiceException
@@ -36,12 +36,15 @@ class CategorySerializerUser(serializers.ModelSerializer):
 class CourseSerializer(serializers.ModelSerializer):
     thumbnail_file = serializers.ImageField(write_only=True, required=True)
     # thumbnail = serializers.CharField(read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
     
     class Meta:
         model = Course
         fields = [
             'id', 'category', 'title', 'description', 'thumbnail', 'freemium', 'step', 'thumbnail_file',
-            'subscription', 'subscription_amount', 'video_session', 'chat_upto', 'safe_period', 'is_complete', 'is_available'
+            'subscription', 'subscription_amount', 'video_session', 'chat_upto', 'safe_period', 'is_complete', 'is_available',
+            'average_rating', 'total_reviews'
         ]
         read_only_fields = ('id', 'thumbnail')
 
@@ -60,6 +63,12 @@ class CourseSerializer(serializers.ModelSerializer):
         if data.get('subscription') and (data.get('subscription_amount') is None or data.get('subscription_amount') <= 0):
             raise serializers.ValidationError("Subscription amount is required and should be greater than 0 if subscription is enabled.")
         return data
+    
+    def get_average_rating(self, obj):
+        return obj.get_average_rating()
+
+    def get_total_reviews(self, obj):
+        return obj.get_total_reviews()
 
 class LearningObjectiveSerializer(serializers.ModelSerializer):
     # id = serializers.IntegerField(read_only=True)
@@ -396,7 +405,8 @@ class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
     requirements = CourseRequirementSerializer(many=True, read_only=True)
     analytics = serializers.SerializerMethodField()
     instructor_details = serializers.SerializerMethodField()
-    
+    average_rating = serializers.SerializerMethodField()
+    total_reviews = serializers.SerializerMethodField()
     class Meta:
         model = Course
         fields = [
@@ -417,6 +427,8 @@ class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
             'requirements',
             'analytics',
             'instructor_details',
+            'average_rating',
+            'total_reviews'
         ]
 
     def get_analytics(self, obj):
@@ -432,7 +444,13 @@ class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
                 return {"error": str(e)}
             except Exception as e:
                 return {"error": "Failed to fetch instructor details"}
-        
+
+    def get_average_rating(self, obj):
+        return obj.get_average_rating()
+
+    def get_total_reviews(self, obj):
+        return obj.get_total_reviews()
+
 class PurchaseCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Purchase
@@ -629,3 +647,27 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
     def get_course(self, obj):
         course = obj.course
         return CourseUnAuthDetailSerializer(course).data
+    
+class TutorCourseSerializer(serializers.ModelSerializer):
+    total_courses = serializers.IntegerField()
+    total_enrollments = serializers.IntegerField()
+
+    class Meta:
+        model = Course
+        fields = ['id', 'instructor', 'total_courses', 'total_enrollments']
+
+class ReviewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['id', 'rating', 'review', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def validate_rating(self, value):
+        if value <= 0 or value > 5:
+            raise serializers.ValidationError("Rating must be between 0 and 5")
+        return value
+    
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = '__all__'

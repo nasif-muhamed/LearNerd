@@ -25,11 +25,11 @@ from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObta
     BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer, \
     ProfileDetailsSerializer
 from .tasks import send_otp_email
-
+from .services import CallCourseService, CourseServiceException
 
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
-
+call_course_service = CallCourseService()
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -317,6 +317,65 @@ class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
     permission_classes = [AllowAny]
     lookup_field = 'pk'
 
+class MultipleTutorDetailsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Get the user_ids from query parameters
+        user_ids = request.data.get('ids', None)
+        print('user_ids:', user_ids)
+        if not user_ids:
+            return Response(
+                {"error": "Please provide user IDs"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Convert string of ids (e.g., "1,2,3") to list of integers
+            id_list = [id for id in user_ids]
+        
+            # Fetch profiles for all IDs
+            profiles = Profile.objects.filter(pk__in=id_list)
+            
+            # Serialize the data
+            serializer = ProfileDetailsSerializer(profiles, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except ValueError:
+            return Response(
+                {"error": "Invalid ID format. Please provide comma-separated integers"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Profile.DoesNotExist:
+            return Response(
+                {"error": "One or more users not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class SingleTutorDetailsView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, pk):
+        print('here in single tutor details:', pk)
+        try:
+            user = Profile.objects.get(pk=pk)
+            serializer = ProfileDetailsSerializer(user)
+            try:
+                response_course_service = call_course_service.get_tutor_course_details(pk)
+            except CourseServiceException as e:
+                # Handle user service exceptions and return appropriate error
+                return Response({"error": str(e)}, status=503)
+            except Exception as e:
+                # Catch any unexpected exceptions
+                return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+            course_data = response_course_service.json()
+            data = serializer.data
+            data['courses'] = course_data
+            return Response(data, status=status.HTTP_200_OK)
+        
+        except Profile.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 def is_admin(user):
     return AdminUser.objects.filter(profile=user).exists()

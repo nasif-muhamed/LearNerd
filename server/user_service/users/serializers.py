@@ -80,7 +80,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to see the profile details
     class Meta:
         model = Profile
-        fields = ['email', 'first_name', 'last_name', 'biography', 'image']
+        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image']
 
 class UserActionSerializer(serializers.ModelSerializer):
     is_profile_completed = serializers.SerializerMethodField()
