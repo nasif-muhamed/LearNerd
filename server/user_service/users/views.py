@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
@@ -17,7 +18,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
-from rest_framework_simplejwt.tokens import RefreshToken
+# from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import AuthenticationFailed
 
 from . firebase_auth import auth as firebase_auth
 from . models import AdminUser, BadgesAquired
@@ -159,20 +161,26 @@ class GoogleLoginView(APIView):
         try:
             # Verify the Firebase token
             decoded_token = firebase_auth.verify_id_token(token)
-            email = decoded_token.get('email')
             print('google:', decoded_token)
+            email = decoded_token.get('email')
             if not email:
                 return Response({'error': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
             # Get or create the user
             user, created = Profile.objects.get_or_create(
                 email=email,
             )
+            
+            if not user.is_active:
+                raise AuthenticationFailed(_("User is blocked"), code="user_blocked")
 
             # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
+            # refresh = RefreshToken.for_user(user)
+            refresh = CustomTokenObtainPairSerializer.get_token(user)
+            access_token = refresh.access_token
+
             return Response({
                 'refresh': str(refresh),
-                'access': str(refresh.access_token),
+                'access': str(access_token),
                 'registered': created,
             }, status=status.HTTP_200_OK)
         except Exception as e:

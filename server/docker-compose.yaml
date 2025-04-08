@@ -29,6 +29,8 @@ services:
         environment:
             - DJANGO_SECRET_GATEWAY=${DJANGO_SECRET_GATEWAY}
             - DEBUG=${DEBUG}
+            - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
+            - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
             - USER_SERVICE_URL=${USER_SERVICE_URL}
             - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
             - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}

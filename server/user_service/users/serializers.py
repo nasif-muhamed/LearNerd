@@ -83,16 +83,15 @@ class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to se
         fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image']
 
 class UserActionSerializer(serializers.ModelSerializer):
-    is_profile_completed = serializers.SerializerMethodField()
+    is_profile_completed = serializers.ReadOnlyField()
     class Meta:
         model = Profile
         fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'is_profile_completed']
         read_only_fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'created_at']
 
-    def get_is_profile_completed(self, obj):
-        # Check if first_name, last_name, and biography are non-empty and not-None
-        return bool(obj.first_name and obj.last_name and obj.biography)
-
+    # def get_is_profile_completed(self, obj):
+    #     # Check if first_name, last_name, and biography are non-empty and not-None
+    #     return bool(obj.first_name and obj.last_name and obj.biography)
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
@@ -100,8 +99,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
 
         # Add custom claims to the token payload
-        token['is_active'] = user.is_active
-        token['is_tutor'] = user.is_tutor  
+        # token['is_active'] = user.is_active
+        token['is_tutor'] = user.is_tutor
+        token['is_profile_completed'] = user.is_profile_completed
 
         return token
     

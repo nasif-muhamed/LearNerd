@@ -12,6 +12,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
+from .utils import get_forwarded_headers
+
 # URLs of the other services
 USER_SERVICE_URL = os.getenv('USER_SERVICE_URL')
 #'http://host.docker.internal:8001/' # 'http://localhost:8001/'  
@@ -337,6 +339,7 @@ class MediaProxyView(APIView):
 
 @api_view(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 def proxy_to_course_service(request):
+    print('proxy_to_course_service')
     url = COURSE_SERVICE_URL[:-1] + request.path
     query_params = request.GET.urlencode()
     if query_params:
@@ -348,8 +351,10 @@ def proxy_to_course_service(request):
     print("data post api router:", request.POST)
     print("data api router:", request.data)
 
-    headers = {key: value for key, value in request.headers.items() if key.lower() not in ['host', 'content-length', 'content-type']}
-    headers['Content-Type'] = request.headers.get('Content-Type')  # Preserve original Content-Type
+    # headers = {key: value for key, value in request.headers.items() if key.lower() not in ['host', 'content-length', 'content-type']}
+    # headers['Content-Type'] = request.headers.get('Content-Type')  # Preserve original Content-Type
+    headers = get_forwarded_headers(request)
+    print('Meta proxy 12:', headers)
 
     if request.method in ['POST', 'PATCH']:
         if request.FILES or 'multipart/form-data' in request.headers.get('Content-Type', ''):

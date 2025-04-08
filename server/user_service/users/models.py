@@ -31,6 +31,9 @@ class Profile(AbstractBaseUser):
     def __str__(self):
         return self.email
 
+    @property
+    def is_profile_completed(self):
+        return bool(self.first_name and self.last_name and self.biography)
 
 class AdminUser(models.Model):
     profile = models.ForeignKey(Profile, related_name="admins", on_delete=models.CASCADE)
