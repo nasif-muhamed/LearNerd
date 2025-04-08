@@ -18,6 +18,7 @@ from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
     SectionItemCompletion, Assessment, Review
 )
+
 from .serializers import (
     CategorySerializer, CategorySerializerUser, CourseSerializer, LearningObjectiveSerializer, 
     CourseRequirementSerializer, CourseObjectivesRequirementsSerializer, SectionSerializer,
@@ -25,7 +26,7 @@ from .serializers import (
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
     ReviewCreateSerializer, ReviewSerializer
 )
-from .permissions import IsAdminUserCustom
+from .permissions import IsAdminUserCustom, IsProfileCompleted
 from .services import CallUserService, UserServiceException
 
 call_user_service = CallUserService()
@@ -649,6 +650,8 @@ class StudentMyCoursesListView(APIView):
     # permission_classes = [IsAuthenticated]
 
     def get(self, request, student_id):
+        print('StudentMyCoursesListView headers:', request.headers)
+        print('StudentMyCoursesListView user_payload:', request.user_payload)
         user_id, error_response = get_user_id_from_token(request)
         if error_response:
             return error_response
@@ -696,6 +699,8 @@ class StudentMyCoursesListView(APIView):
 #         return response
     
 class StudentMyCourseDetailView(APIView):
+    permission_classes = [IsProfileCompleted]
+
     def get(self, request, purchase_id):
         try:
             user_id, error_response = get_user_id_from_token(request)

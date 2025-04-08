@@ -62,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'course_service.middleware.request_populator.RequestPopulatorMiddleware', # Custom middleware for populating request with user payload
 ]
 
 ROOT_URLCONF = 'course_service.urls'
