@@ -22,24 +22,24 @@ class RequestPopulatorMiddleware:
 
     def __call__(self, request):
         print('RequestPopulatorMiddleware')
-        logger.debug("Processing request in RequestPopulatorMiddleware")
-        logger.debug("headears: %s", request.headers)
+        # logger.debug("Processing request in RequestPopulatorMiddleware")
+        # logger.debug("headears: %s", request.headers)
         
         # Get the user payload from the header (normalized as HTTP_X_USER_PAYLOAD)
         user_payload_str = request.headers.get('X-User-Payload', None)
         print(f'User Payload: {user_payload_str}')
         if user_payload_str is None:
-            logger.debug("No user payload found in request headers")
+            # logger.debug("No user payload found in request headers")
             request.user_payload = None
         else:
             try:
                 # Safely parse the payload string into a Python object
                 user_payload = ast.literal_eval(user_payload_str)
                 request.user_payload = user_payload
-                logger.debug(f"User Payload successfully parsed: {request.user_payload}")
+                # logger.debug(f"User Payload successfully parsed: {request.user_payload}")
             except (ValueError, SyntaxError) as e:
                 # Handle invalid payload gracefully
-                logger.warning(f"Failed to parse user payload: {user_payload_str}. Error: {e}")
+                # logger.warning(f"Failed to parse user payload: {user_payload_str}. Error: {e}")
                 request.user_payload = None
         
         # Proceed to the next middleware or view

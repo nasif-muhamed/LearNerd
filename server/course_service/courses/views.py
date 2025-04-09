@@ -26,22 +26,10 @@ from .serializers import (
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
     ReviewCreateSerializer, ReviewSerializer
 )
-from .permissions import IsAdminUserCustom, IsProfileCompleted
+from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor
 from .services import CallUserService, UserServiceException
 
 call_user_service = CallUserService()
-
-def get_user_id_from_token(request):
-    try:
-        access_token = request.headers.get('Authorization', '').split(' ')[1]
-        payload = jwt.decode(access_token, options={"verify_signature": False})
-        user_id = payload.get('user_id')
-        if not user_id:
-            return None, Response({'detail': 'User ID not found in token'}, status=status.HTTP_401_UNAUTHORIZED)
-        return user_id, None
-    except Exception as e:
-        return None, Response({'detail': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
-
 
 class CustomPagination(PageNumberPagination):
     page_size = 9  # The default page size
@@ -95,7 +83,12 @@ class UserCategoryView(APIView):
 class CourseCreateAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # to handle file uploads, because this view contain multipart data
     pagination_class = CustomPagination
-
+    def get_permissions(self):
+        # Allow GET for everyone, require IsProfileCompleted for POST, PATCH, etc
+        if self.request.method == 'GET':
+            return []
+        return [IsProfileCompleted()]
+    
     def get_object(self, course_id, user_id):
         try:
             course = Course.objects.get(id=course_id, instructor=user_id)
@@ -103,22 +96,7 @@ class CourseCreateAPIView(APIView):
         except Course.DoesNotExist:
             raise Http404
 
-    def get_user_id_from_token(self, request):
-        try:
-            access_token = request.headers.get('Authorization', '').split(' ')[1]
-            payload = jwt.decode(access_token, options={"verify_signature": False})
-            user_id = payload.get('user_id')
-            if not user_id:
-                return None, Response({'detail': 'User ID not found in token'}, status=status.HTTP_401_UNAUTHORIZED)
-            return user_id, None
-        except Exception as e:
-            return None, Response({'detail': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
-
     def get(self, request, *args, **kwargs):
-        user_id, error_response = self.get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
         courses = Course.objects.filter(is_complete=True, is_available=True)
 
         # Search functionality
@@ -170,10 +148,7 @@ class CourseCreateAPIView(APIView):
         
     def post(self, request, *args, **kwargs):
         print('here in the post')
-        user_id, error_response = self.get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         serializer = CourseSerializer(data=request.data)
         if serializer.is_valid():
             thumbnail_file = serializer.validated_data.pop('thumbnail_file', None)
@@ -202,11 +177,9 @@ class CourseCreateAPIView(APIView):
 
     def patch(self, request, *args, **kwargs):
         print('here in the patch')
-        user_id, error_response = self.get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         course_id = request.data.get('id')
+
         if not course_id:
             return Response({'detail': 'Course ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -248,44 +221,17 @@ class CourseCreateAPIView(APIView):
 class TutorCourseListAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # to handle file uploads
 
-    def get_user_id_from_token(self, request):
-        try:
-            access_token = request.headers.get('Authorization', '').split(' ')[1]
-            payload = jwt.decode(access_token, options={"verify_signature": False})
-            user_id = payload.get('user_id')
-            if not user_id:
-                return None, Response({'detail': 'User ID not found in token'}, status=status.HTTP_401_UNAUTHORIZED)
-            return user_id, None
-        except Exception as e:
-            return None, Response({'detail': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
-
     def get(self, request, *args, **kwargs):
-        user_id, error_response = self.get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         courses = Course.objects.filter(instructor=user_id, is_complete=True)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # List Un-Complete courses of a tutor
 class ListDraftsView(APIView):
-    def get_user_id_from_token(self, request):
-        try:
-            access_token = request.headers.get('Authorization', '').split(' ')[1]
-            payload = jwt.decode(access_token, options={"verify_signature": False})
-            user_id = payload.get('user_id')
-            if not user_id:
-                return None, Response({'detail': 'User ID not found in token'}, status=status.HTTP_401_UNAUTHORIZED)
-            return user_id, None
-        except Exception as e:
-            return None, Response({'detail': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
 
     def get(self, request):
-        user_id, error_response = self.get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         courses = Course.objects.filter(instructor=user_id, is_complete=False)
         print(courses)
         serializer = CourseSerializer(courses, many=True)
@@ -296,22 +242,9 @@ class ListDraftsView(APIView):
 
 # Delete Un-Completed course of a tutor
 class DeleteDraftView(APIView):
-    def get_user_id_from_token(self, request):
-        try:
-            access_token = request.headers.get('Authorization', '').split(' ')[1]
-            payload = jwt.decode(access_token, options={"verify_signature": False})
-            user_id = payload.get('user_id')
-            if not user_id:
-                return None, Response({'detail': 'User ID not found in token'}, status=status.HTTP_401_UNAUTHORIZED)
-            return user_id, None
-        except Exception as e:
-            return None, Response({'detail': f'Invalid token: {str(e)}'}, status=status.HTTP_401_UNAUTHORIZED)
 
     def delete(self, request, course_id):
-        user_id, error_response = self.get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         try:
             course = Course.objects.get(id=course_id, instructor=user_id, is_complete=False)
         except Course.DoesNotExist:
@@ -554,11 +487,9 @@ class CourseInCompleteView(generics.RetrieveAPIView):
 # activate and deactivate a course - option for tutor
 class TutorToggleActivationCourseView(APIView):
     def patch(self, request):
-        user_id, error_response = get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         course_id = request.data.get('course_id')
+
         if not course_id:
             return Response({'detail': 'Course ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -585,10 +516,7 @@ class CourseUnAuthDetailView(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         print('here in get')
-        user_id, error_response = get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
         response = super().get(request, *args, **kwargs)
         course = self.get_object()
         print('Course:', course, course.id)
@@ -613,13 +541,11 @@ class CourseUnAuthDetailView(generics.RetrieveAPIView):
         return response
 
 class CoursePurchaseView(APIView):
-    # permission_classes = [IsAuthenticated]
-        
+    permission_classes = [IsProfileCompleted]
+    
     def post(self, request, course_id):
-        user_id, error_response = get_user_id_from_token(request)
-        if error_response:
-            return error_response
-
+        user_id = request.user_payload['user_id']
+        print('user_id:', user_id)
         try:
             course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
@@ -652,9 +578,7 @@ class StudentMyCoursesListView(APIView):
     def get(self, request, student_id):
         print('StudentMyCoursesListView headers:', request.headers)
         print('StudentMyCoursesListView user_payload:', request.user_payload)
-        user_id, error_response = get_user_id_from_token(request)
-        if error_response:
-            return error_response
+        user_id = request.user_payload['user_id']
 
         if not student_id == user_id:
             return Response({'detail': 'Unauthorized access'}, status=status.HTTP_403_FORBIDDEN)
@@ -703,10 +627,7 @@ class StudentMyCourseDetailView(APIView):
 
     def get(self, request, purchase_id):
         try:
-            user_id, error_response = get_user_id_from_token(request)
-            if error_response:
-                return error_response
-
+            user_id = request.user_payload['user_id']
             purchase = Purchase.objects.get(id=purchase_id, user=user_id)
             serializer = StudentMyCourseDetailSerializer(purchase)
             return Response(serializer.data)
@@ -717,10 +638,7 @@ class StudentAssessmentSubmitView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self, request, assessment_id):
         try:
-            user_id, error_response = get_user_id_from_token(request)
-            if error_response:
-                return error_response
-            
+            user_id = request.user_payload['user_id']            
             user_answers = request.data.get('answers')
             assement = Assessment.objects.get(id=assessment_id)
             # Check if the user has already purchased the course
@@ -756,10 +674,7 @@ class StudentLectureSubmitView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self, request, lecture_id):
         try:
-            user_id, error_response = get_user_id_from_token(request)
-            if error_response:
-                return error_response
-            
+            user_id = request.user_payload['user_id']
             section_item = SectionItem.objects.get(id=lecture_id)
             # Check if the user has already purchased the course
             purchase = Purchase.objects.get(course=section_item.section.course, user=user_id)
@@ -908,11 +823,7 @@ class TutorCoursePreviewView(APIView):
     def get(self, request, course_id):
         try:
             print('here in preview')
-            user_id, error_response = get_user_id_from_token(request)
-            if error_response:
-                print('error_response:', error_response)
-                return error_response
-            
+            user_id = request.user_payload['user_id']
             course = Course.objects.get(id=course_id, instructor=user_id)
 
             if not course.is_complete:
@@ -961,9 +872,7 @@ class ReviewListCreateAPIView(APIView):
     def post(self, request, course_id):
         print('here in Reviews')
         try:
-            user_id, error_response = get_user_id_from_token(request)
-            if error_response:
-                return error_response
+            user_id = request.user_payload['user_id']
             course = Course.objects.get(id=course_id)
             
             if not Purchase.objects.filter(user=user_id, course=course).exists():
@@ -995,9 +904,7 @@ class StudentCourseReviewsView(APIView):
     def get(self, request, course_id):
         print('here in Reviews for student')
         try:
-            user_id, error_response = get_user_id_from_token(request)
-            if error_response:
-                return error_response
+            user_id = request.user_payload['user_id']
             course = Course.objects.get(id=course_id)
             if not Purchase.objects.filter(user=user_id, course=course).exists():
                 return Response({"error": "You must purchase the course to get the details"}, status=status.HTTP_403_FORBIDDEN)

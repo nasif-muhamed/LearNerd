@@ -77,7 +77,6 @@ class LearningObjective(models.Model):
             models.UniqueConstraint(fields=['course', 'objective'], name='unique_objective_per_course'),
         ]
 
-
     def __str__(self):
         return self.objective
 
@@ -209,7 +208,8 @@ class Purchase(models.Model):
     purchased_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  # Track purchase date
 
     class Meta:
-         unique_together = ('user', 'course')
+        ordering = ['-purchased_at']
+        unique_together = ('user', 'course')
 
     def __str__(self):
         return f"{self.user} + {self.course.title}"

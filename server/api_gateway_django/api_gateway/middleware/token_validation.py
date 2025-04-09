@@ -11,7 +11,7 @@ class TokenValidationMiddleware:
         # public_endpoints = ['/health/', '/docs/']  # Add your public endpoints
         # if request.path in public_endpoints:
         #     return self.get_response(request)
-        print('Custom Validation Middleware')
+        # print('Custom Validation Middleware')
         auth_header = request.headers.get('Authorization', '')
         if not auth_header.startswith('Bearer '):
             # request.user_payload = None
@@ -19,25 +19,25 @@ class TokenValidationMiddleware:
             return self.get_response(request)
         
         token = auth_header.split(' ')[1]
-        print(f'Token: {token}')
+        # print(f'Token: {token}')
         try:
             # Validate and decode token
             access_token = AccessToken(token)
             # Extract payload
-            print('Access Token Payload:', access_token.payload)
+            # print('Access Token Payload:', access_token.payload)
             payload = {
                 'user_id': access_token.get('user_id'),
                 'is_profile_completed': access_token.get('is_profile_completed'),
                 'is_tutor': access_token.get('is_tutor'),
                 'is_admin': access_token.get('is_admin'),
             }
-            print(f'Payload: {payload}')
+            # print(f'Payload: {payload}')
             
             # Attach payload to the headers. So the downstream services can use it.
             request.META['HTTP_X_USER_PAYLOAD'] = str(payload)
-            print(f'HTTP_X_USER_PAYLOAD: {request.META["HTTP_X_USER_PAYLOAD"]}')
-            print('headers:', request.headers)
-            print('get header:', request.headers.get('HTTP_X_USER_PAYLOAD'))
+            # print(f'HTTP_X_USER_PAYLOAD: {request.META["HTTP_X_USER_PAYLOAD"]}')
+            # print('headers:', request.headers)
+            # print('get header:', request.headers.get('HTTP_X_USER_PAYLOAD'))
         except InvalidToken as e:
             error_response = {
                 "detail": str(e),

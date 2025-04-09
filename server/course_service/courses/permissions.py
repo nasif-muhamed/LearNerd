@@ -43,11 +43,20 @@ class IsProfileCompleted(permissions.BasePermission):
     def has_permission(self, request, view):
         print('in IsProfileCompleted')
         user_payload = request.user_payload
+        print('user_payload:', user_payload)
         if user_payload is not None and user_payload.get('is_profile_completed', False):
             return True
         return False
                 
-        
-
+class IsUser(permissions.BasePermission):
+    message = "You must be a user to access this resource."
+    def has_permission(self, request, view):
+        print('in IsUser')
+        user_payload = request.user_payload
+        print('user_payload:', user_payload)
+        if user_payload is not None:
+            return True
+        return False
+    
 class IsUserTutor(permissions.BasePermission):
     pass

@@ -385,7 +385,7 @@ def proxy_to_course_service(request):
     if response.status_code == 204:
         return Response(status=response.status_code)
 
-    print("Response from admin service:", response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content)
+    print("Response from course service:", response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content)
     print(response)
     return Response(
         data=response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content,
