@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { House, GraduationCap, Presentation, Users, Newspaper,
     MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash, 
-    LayoutDashboard, WalletMinimal } from "lucide-react";
+    LayoutDashboard, WalletMinimal, Medal } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
@@ -10,10 +10,11 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
     const sideContentStudent = [
         { name: "Home", icon: House, route: '/student/home' },
         { name: "Courses", icon: GraduationCap, route: '/student/courses' },
-        { name: "Study Room", icon: Presentation, route: '/student/study-room/badges' },
+        { name: "Study Room", icon: Presentation, route: '/student/study-room' },
         { name: "Tutors", icon: Users, route: '/student/tutors' },
         { name: "News", icon: Newspaper, route: '/student/news' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
+        { name: "Badges", icon: Medal, route: '/student/badges' },
         { name: "Profile", icon: UserRound, route: '/profile' },
     ]
 
@@ -24,7 +25,6 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
         { name: "Wallet", icon: WalletMinimal, route: '/tutor/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Profile", icon: UserRound, route: '/profile' },
-
     ]
 
     const sideContent = role == 'student' ? sideContentStudent : sideContentTutor
@@ -46,7 +46,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
             <div className="mt-4">
                 <div
                     onClick={toggleSidebar}
-                    className="hidden md:flex justify-center text-center w-full mb-8 text-gray-400"
+                    className="hidden md:flex justify-center text-center w-full mb-4 text-gray-400"
                 >
                     {isSidebarOpen ? <ArrowBigLeftDash className="cursor-pointer" /> : <ArrowBigRightDash className="cursor-pointer" />}
                 </div>
@@ -57,7 +57,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
                             to={item.route}
                             className={`flex justify-center py-4 transition-colors font-semibold text-center ${
                                 location.pathname.startsWith(item.route)
-                                    ? "bg-gray-900 text-white"
+                                    ? "bg-background text-white"
                                     : "text-gray-400 hover:bg-gray-700"
                             }`}
                         >
@@ -69,7 +69,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
                                 item.name[0]
                             )} */}
                             <div className={`w-[70%] flex items-center ${!isSidebarOpen && 'justify-center'}`}>
-                                <item.icon className="mr-2 h-6 w-6" /> {isSidebarOpen && <span>{item.name}</span>}
+                                <item.icon className={`${isSidebarOpen && 'mr-2'} h-6 w-6`} /> {isSidebarOpen && <span>{item.name}</span>}
                             </div>
                         </Link>
                     ))}

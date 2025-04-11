@@ -12,6 +12,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
+from .utils import get_forwarded_headers
+
 # URLs of the other services
 USER_SERVICE_URL = os.getenv('USER_SERVICE_URL')
 #'http://host.docker.internal:8001/' # 'http://localhost:8001/'  
@@ -337,18 +339,22 @@ class MediaProxyView(APIView):
 
 @api_view(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 def proxy_to_course_service(request):
+    print('proxy_to_course_service')
     url = COURSE_SERVICE_URL[:-1] + request.path
     query_params = request.GET.urlencode()
     if query_params:
         url = f"{url}?{query_params}"
 
     print('url:', url)
+    print('query_params:', query_params)
     print("files api router:", request.FILES)
     print("data post api router:", request.POST)
     print("data api router:", request.data)
 
-    headers = {key: value for key, value in request.headers.items() if key.lower() not in ['host', 'content-length', 'content-type']}
-    headers['Content-Type'] = request.headers.get('Content-Type')  # Preserve original Content-Type
+    # headers = {key: value for key, value in request.headers.items() if key.lower() not in ['host', 'content-length', 'content-type']}
+    # headers['Content-Type'] = request.headers.get('Content-Type')  # Preserve original Content-Type
+    headers = get_forwarded_headers(request)
+    print('Meta proxy 12:', headers)
 
     if request.method in ['POST', 'PATCH']:
         if request.FILES or 'multipart/form-data' in request.headers.get('Content-Type', ''):
@@ -379,7 +385,7 @@ def proxy_to_course_service(request):
     if response.status_code == 204:
         return Response(status=response.status_code)
 
-    print("Response from admin service:", response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content)
+    print("Response from course service:", response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content)
     print(response)
     return Response(
         data=response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content,
@@ -391,11 +397,14 @@ class BasicCouseCreationGateway(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
 
     def get(self, request):
-        print('request get:')
         url = COURSE_SERVICE_URL + request.path  # Construct the external service URL
-        headers = {
-            "Authorization": request.headers.get("Authorization")
-        }
+        query_params = request.GET.urlencode()
+        if query_params:
+            url = f"{url}?{query_params}"
+        print('gateway courses request get:')
+        print('url:', url)
+        headers = get_forwarded_headers(request)
+
         try:
             # Make a GET request to the external service
             response = requests.get(url, headers=headers)
@@ -417,6 +426,8 @@ class BasicCouseCreationGateway(APIView):
         headers = {
             "Authorization": request.headers.get("Authorization")
         }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
         # Forward files and data
         files = request.FILES
         data = request.POST if files else request.data
@@ -443,6 +454,8 @@ class BasicCouseCreationGateway(APIView):
         headers = {
             "Authorization": request.headers.get("Authorization")
         }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
         
         # Determine if it's multipart or JSON data
         files = request.FILES

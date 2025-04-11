@@ -1,7 +1,8 @@
 from django.urls import path
 from . views import RegisterView, VerifyOTPView, ResendOTPView, LoginView,\
-    UserView, UsersView, UserActionView, MyBadgesView, SubmitQuizView, ForgotPasswordView,\
-    ForgotPasswordOTPVerifyView, ForgotPasswordResetView, GoogleLoginView
+    UserView, UsersView, UserDetailsView, UserActionView, MyBadgesView, SubmitQuizView, ForgotPasswordView,\
+    ForgotPasswordOTPVerifyView, ForgotPasswordResetView, GoogleLoginView, MultipleTutorDetailsView,\
+    SingleTutorDetailsView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -17,10 +18,12 @@ urlpatterns = [
     
     path('', UsersView.as_view(), name='users'),
     path('user/', UserView.as_view(), name='user'),
+    path('tutor-details/', MultipleTutorDetailsView.as_view(), name='multiple-tutors-details'), # for getting multiple users using an array e.g. tutors
+    path('tutor-details/<int:pk>/', SingleTutorDetailsView.as_view(), name='single-tutor-details'), # for getting sigle tutor including course details
+    path('user-detail/<int:pk>/', UserDetailsView.as_view(), name='user-details'), # for getting user details e.g. tutor
     path('user-action/<int:pk>/', UserActionView.as_view(), name='user-block'),
 
     # path('check_admin/', CheckIsAdmin.as_view(), name='is_admin'),
-
     path('badges/', MyBadgesView.as_view(), name='badge-list'),
     path('quiz/submit/', SubmitQuizView.as_view(), name='submit_quiz'),
 ]

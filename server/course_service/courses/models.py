@@ -1,8 +1,9 @@
 import os
 from django.db import models
 from django.utils.text import slugify
-from django.core.validators import MinValueValidator, FileExtensionValidator, MaxLengthValidator
+from django.core.validators import MinValueValidator, FileExtensionValidator, MaxLengthValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
+from cloudinary.models import CloudinaryField
 
 class Category(models.Model):
     title = models.CharField(max_length=100, unique=True)
@@ -35,7 +36,7 @@ class Course(models.Model):
     step = models.PositiveIntegerField(default=1)
     video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)
     chat_upto = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # in days
-    safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
+    safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1),], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -56,6 +57,15 @@ class Course(models.Model):
             models.Index(fields=['title', 'is_available']),  # Composite index for common queries
         ]
 
+    def get_average_rating(self):
+        reviews = Review.objects.filter(course=self)
+        if reviews.exists():
+            return reviews.aggregate(models.Avg('rating'))['rating__avg']
+        return 0
+
+    def get_total_reviews(self):
+        return Review.objects.filter(course=self).count()
+
 class LearningObjective(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='objectives')
     objective = models.TextField(max_length=300, blank=False)
@@ -66,7 +76,6 @@ class LearningObjective(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['course', 'objective'], name='unique_objective_per_course'),
         ]
-
 
     def __str__(self):
         return self.objective
@@ -84,6 +93,7 @@ class CourseRequirement(models.Model):
 
     def __str__(self):
         return self.requirement
+    
 
 class Section(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
@@ -147,6 +157,9 @@ class Question(models.Model):
 
     class Meta:
         ordering = ['order']
+        constraints = [
+            models.UniqueConstraint(fields=['text', 'assessment'], name='unique_question_text_per_assesment'),
+        ]
 
     def __str__(self):
         return self.text
@@ -171,21 +184,62 @@ def validate_pdf(value):
         raise ValidationError('Unsupported file type. Only PDFs are allowed.')
     
 class SupportingDocument(models.Model):
-    section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='documents')
+    section_item = models.OneToOneField(SectionItem, on_delete=models.CASCADE, related_name='documents')
     title = models.CharField(max_length=255)
-    file = models.FileField(
-        upload_to='course/supporting_documents/',
-        validators=[
-            FileExtensionValidator(allowed_extensions=['pdf']),
-            MaxLengthValidator(5 * 1024 * 1024),  # 5MB limit
-        ]
-    )    
-    size = models.PositiveIntegerField(blank=True, null=True)  # Store file size in bytes
+    pdf_file = CloudinaryField('pdf', resource_type='raw', blank=True, null=True)
 
     def __str__(self):
         return self.title
 
-    def save(self, *args, **kwargs):
-        if self.file:
-            self.size = self.file.size
-        super().save(*args, **kwargs)
+class Purchase(models.Model):
+    PURCHASE_TYPE_CHOICES = (
+        ('subscription', 'Subscription'),
+        ('freemium', 'Freemium')
+    )
+    user = models.BigIntegerField()
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="purchases")
+    purchase_type = models.CharField(max_length=20, choices=PURCHASE_TYPE_CHOICES)
+    subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    payment_status = models.CharField(max_length=20, default=None, null=True, blank=True)  # Pending, Completed, Failed
+    video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)
+    chat_upto = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # in days
+    safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
+    completed = models.BooleanField(default=False)  # Mark if the course is completed
+    purchased_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  # Track purchase date
+
+    class Meta:
+        ordering = ['-purchased_at']
+        unique_together = ('user', 'course')
+
+    def __str__(self):
+        return f"{self.user} + {self.course.title}"
+
+class SectionItemCompletion(models.Model):
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE)
+    section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name="section_item_completion")
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('purchase', 'section_item')
+
+class Review(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reviews')
+    user = models.BigIntegerField()
+    rating = models.PositiveIntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)])
+    review = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('course', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review by {self.user} for {self.course.title}"
+    
+class NoteSectionItem(models.Model):
+    section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='notes')
+    notes = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Notes for {self.section_item.title}"

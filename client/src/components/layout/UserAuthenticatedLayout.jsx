@@ -15,7 +15,7 @@ const UserAuthenticatedLayout = () => {
     };
 
     return (
-        <div className="h-screen flex flex-col overflow-hidden bg-gray-900">
+        <div className="h-screen flex flex-col overflow-hidden bg-background">
             {/* Full-width Navbar */}
             <HeaderAuth toggleSidebar={toggleSidebar} role={role} />
 

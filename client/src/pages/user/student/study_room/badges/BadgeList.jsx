@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { BookOpenText, BadgeCheck } from "lucide-react";
-import api from "../../../../../services/api/axiosInterceptor";
 import LoadingSpinner from "../../../../../components/ui/LoadingSpinner";
 import axios from "axios";
 
@@ -91,7 +90,6 @@ const BadgeList = () => {
                             ></path>
                         </svg>
                     </div>
-
                 </div>
 
                 {/* Badges Grid */}
@@ -104,10 +102,10 @@ const BadgeList = () => {
                                 key={badge.id}
                                 className="flex items-center hover:bg-gray-800 rounded-lg p-4 cursor-pointer overflow-hidden"
                                 onClick={() =>
-                                    navigate(`/student/study-room/badges/${badge.id}`)
+                                    navigate(`/student/badges/${badge.id}`)
                                 }
                             >
-                                <div className="w-16 h-16  overflow-hidden mr-4 bg-slate-800 border-2 border-slate-700">
+                                <div className="w-16 h-16  overflow-hidden mr-4">
                                     {badge.image ? (
                                         <img
                                             src={badge.image}

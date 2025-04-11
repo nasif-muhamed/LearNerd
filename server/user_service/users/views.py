@@ -7,8 +7,10 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 
 from rest_framework.views import APIView
+from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -16,18 +18,20 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import generics
-from rest_framework_simplejwt.tokens import RefreshToken
+# from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.exceptions import AuthenticationFailed
 
 from . firebase_auth import auth as firebase_auth
 from . models import AdminUser, BadgesAquired
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
-    BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer
+    BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer, \
+    ProfileDetailsSerializer
 from .tasks import send_otp_email
-
+from .services import CallCourseService, CourseServiceException
 
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
-
+call_course_service = CallCourseService()
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -157,20 +161,26 @@ class GoogleLoginView(APIView):
         try:
             # Verify the Firebase token
             decoded_token = firebase_auth.verify_id_token(token)
-            email = decoded_token.get('email')
             print('google:', decoded_token)
+            email = decoded_token.get('email')
             if not email:
                 return Response({'error': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
             # Get or create the user
             user, created = Profile.objects.get_or_create(
                 email=email,
             )
+            
+            if not user.is_active:
+                raise AuthenticationFailed(_("User is blocked"), code="user_blocked")
 
             # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
+            # refresh = RefreshToken.for_user(user)
+            refresh = CustomTokenObtainPairSerializer.get_token(user)
+            access_token = refresh.access_token
+
             return Response({
                 'refresh': str(refresh),
-                'access': str(refresh.access_token),
+                'access': str(access_token),
                 'registered': created,
             }, status=status.HTTP_200_OK)
         except Exception as e:
@@ -308,6 +318,72 @@ class UserView(APIView):
         print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
+    queryset = Profile.objects.all()
+    serializer_class = ProfileDetailsSerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'pk'
+
+class MultipleTutorDetailsView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Get the user_ids from query parameters
+        user_ids = request.data.get('ids', None)
+        print('user_ids:', user_ids)
+        if not user_ids:
+            return Response(
+                {"error": "Please provide user IDs"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Convert string of ids (e.g., "1,2,3") to list of integers
+            id_list = [id for id in user_ids]
+        
+            # Fetch profiles for all IDs
+            profiles = Profile.objects.filter(pk__in=id_list)
+            
+            # Serialize the data
+            serializer = ProfileDetailsSerializer(profiles, many=True)
+            
+            return Response(serializer.data, status=status.HTTP_200_OK)
+            
+        except ValueError:
+            return Response(
+                {"error": "Invalid ID format. Please provide comma-separated integers"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Profile.DoesNotExist:
+            return Response(
+                {"error": "One or more users not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class SingleTutorDetailsView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, pk):
+        print('here in single tutor details:', pk)
+        try:
+            user = Profile.objects.get(pk=pk)
+            serializer = ProfileDetailsSerializer(user)
+            try:
+                response_course_service = call_course_service.get_tutor_course_details(pk)
+            except CourseServiceException as e:
+                # Handle user service exceptions and return appropriate error
+                return Response({"error": str(e)}, status=503)
+            except Exception as e:
+                # Catch any unexpected exceptions
+                return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+            course_data = response_course_service.json()
+            data = serializer.data
+            data['courses'] = course_data
+            return Response(data, status=status.HTTP_200_OK)
+        
+        except Profile.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 def is_admin(user):
     return AdminUser.objects.filter(profile=user).exists()

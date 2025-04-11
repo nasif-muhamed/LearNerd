@@ -15,6 +15,7 @@ import { toast } from "sonner";
 // import api from "../../../../../services/api/axiosInterceptor";
 
 const SectionItemEditForm = ({
+    update,
     sectionIndex,
     sectionItem,
     getItemIcon,
@@ -23,8 +24,9 @@ const SectionItemEditForm = ({
 }) => {
     const [expanded, setExpanded] = useState(false);
     const [errors, setErrors] = useState({})
-    
+
     const onDeleteItem = async (sectionIndex, sectionItemId) => {
+        if (update) return
         try{
             setLoading(true)
             const response = await api.delete(`courses/section-items/${sectionItemId}/delete`)
@@ -38,6 +40,7 @@ const SectionItemEditForm = ({
             setLoading(false)
         }
     }
+
     return (
         <div className="p-3 bg-secondary/30 rounded-md">
             <div 
@@ -48,7 +51,7 @@ const SectionItemEditForm = ({
                 </button>
                 <div className="mr-3">{getItemIcon(sectionItem.item_type)}</div>
                 <span className="flex-1 text-sm">{sectionItem.title}</span>
-                <div className="opacity-100 group-hover:opacity-100 transition-opacity flex space-x-1">
+                {!update && (<div className="opacity-100 group-hover:opacity-100 transition-opacity flex space-x-1">
                     <button
                         title="delete"
                         type="button"
@@ -57,7 +60,7 @@ const SectionItemEditForm = ({
                     >
                         <Trash2 size={14} />
                     </button>
-                </div>
+                </div>)}
             </div>
         
             {expanded && 
@@ -367,73 +370,20 @@ const SectionItemEditForm = ({
                         </div>
                     )}
 
-                    {/* <div className="mb-6">
+                    {sectionItem?.documents && (<div className="mb-6">
                         <h3 className="text-lg font-medium mb-4">
-                            Supporting Document (Optional)
+                            Supporting Document
                         </h3>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-foreground mb-2">
-                                Upload PDF
-                            </label>
-
-                            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                                <div className="mb-3 flex flex-col items-center">
-                                    <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                                    <p className="text-sm text-muted-foreground">
-                                        Drag and drop your PDF here, or click to browse
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        PDF file only (max 5MB)
-                                    </p>
+                        <div className="mt-4">
+                            <a href={sectionItem?.documents?.pdf_url} target="_blank" rel="noopener noreferrer" className="block">
+                                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md max-w-md">
+                                    <span className="text-sm truncate">
+                                        {sectionItem?.documents?.title} 
+                                    </span>
                                 </div>
-
-                                <input
-                                    type="file"
-                                    id="pdf-upload"
-                                    accept=".pdf"
-                                    onChange={handlePdfUpload}
-                                    className="hidden"
-                                    disabled={pdfs.length > 0}
-                                />
-                                <label
-                                    htmlFor="pdf-upload"
-                                    className={`px-4 py-2 rounded-md cursor-pointer inline-block transition-colors ${
-                                        pdfs.length > 0
-                                            ? "bg-secondary/50 text-foreground/50 cursor-not-allowed"
-                                            : "bg-secondary hover:bg-secondary/80 text-foreground"
-                                    }`}
-                                >
-                                    Browse File
-                                </label>
-                            </div>
+                            </a>
                         </div>
-
-                        {pdfs.length > 0 && (
-                            <div className="mt-4">
-                                <h4 className="text-sm font-medium mb-2">
-                                    Uploaded Document
-                                </h4>
-                                <div className="space-y-2">
-                                    {pdfs.map((pdf, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center justify-between p-3 bg-secondary/50 rounded-md"
-                                        >
-                                            <div className="flex items-center">
-                                                <span className="text-sm truncate max-w-[250px]">
-                                                    {pdf.title}
-                                                </span>
-                                                <span className="text-xs text-muted-foreground ml-2">
-                                                    ({Math.round(pdf.size / 1024)} KB)
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div> */}
+                    </div>)}
 
                     {/* <div className="flex justify-end space-x-3 mt-6">
                         <button

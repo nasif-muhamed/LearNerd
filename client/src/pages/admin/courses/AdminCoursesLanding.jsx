@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpenText, BadgeCheck, ChevronRight } from "lucide-react";
+import { BookOpenText, ShieldCheck, ShieldBan, ChevronRight } from "lucide-react";
 import LoadingSpinner from "../../../components/ui/LoadingSpinner";
 import api from "../../../services/api/axiosInterceptor";
 
@@ -100,9 +100,9 @@ const AdminCoursesLanding = () => {
                             {categories.map((cat) => (
                                 <div
                                     key={cat.id}
-                                    className="flex items-center bg-gray-800 hover:bg-gray-750 rounded-lg p-4 cursor-pointer overflow-hidden transition-all duration-300 border border-gray-700"
+                                    className="flex items-center hover:bg-gray-800 rounded-lg p-4 cursor-pointer overflow-hidden transition-all duration-300 border border-gray-700"
                                     onClick={() =>
-                                        navigate(`/student/study-room/categories/${cat.id}`)
+                                        navigate(`/admin/courses/categories`)
                                     }
                                 >
                                     <div className="w-16 h-16 overflow-hidden mr-4 bg-slate-800 border-2 border-slate-700 rounded-md">
@@ -118,20 +118,21 @@ const AdminCoursesLanding = () => {
                                             </div>
                                         )}
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-lg flex items-center">
-                                            {cat.title} 
-                                            {cat.community && 
-                                                <span className="ml-2">
-                                                    <BadgeCheck className="text-blue-500 w-4 h-4" />
-                                                </span>
+                                    <div className="flex-1 flex h-full flex-col items-start">
+                                        <h3 className="font-bold text-lg flex items-center mt-0">
+                                            {cat.title}  
+                                             
+                                            <span className="ml-2">
+                                            {cat.is_active ?
+                                                <ShieldCheck className="text-green-700 w-4 h-4" />
+                                                :
+                                                <ShieldBan className="text-red-700 w-4 h-4" />
                                             }
+                                            </span>
+                                            
                                         </h3>
-                                        <p className="text-sm text-gray-400">
-                                            Questions: {cat.total_questions}
-                                        </p>
-                                        <p className="text-sm text-gray-400">
-                                            To Pass: {cat.pass_mark}
+                                        <p className="text-sm text-gray-400 truncate text-wrap line-clamp-2">
+                                            {cat.description}
                                         </p>
                                     </div>
                                 </div>

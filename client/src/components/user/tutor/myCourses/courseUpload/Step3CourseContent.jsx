@@ -8,6 +8,7 @@ import InputField from "./InputField";
 import api from "../../../../../services/api/axiosInterceptor";
 
 const Step3CourseContent = ({
+    update = false,
     setStep,
     setLoading,
     uploadedCourse,
@@ -85,6 +86,7 @@ const Step3CourseContent = ({
     };
 
     const handleDeleteSectionItem = (sectionIndex, result) => {
+        if (update) return
         console.log("handleDeleteSectionItem:", sectionIndex, result)
         const updatedSections = [...sections];
         updatedSections[sectionIndex].items = result;
@@ -160,6 +162,7 @@ const Step3CourseContent = ({
 
     // Handle delete section
     const handleDeleteSection = async (sectionId, index) => {
+        if (update) return
         try{
             setLoading(true)
             if (sections[index].id !== sectionId){
@@ -342,6 +345,7 @@ const Step3CourseContent = ({
                     <div className="space-y-4">
                         {uploadedCourse.sections?.map((section, index) => (
                             <SectionCard
+                                update={update}
                                 key={index}
                                 setLoading={setLoading}
                                 section={section}
@@ -372,7 +376,7 @@ const Step3CourseContent = ({
             ) : (
                 <button type="button" onClick={() => setShowSectionForm(true)} className="w-full py-4 flex items-center justify-center bg-secondary hover:bg-secondary/80 text-foreground rounded-lg transition-colors mb-6"><Plus size={20} className="mr-2" /> Add New Section</button>
             )}
-            <CourseFormNavigation currentStep={3} onNext={handleSubmit} onPrevious={handlePrevious} disableNext={sections.length === 0} />
+            <CourseFormNavigation currentStep={3} onNext={handleSubmit} onPrevious={handlePrevious} disableNext={sections.length === 0 || update} />
         </div>
     );
 };

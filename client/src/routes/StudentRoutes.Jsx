@@ -7,6 +7,12 @@ import BadgeParticipation from "../pages/user/student/study_room/badges/BadgePar
 import ProtectedRoute from "./user_restrication/ProtectedRoute";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import FourNotFour from "../pages/FourNotFour";
+import StudentCourses from "../pages/user/student/courses/StudentCourses";
+import StudentCourseDetails from "../pages/user/student/courses/StudentCourseDetails";
+import StudyRoomLanding from "../pages/user/student/study_room/StudyRoomLanding";
+import StreamCourse from "../pages/user/student/study_room/StreamCourse";
+import ListTutorsLandingPage from "../pages/user/student/tutors/ListTutorsLandingPage";
+import TutorDetails from "../pages/user/student/tutors/TutorDetails";
 
 const StudentRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -27,12 +33,29 @@ const StudentRoutes = () => {
         <Routes>
             <Route element={<ProtectedRoute />}>
                 <Route path="/home" element={<Home />} />
-                <Route path="/study-room/badges" element={<BadgeList />} />
-                <Route
-                    path="/study-room/badges/:id"
-                    element={<BadgeParticipation />}
-                />
+
+                <Route path="/courses">
+                    <Route index element={<StudentCourses />} />
+                    <Route path=":id" element={<StudentCourseDetails/>} />
+                </Route>
+
+                <Route path="/study-room">
+                    <Route index element={<StudyRoomLanding />} />
+                    <Route path="my-course/:purchaseId" element={<StreamCourse/>} />
+                </Route>
+
+                <Route path="/tutors">
+                    <Route index element={<ListTutorsLandingPage />} />
+                    <Route path=":id" element={<TutorDetails/>} />
+                </Route>
+
+                <Route path="/badges">
+                    <Route index element={<BadgeList />} />
+                    <Route path=":id" element={<BadgeParticipation />} />
+                </Route>
+
             </Route>
+            
             <Route path="*" element={<DynamicRouter />}>
                 {/*  404 page  */}
                 <Route path="*" element={<FourNotFour />} />
