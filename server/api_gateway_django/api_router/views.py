@@ -403,9 +403,8 @@ class BasicCouseCreationGateway(APIView):
             url = f"{url}?{query_params}"
         print('gateway courses request get:')
         print('url:', url)
-        headers = {
-            "Authorization": request.headers.get("Authorization")
-        }
+        headers = get_forwarded_headers(request)
+
         try:
             # Make a GET request to the external service
             response = requests.get(url, headers=headers)
@@ -427,6 +426,8 @@ class BasicCouseCreationGateway(APIView):
         headers = {
             "Authorization": request.headers.get("Authorization")
         }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
         # Forward files and data
         files = request.FILES
         data = request.POST if files else request.data
@@ -453,6 +454,8 @@ class BasicCouseCreationGateway(APIView):
         headers = {
             "Authorization": request.headers.get("Authorization")
         }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
         
         # Determine if it's multipart or JSON data
         files = request.FILES

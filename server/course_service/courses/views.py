@@ -11,8 +11,8 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
-from rest_framework import serializers
+from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import PermissionDenied
 
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
@@ -31,9 +31,10 @@ from .services import CallUserService, UserServiceException
 
 call_user_service = CallUserService()
 
+# Custom pagination class to handle pagination in API responses
 class CustomPagination(PageNumberPagination):
     page_size = 9  # The default page size
-    page_size_query_param = 'page_size'  # Allow users to override page size
+    page_size_query_param = 'page_size'  # Allow users to override page size(default is 9)
     max_page_size = 100  # Maximum page size allowed
 
     def get_paginated_response(self, data):
@@ -55,6 +56,7 @@ class CustomPagination(PageNumberPagination):
             'results': data
         })
 
+# Create, update, and list categories for admin
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUserCustom]
     
@@ -68,8 +70,9 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'title']  # Specify which fields can be used for sorting
     ordering = ['-created_at']  # Default ordering by most recently added item
 
+# List all categories for user
 class UserCategoryView(APIView):
-    permission_classes = [AllowAny] 
+    permission_classes = [AllowAny]
     def get(self, request):
         try:
             categories = Category.objects.all().order_by('-created_at')
@@ -80,6 +83,7 @@ class UserCategoryView(APIView):
         except Category.DoesNotExist:
             return Response({'detail': 'Categories not found'}, status=status.HTTP_404_NOT_FOUND)
 
+# Create a Course for user, List all courses for all, update a course for tutor
 class CourseCreateAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # to handle file uploads, because this view contain multipart data
     pagination_class = CustomPagination
@@ -149,6 +153,7 @@ class CourseCreateAPIView(APIView):
     def post(self, request, *args, **kwargs):
         print('here in the post')
         user_id = request.user_payload['user_id']
+        print('CourseCreate post request:', request.data)
         serializer = CourseSerializer(data=request.data)
         if serializer.is_valid():
             thumbnail_file = serializer.validated_data.pop('thumbnail_file', None)
@@ -175,50 +180,69 @@ class CourseCreateAPIView(APIView):
             return Response(serializer_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs): 
         print('here in the patch')
         user_id = request.user_payload['user_id']
         course_id = request.data.get('id')
 
-        if not course_id:
-            return Response({'detail': 'Course ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            if not course_id:
+                return Response({'detail': 'Course ID is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        course = self.get_object(course_id, user_id)
-        
-        # if course.is_complete:
-        #     return Response(
-        #         {'detail': 'Cannot modify course that is already completed'},
-        #         status=status.HTTP_403_FORBIDDEN
-        #     )
-
-        serializer = CourseSerializer(course, data=request.data, partial=True)
-        if serializer.is_valid():
-            thumbnail_file = serializer.validated_data.pop('thumbnail_file', None)
-            thumbnail_url = None
-            if thumbnail_file:
-                # Delete old thumbnail if it exists
-                if course.thumbnail:
-                    # Extract public_id from URL # best way is to store public id in the model or create unique public id and overwrite.
-                    public_id = "Course/Thumbnail/" + course.thumbnail.split('/')[-1].split('.')[0] 
-                    cloudinary.uploader.destroy(public_id)
+            course = self.get_object(course_id, user_id)
+            
+            serializer = CourseSerializer(course, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                thumbnail_file = serializer.validated_data.pop('thumbnail_file', None)
+                thumbnail_url = None
                 
-                # Upload new thumbnail
-                upload_result = cloudinary.uploader.upload(
-                    thumbnail_file,
-                    folder="Course/Thumbnail/"
-                )
-                thumbnail_url = upload_result.get('secure_url')
-                serializer.validated_data['thumbnail'] = thumbnail_url
-            serializer.save()
-            serializer_data = serializer.data
-            if thumbnail_url is not None:
-                serializer_data['thumbnail'] = thumbnail_url
-            print(serializer_data)
-            return Response(serializer_data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                if thumbnail_file:
+                    try:
+                        # Delete old thumbnail if it exists
+                        if course.thumbnail:
+                            public_id = "Course/Thumbnail/" + course.thumbnail.split('/')[-1].split('.')[0]
+                            cloudinary.uploader.destroy(public_id)
+                        
+                        # Upload new thumbnail
+                        upload_result = cloudinary.uploader.upload(
+                            thumbnail_file,
+                            folder="Course/Thumbnail/"
+                        )
+                        thumbnail_url = upload_result.get('secure_url')
+                        serializer.validated_data['thumbnail'] = thumbnail_url
+                    except Exception as e:
+                        return Response(
+                            {'detail': f'Error handling thumbnail: {str(e)}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
+                
+                # Save the serializer
+                serializer.save()
+                serializer_data = serializer.data
+                
+                if thumbnail_url is not None:
+                    serializer_data['thumbnail'] = thumbnail_url
+                    
+                print(serializer_data)
+                return Response(serializer_data, status=status.HTTP_200_OK)
+                
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Http404:
+            return Response(
+                {'detail': 'Course not found or you do not have permission to modify it'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'An unexpected error occurred: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 # List uploaded courses of a tutor
 class TutorCourseListAPIView(APIView):
+    permission_classes = [IsUser]
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # to handle file uploads
 
     def get(self, request, *args, **kwargs):
@@ -229,7 +253,7 @@ class TutorCourseListAPIView(APIView):
 
 # List Un-Complete courses of a tutor
 class ListDraftsView(APIView):
-
+    permission_classes = [IsUser]
     def get(self, request):
         user_id = request.user_payload['user_id']
         courses = Course.objects.filter(instructor=user_id, is_complete=False)
@@ -240,8 +264,9 @@ class ListDraftsView(APIView):
         # serializer_data['thumbnail'] = thumbnail_url
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# Delete Un-Completed course of a tutor
+# Delete Un-Completed(draft) course of a tutor
 class DeleteDraftView(APIView):
+    permission_classes = [IsUser]
 
     def delete(self, request, course_id):
         user_id = request.user_payload['user_id']
@@ -257,7 +282,8 @@ class DeleteDraftView(APIView):
 
 # Create Objectives and Requirements
 class CreateObjectivesRequirementsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsUser]
+    
     def post(self, request):
         serializer = CourseObjectivesRequirementsSerializer(data=request.data)
         if serializer.is_valid():
@@ -313,9 +339,16 @@ class ObjectiveUpdateView(generics.UpdateAPIView):
     queryset = LearningObjective.objects.all()
     serializer_class = LearningObjectiveSerializer
     lookup_field = 'id'
+    permission_classes = [IsUser]
 
     def patch(self, request, *args, **kwargs):
         objective = self.get_object()
+
+        # Checking requesting user and course instructor are same
+        user_id = request.user_payload['user_id']
+        if objective.course.instructor != user_id:
+            raise PermissionDenied("You can only update objectives for courses you created.")
+        
         self.partial_update(request, *args, **kwargs)
         all_objectives = LearningObjective.objects.filter(course=objective.course)
         serializer = LearningObjectiveSerializer(all_objectives, many=True)
@@ -326,9 +359,16 @@ class RequirementUpdateView(generics.UpdateAPIView):
     queryset = CourseRequirement.objects.all()
     serializer_class = CourseRequirementSerializer
     lookup_field = 'id'
+    permission_classes = [IsUser]
 
     def patch(self, request, *args, **kwargs):
         requirement = self.get_object()
+
+        # Checking requesting user and course instructor are same
+        user_id = request.user_payload['user_id']
+        if requirement.course.instructor != user_id:
+            raise PermissionDenied("You can only update requirements for courses you created.")
+        
         self.partial_update(request, *args, **kwargs)
         all_requirements = CourseRequirement.objects.filter(course=requirement.course)
         serializer = CourseRequirementSerializer(all_requirements, many=True)
@@ -341,6 +381,12 @@ class ObjectiveDeleteView(generics.DestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         objective = self.get_object()
+
+        # Checking requesting user and course instructor are same
+        user_id = request.user_payload['user_id']
+        if objective.course.instructor != user_id:
+            raise PermissionDenied("You can only update objectives for courses you created.")
+
         course = objective.course
         remaining_objectives = LearningObjective.objects.filter(course=course)
         if course.is_complete and remaining_objectives.count() <= 1:
@@ -356,6 +402,12 @@ class RequirementDeleteView(generics.DestroyAPIView):
 
     def delete(self, request, *args, **kwargs):
         requirement = self.get_object()
+
+        # Checking requesting user and course instructor are same
+        user_id = request.user_payload['user_id']
+        if requirement.course.instructor != user_id:
+            raise PermissionDenied("You can only update requirements for courses you created.")
+
         course = requirement.course
         remaining_requirements = CourseRequirement.objects.filter(course=course)
         # Check if the course is complete
@@ -365,39 +417,49 @@ class RequirementDeleteView(generics.DestroyAPIView):
         serializer = CourseRequirementSerializer(remaining_requirements, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# Create Section
+# Create New Section
 class SectionCreateView(APIView):
+    permission_classes = [IsUser]
+
     def post(self, request, *args, **kwargs):
+        user_id = request.user_payload['user_id']
         serializer = SectionSerializer(data=request.data)
         if serializer.is_valid():
             try:
                 course_id = request.data.get('course')
                 print('coursid:', course_id)
-
                 course = Course.objects.get(id=course_id)
                 print('cours:', course)
-                # Fetch all objectives and requirements for the course
-                sections = Section.objects.filter(course=course)
-                print(sections.values_list)
+                # sections = Section.objects.filter(course=course)
+                # print(sections.values_list)
             except Course.DoesNotExist:
                 return Response({'detail': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
-
+            
+            print('user_id == course.instructor:', user_id == course.instructor)
+            if user_id != course.instructor:
+                raise PermissionDenied("You can only create sections for courses you created.")
             serializer.save()
             # sections_data = SectionSerializer(sections, many=True)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# Delete Section
 class SectionDeleteView(generics.DestroyAPIView):
     queryset = Section.objects.all()
     lookup_field = 'id'
 
     def delete(self, request, *args, **kwargs):
         section = self.get_object()
+        user_id = request.user_payload['user_id']
         if section.course.is_complete:
             return Response(
                 {'detail': 'Cannot modify course that is already completed'},
                 status=status.HTTP_403_FORBIDDEN
             )
+        
+        if user_id != section.course.instructor:
+            raise PermissionDenied("You can only delete sections for courses you created.")
+        print('user_id == section.course.instructor', user_id == section.course.instructor)
         self.destroy(request, *args, **kwargs)
         remaining_sections = Section.objects.filter(course=section.course)
         serializer = SectionDetailSerializer(remaining_sections, many=True)
@@ -411,13 +473,27 @@ class SectionDeleteView(generics.DestroyAPIView):
 #             return Response(serializer.data, status=status.HTTP_201_CREATED)
 #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# Create New Section Item
 class SectionItemCreateView(generics.CreateAPIView):
     queryset = SectionItem.objects.all()
     serializer_class = SectionItemSerializer
     parser_classes = (MultiPartParser, FormParser)
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsProfileCompleted]
 
     def create(self, request, *args, **kwargs):
+        user_id = request.user_payload['user_id']
+        section_id = request.data.get('section')
+        try:
+            section = get_object_or_404(Section, id=section_id, course__instructor=user_id)
+            print('section item create', section)
+        except Section.DoesNotExist:
+            return Response({'detail': 'Section not found or you do not have permission to modify it'},
+                            status=status.HTTP_404_NOT_FOUND)
+        if section.course.is_complete:
+            return Response(
+                {'detail': 'Cannot modify sections of course that is already completed'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -427,6 +503,7 @@ class SectionItemCreateView(generics.CreateAPIView):
         detail_serializer = SectionItemDetailSerializer(created_instance, context=self.get_serializer_context())
         return Response(detail_serializer.data, status=status.HTTP_201_CREATED, headers=headers)    
 
+# Delete Section Item
 class SectionItemDeleteView(generics.DestroyAPIView):
     queryset = SectionItem.objects.all()
     lookup_field = 'id'
@@ -443,40 +520,40 @@ class SectionItemDeleteView(generics.DestroyAPIView):
         serializer = SectionItemDetailSerializer(remaining_sectionItems, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-class SectionContentView(generics.RetrieveAPIView):
-    serializer_class = SectionDetailSerializer
-    # permission_classes = [IsAuthenticated]  # Uncomment if authentication is required
+# Fetch Section Content
+# class SectionContentView(generics.RetrieveAPIView):
+#     serializer_class = SectionDetailSerializer
+#     # permission_classes = [IsAuthenticated]  # Uncomment if authentication is required
 
-    def get_object(self):
-        section_id = self.kwargs.get('section_id')
-        section = get_object_or_404(Section, id=section_id)
+#     def get_object(self):
+#         section_id = self.kwargs.get('section_id')
+#         section = get_object_or_404(Section, id=section_id)
         
-        # Check course availability and completion
-        course = section.course
-        # if not course.is_available:
-        #     raise serializers.ValidationError("This course is not available")
-        # if not course.is_complete:
-        #     raise serializers.ValidationError("This course is not complete")
+#         # Check course availability and completion
+#         course = section.course
+#         # if not course.is_available:
+#         #     raise serializers.ValidationError("This course is not available")
+#         # if not course.is_complete:
+#         #     raise serializers.ValidationError("This course is not complete")
             
-        return section
+#         return section
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    # def retrieve(self, request, *args, **kwargs):
+    #     instance = self.get_object()
+    #     serializer = self.get_serializer(instance)
+    #     return Response(serializer.data, status=status.HTTP_200_OK)
     
+# To fetch entire view of a course - on uploading a new course or updating an existing course
 class CourseInCompleteView(generics.RetrieveAPIView):
     serializer_class = CourseDetailSerializer
-    # permission_classes = [IsAuthenticated]  # Uncomment if authentication is required
+    permission_classes = [IsProfileCompleted]
 
     def get_object(self):
         course_id = self.kwargs.get('course_id')
         course = get_object_or_404(Course, id=course_id)
-        
         # # Check course completion
         # if course.is_complete:
         #     raise serializers.ValidationError("This course is already completed")
-            
         return course
 
     def retrieve(self, request, *args, **kwargs):
@@ -504,6 +581,7 @@ class TutorToggleActivationCourseView(APIView):
         except Course.DoesNotExist:
             return Response({'detail': 'Course not found'}, status=status.HTTP_404_NOT_FOUND)
 
+# Showing Course details to user who is not enrolled in the course
 class CourseUnAuthDetailView(generics.RetrieveAPIView):
     queryset = Course.objects.prefetch_related(
         'objectives',
@@ -540,6 +618,7 @@ class CourseUnAuthDetailView(generics.RetrieveAPIView):
             return Response({'detail': 'This course is not available'}, status=status.HTTP_403_FORBIDDEN)
         return response
 
+# Purchase a new course
 class CoursePurchaseView(APIView):
     permission_classes = [IsProfileCompleted]
     
@@ -572,6 +651,7 @@ class CoursePurchaseView(APIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# List all courses purchased by a student
 class StudentMyCoursesListView(APIView): 
     # permission_classes = [IsAuthenticated]
 
@@ -621,7 +701,8 @@ class StudentMyCoursesListView(APIView):
 #         purchase = Purchase.objects.filter(user=user_id, course=course)
 #         response.data['is_enrolled'] = 'No' if not purchase.exists() else purchase.first().purchase_type
 #         return response
-    
+
+# Fetch Enrolled Courses Entire Detials, including tutorials and assessments
 class StudentMyCourseDetailView(APIView):
     permission_classes = [IsProfileCompleted]
 
@@ -634,6 +715,10 @@ class StudentMyCourseDetailView(APIView):
         except Purchase.DoesNotExist:
             return Response({"error": "Course purchase not found"}, status=404)
 
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+        
+# Mark checked - Submit Assessment Answers of an enrolled course
 class StudentAssessmentSubmitView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self, request, assessment_id):
@@ -670,6 +755,7 @@ class StudentAssessmentSubmitView(APIView):
         except Purchase.DoesNotExist:
             return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
 
+# Mark checked - Submit Lecture Completion of an enrolled course
 class StudentLectureSubmitView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self, request, lecture_id):
@@ -693,6 +779,8 @@ class StudentLectureSubmitView(APIView):
             return Response({"error": "Item not found"}, status=404)
         except Purchase.DoesNotExist:
             return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
 
 # class EvaluateQuizView(APIView):
 #     permission_classes = [AllowAny]
@@ -745,9 +833,10 @@ class StudentLectureSubmitView(APIView):
 #                 status=status.HTTP_400_BAD_REQUEST
 #             )
 
-
+# List Tutors with pagination and filter for the student
 class StudentFetchTopTutorsView(APIView):
     pagination_class = CustomPagination
+    permission_classes = [AllowAny]
 
     def get(self, request):
         try:
@@ -802,6 +891,7 @@ class StudentFetchTopTutorsView(APIView):
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
+# Total courses and enrollments of a tutor - called from user_service
 class StudentTutorAnalysisView(APIView):
     def get(self, request, id):
         try:
@@ -819,7 +909,9 @@ class StudentTutorAnalysisView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# Tutor can see the preview of the course and students enrolled in it
 class TutorCoursePreviewView(APIView):
+    permission_classes = [IsProfileCompleted]
     def get(self, request, course_id):
         try:
             print('here in preview')
@@ -846,9 +938,7 @@ class TutorCoursePreviewView(APIView):
             except UserServiceException as e:
                 # Handle user service exceptions and return appropriate error
                 return Response({"error": str(e)}, status=503)
-            except Exception as e:
-                # Catch any unexpected exceptions
-                return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+            
             print('students_data:', students_data)
             data['students'] = students_data
             return Response(data, status=status.HTTP_200_OK)
@@ -856,18 +946,23 @@ class TutorCoursePreviewView(APIView):
         except Course.DoesNotExist:
             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
 
-class ReviewListCreateAPIView(APIView):
-    # permission_classes = [IsAuthenticated]
+        except Exception as e:
+            # Catch any unexpected exceptions
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
-    def get(self, request, course_id):
-        print('here in Reviews')
-        try:
-            course = Course.objects.get(id=course_id)
-            reviews = Review.objects.filter(course=course)
-            serializer = ReviewSerializer(reviews, many=True)
-            return Response(serializer.data)
-        except Course.DoesNotExist:
-            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+# Create a new review for a course
+class ReviewListCreateAPIView(APIView):
+    permission_classes = [IsProfileCompleted]
+
+    # def get(self, request, course_id):
+    #     print('here in Reviews')
+    #     try:
+    #         course = Course.objects.get(id=course_id)
+    #         reviews = Review.objects.filter(course=course)
+    #         serializer = ReviewSerializer(reviews, many=True)
+    #         return Response(serializer.data)
+    #     except Course.DoesNotExist:
+    #         return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request, course_id):
         print('here in Reviews')
@@ -892,15 +987,19 @@ class ReviewListCreateAPIView(APIView):
         except Course.DoesNotExist:
             return Response( {"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND )
         
-class CourseReviewsView(generics.ListAPIView):
-    serializer_class = ReviewSerializer
 
-    def get_queryset(self):
-        course_id = self.kwargs.get('course_id')
-        print()
-        return Review.objects.filter(course__id=course_id).order_by('-created_at')
+# class CourseReviewsView(generics.ListAPIView):
+#     serializer_class = ReviewSerializer
 
+#     def get_queryset(self):
+#         course_id = self.kwargs.get('course_id')
+#         print()
+#         return Review.objects.filter(course__id=course_id).order_by('-created_at')
+
+# Fetch Reviews of a course for a student, incuding own review
 class StudentCourseReviewsView(APIView):
+    permission_classes = [IsUser]
+
     def get(self, request, course_id):
         print('here in Reviews for student')
         try:
@@ -925,8 +1024,8 @@ class StudentCourseReviewsView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
+# Fetch all courses uploaded by a tutor and enrolled by a student - for admin
 class AdminUserCoursesDetailsView(APIView):
-    # permission_classes = [IsAuthenticated, IsAdminUser]
     permission_classes = [IsAdminUserCustom]
 
     def get(self, request, user_id):
@@ -943,3 +1042,8 @@ class AdminUserCoursesDetailsView(APIView):
             return Response(data, status=status.HTTP_200_OK)
         except Purchase.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Course.DoesNotExist:
+            return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        

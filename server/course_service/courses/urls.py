@@ -3,10 +3,10 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AdminCategoryViewSet, UserCategoryView, CourseCreateAPIView, CreateObjectivesRequirementsView, ObjectiveListView, TutorCourseListAPIView,
     RequirementListView, ObjectiveUpdateView, RequirementUpdateView, ObjectiveDeleteView, RequirementDeleteView, SectionCreateView,
-    SectionItemCreateView, SectionContentView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
+    SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseReviewsView,
-    CourseReviewsView, AdminUserCoursesDetailsView,
+    AdminUserCoursesDetailsView,
 )
 
 router = DefaultRouter()
@@ -45,7 +45,7 @@ urlpatterns = [
     path('section-items/', SectionItemCreateView.as_view(), name='section-item-create'),
     path('section-items/<int:id>/delete', SectionItemDeleteView.as_view(), name='section-item-delete'),
     
-    path('incomplete-sections/<int:section_id>/content/', SectionContentView.as_view(), name='section-content'),
+    # path('incomplete-sections/<int:section_id>/content/', SectionContentView.as_view(), name='section-content'),
     path('incomplete-course/<int:course_id>/content/', CourseInCompleteView.as_view(), name='incomplete-course'),
     path('', include(router.urls)),
 
@@ -65,6 +65,7 @@ urlpatterns = [
     path('<int:course_id>/reviews/', ReviewListCreateAPIView.as_view(), name='review-list-create'),    
     # Get all reviews by a specific user
     # path('users/<int:user_id>/reviews/', UserReviewsView.as_view(), name='user-reviews'),
+    
     # Get current user's reviews
     path('my-course/<int:course_id>/reviews/', StudentCourseReviewsView.as_view(), name='my-course-reviews'),
 

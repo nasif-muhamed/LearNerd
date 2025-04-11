@@ -24,14 +24,15 @@ class TokenValidationMiddleware:
             # Validate and decode token
             access_token = AccessToken(token)
             # Extract payload
-            # print('Access Token Payload:', access_token.payload)
+            # print('Access Token Payload:', access_token)
+            
             payload = {
                 'user_id': access_token.get('user_id'),
                 'is_profile_completed': access_token.get('is_profile_completed'),
                 'is_tutor': access_token.get('is_tutor'),
                 'is_admin': access_token.get('is_admin'),
             }
-            # print(f'Payload: {payload}')
+            print(f'User Payload: {payload}')
             
             # Attach payload to the headers. So the downstream services can use it.
             request.META['HTTP_X_USER_PAYLOAD'] = str(payload)
