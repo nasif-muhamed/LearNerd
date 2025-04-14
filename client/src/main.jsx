@@ -7,6 +7,7 @@ import { Toaster } from 'sonner'
 import './index.css'
 import App from './App.jsx'
 import LoadingSpinner from "./components/ui/LoadingSpinner.jsx"
+import StripeProvider from './services/stripe/StripeProvider.jsx';
 
 createRoot(document.getElementById('root')).render(
     <StrictMode>
@@ -14,7 +15,9 @@ createRoot(document.getElementById('root')).render(
             <PersistGate loading={<LoadingSpinner />} persistor={persistor}>
 
                 <Toaster position="top-right" richColors />
-                <App />
+                <StripeProvider>
+                    <App />
+                </StripeProvider>
 
             </PersistGate>
         </Provider>

@@ -5,7 +5,7 @@ import Home from "../pages/user/student/Home";
 import BadgeList from "../pages/user/student/study_room/badges/BadgeList";
 import BadgeParticipation from "../pages/user/student/study_room/badges/BadgeParticipation";
 import ProtectedRoute from "./user_restrication/ProtectedRoute";
-import DynamicRouter from "../routes/user_restrication/DynamicRouter";
+import DynamicRouter from "./user_restrication/DynamicRouter";
 import FourNotFour from "../pages/FourNotFour";
 import StudentCourses from "../pages/user/student/courses/StudentCourses";
 import StudentCourseDetails from "../pages/user/student/courses/StudentCourseDetails";
@@ -13,6 +13,8 @@ import StudyRoomLanding from "../pages/user/student/study_room/StudyRoomLanding"
 import StreamCourse from "../pages/user/student/study_room/StreamCourse";
 import ListTutorsLandingPage from "../pages/user/student/tutors/ListTutorsLandingPage";
 import TutorDetails from "../pages/user/student/tutors/TutorDetails";
+import PaymentSuccess from "../pages/user/student/courses/subscription_result/paymentSuccess";
+import PaymentCancel from "../pages/user/student/courses/subscription_result/PaymentCancel";
 
 const StudentRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -37,6 +39,9 @@ const StudentRoutes = () => {
                 <Route path="/courses">
                     <Route index element={<StudentCourses />} />
                     <Route path=":id" element={<StudentCourseDetails/>} />
+                    <Route path=":id/success" element={<PaymentSuccess/>} />
+                    <Route path=":id/cancel" element={<PaymentCancel/>} />
+
                 </Route>
 
                 <Route path="/study-room">
