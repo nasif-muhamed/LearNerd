@@ -21,14 +21,14 @@ class RequestPopulatorMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        print('RequestPopulatorMiddleware')
+        # print('RequestPopulatorMiddleware')
         # logger.debug("Processing request in RequestPopulatorMiddleware")
         # logger.debug("headears: %s", request.headers)
         
         # Get the user payload from the header (normalized as HTTP_X_USER_PAYLOAD)
         user_payload_str = request.headers.get('X-User-Payload', None)
         # print(f'User Payload Header: {request.headers}')
-        print(f'User Payload: {user_payload_str}')
+        # print(f'User Payload: {user_payload_str}')
         if user_payload_str is None:
             # logger.debug("No user payload found in request headers")
             request.user_payload = None

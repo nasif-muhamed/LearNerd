@@ -205,6 +205,8 @@ class Purchase(models.Model):
     chat_upto = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # in days
     safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
     completed = models.BooleanField(default=False)  # Mark if the course is completed
+    stripe_payment_intent_id = models.CharField(max_length=100, null=True, blank=True)
+    stripe_checkout_session_id = models.CharField(max_length=100, null=True, blank=True)
     purchased_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  # Track purchase date
 
     class Meta:

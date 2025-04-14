@@ -6,7 +6,7 @@ from .views import (
     SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseReviewsView,
-    AdminUserCoursesDetailsView,
+    AdminUserCoursesDetailsView, StripeWebhookView
 )
 
 router = DefaultRouter()
@@ -49,8 +49,11 @@ urlpatterns = [
     path('incomplete-course/<int:course_id>/content/', CourseInCompleteView.as_view(), name='incomplete-course'),
     path('', include(router.urls)),
 
+    # purchase a course
     path('<int:course_id>/purchase/', CoursePurchaseView.as_view(), name='purchase-course'),
-
+    path('stripe/webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
+    
+    # all courses of a user
     path('student/<int:student_id>/my-courses/', StudentMyCoursesListView.as_view(), name='purchased-course-student'),
 
     # purchased course's section items completion

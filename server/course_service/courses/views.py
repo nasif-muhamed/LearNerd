@@ -1,9 +1,11 @@
 import cloudinary.uploader
 import jwt
+import stripe
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.db import DatabaseError
+from django.conf import settings
 
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
@@ -619,12 +621,13 @@ class CourseUnAuthDetailView(generics.RetrieveAPIView):
         return response
 
 # Purchase a new course
+stripe.api_key = settings.STRIPE_SECRET_KEY
 class CoursePurchaseView(APIView):
     permission_classes = [IsProfileCompleted]
     
     def post(self, request, course_id):
         user_id = request.user_payload['user_id']
-        print('user_id:', user_id)
+        
         try:
             course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
@@ -636,20 +639,121 @@ class CoursePurchaseView(APIView):
         
         if course.instructor == user_id:
             return Response({'detail': 'You cannot purchase your own course'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        print('course_id:', course_id)
-        print('user_id:', user_id)
-        request.data['course'] = course_id
-        request.data['user'] = user_id
-        serializer = PurchaseCreateSerializer(data=request.data)
 
-        if serializer.is_valid():
-            serializer.save()
-            print('serializer.data:', serializer.data)
-            print('serializer.data:', serializer.data.get('id'))
-            return Response({'detail': 'Course purchased successfully', 'purchase_id': serializer.data.get('id')}, status=status.HTTP_201_CREATED)
+        purchase_type = request.data.get('purchase_type')
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if purchase_type == 'freemium':
+            # Handle freemium purchase (no payment required)
+            purchase_data = {
+                'user': user_id,
+                'course': course_id,
+                'purchase_type': 'freemium',
+                'payment_status': 'completed'
+            }
+            serializer = PurchaseCreateSerializer(data=purchase_data)
+            if serializer.is_valid():
+                purchase = serializer.save()
+                return Response({
+                    'detail': 'Course purchased successfully',
+                    'purchase_id': serializer.data.get('id'),
+                    'is_freemium': True
+                }, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        elif purchase_type == 'subscription':
+            try:
+                # Create Stripe Checkout Session
+                checkout_session = stripe.checkout.Session.create(
+                    payment_method_types=['card'],
+                    line_items=[
+                        {
+                            'price_data': {
+                                'currency': 'usd',
+                                'unit_amount': int(course.subscription_amount * 100),  # Convert to cents
+                                'product_data': {
+                                    'name': course.title,
+                                    'description': f'Subscription for {course.title}',
+                                },
+                            },
+                            'quantity': 1,
+                        },
+                    ],
+                    mode='payment',
+                    success_url=f'{request.data.get("frontend_url")}/student/courses/{course_id}/success?session_id={{CHECKOUT_SESSION_ID}}',
+                    cancel_url=f'{request.data.get("frontend_url")}/student/courses/{course_id}/cancel',
+                    metadata={
+                        'user_id': str(user_id),
+                        'course_id': str(course_id),
+                        'purchase_type': 'subscription'
+                    }
+                )
+                
+                # Create pending purchase
+                purchase_data = {
+                    'user': user_id,
+                    'course': course_id,
+                    'purchase_type': 'subscription',
+                    'subscription_amount': course.subscription_amount,
+                    'video_session': course.video_session,
+                    'chat_upto': course.chat_upto,
+                    'safe_period': course.safe_period,
+                    'payment_status': 'pending',
+                    'stripe_checkout_session_id': checkout_session.id
+                }
+                
+                serializer = PurchaseCreateSerializer(data=purchase_data)
+                if serializer.is_valid():
+                    # purchase = serializer.save()
+                    print('checkout_session_id:', checkout_session.id)
+                    return Response({
+                        'detail': 'Checkout session created',
+                        'checkout_session_id': checkout_session.id,
+                        'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY
+                    }, status=status.HTTP_200_OK)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+            except stripe.error.StripeError as e:
+                return Response({
+                    'detail': 'Error creating checkout session',
+                    'error': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({'detail': 'Invalid purchase type'}, status=status.HTTP_400_BAD_REQUEST)
+
+# webhook for stripe payment
+# from django.views.decorators.csrf import csrf_exempt
+# from django.utils.decorators import method_decorator
+# @method_decorator(csrf_exempt, name='dispatch')
+class StripeWebhookView(APIView):
+    def post(self, request):
+        print('Inside StripeWebhookView --------------------------------------------------')
+        payload = request.body
+        print('payload:', payload)
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+        print('sig_header:', sig_header)
+        try:
+            print('before try')
+            print('STRIPE_WEBHOOK_SECRET:', settings.STRIPE_WEBHOOK_SECRET, '\nSTRIPE_WEBHOOK_SECRET type:', type(settings.STRIPE_WEBHOOK_SECRET))
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+            print('after try')
+        except ValueError as e:
+            print('value error:', e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        except stripe.error.SignatureVerificationError as e:
+            print('signature verification error:', e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            print('inside completed:', session['id'])
+            # purchase = Purchase.objects.get(stripe_checkout_session_id=session['id'])
+            # purchase.payment_status = 'completed'
+            # purchase.stripe_payment_intent_id = session.get('payment_intent')
+            # purchase.save()
+
+        return Response(status=status.HTTP_200_OK)
 
 # List all courses purchased by a student
 class StudentMyCoursesListView(APIView): 
