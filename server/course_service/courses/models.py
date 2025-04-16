@@ -30,7 +30,7 @@ class Course(models.Model):
     instructor = models.BigIntegerField()
     freemium = models.BooleanField(default=True)
     subscription = models.BooleanField(default=True)
-    subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, default=None, null=True, blank=True, validators=[MinValueValidator(0)])
+    subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, default=None, null=True, blank=True, validators=[MinValueValidator(0.00)])
     is_available = models.BooleanField(default=False)
     is_complete = models.BooleanField(default=False)
     step = models.PositiveIntegerField(default=1)
@@ -206,7 +206,7 @@ class Purchase(models.Model):
     safe_period = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)  # time period where a student's payment will be held by the admin
     completed = models.BooleanField(default=False)  # Mark if the course is completed
     stripe_payment_intent_id = models.CharField(max_length=100, null=True, blank=True)
-    stripe_checkout_session_id = models.CharField(max_length=100, null=True, blank=True)
+    # stripe_checkout_session_id = models.CharField(max_length=100, null=True, blank=True)
     purchased_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)  # Track purchase date
 
     class Meta:
