@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { useStripe } from '@stripe/react-stripe-js';
+// import { useStripe } from '@stripe/react-stripe-js';
 import api from "../../../../services/api/axiosInterceptor";
 import handleError from "../../../../utils/handleError";
 import formatTimeHMS from "../../../../utils/formatTimeHMS";
@@ -69,7 +69,7 @@ const StudentCourseDetails = () => {
         ],
     };
 
-    const stripe = useStripe();
+    // const stripe = useStripe();
     const { id } = useParams();
     const [course, setCourse] = useState(null);
     const [error, setError] = useState("");
@@ -96,43 +96,77 @@ const StudentCourseDetails = () => {
         if (!course) fetchCourse();
     }, []);
 
+    // const handlePurchase = async (purchaseType) => {
+    //     try {
+    //         setLoading(true);
+    //         const body = {
+    //             course: id,
+    //             purchase_type: purchaseType,
+    //             frontend_url: window.location.origin
+    //         };
+        
+    //         if (purchaseType === "subscription") {
+    //             body.subscription_amount = course?.subscription_amount;
+    //             body.video_session = course?.video_session;
+    //             body.chat_upto = course?.chat_upto;
+    //             body.safe_period = course?.safe_period;
+    //         }
+        
+    //         const response = await api.post(`courses/${id}/purchase/`, body);
+            
+    //         if (purchaseType === 'subscription') {
+    //                 // Redirect to Stripe Checkout
+    //                 const { checkout_session_id } = response.data;
+    //                 const result = await stripe.redirectToCheckout({
+    //                 sessionId: checkout_session_id
+    //             });
+        
+    //             if (result.error) {
+    //                 throw new Error(result.error.message);
+    //             }
+    //         } else {
+    //                 // Handle freemium purchase
+    //                 toast.success("Course purchased successfully!");
+    //                     setCourse((prevCourse) => ({
+    //                     ...prevCourse,
+    //                     purchase_id: response.data.purchase_id,
+    //                     is_enrolled: 'freemium',
+    //                 }));
+    //         }
+    //     } catch (error) {
+    //         console.log("Purchase Error:", error);
+    //         toast.error(error.response?.data?.detail || "Error purchasing course");
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+
     const handlePurchase = async (purchaseType) => {
         try {
             setLoading(true);
+            
+            if (purchaseType === "subscription") {
+                // Redirect to our custom payment page instead of Stripe Checkout
+                navigate(`/student/courses/${id}/payment`);
+                return;
+            }
+            
+            // Handle freemium purchase (unchanged)
             const body = {
                 course: id,
                 purchase_type: purchaseType,
                 frontend_url: window.location.origin
             };
-        
-            if (purchaseType === "subscription") {
-                body.subscription_amount = course?.subscription_amount;
-                body.video_session = course?.video_session;
-                body.chat_upto = course?.chat_upto;
-                body.safe_period = course?.safe_period;
-            }
-        
+            
             const response = await api.post(`courses/${id}/purchase/`, body);
             
-            if (purchaseType === 'subscription') {
-                    // Redirect to Stripe Checkout
-                    const { checkout_session_id } = response.data;
-                    const result = await stripe.redirectToCheckout({
-                    sessionId: checkout_session_id
-                });
-        
-                if (result.error) {
-                    throw new Error(result.error.message);
-                }
-            } else {
-                    // Handle freemium purchase
-                    toast.success("Course purchased successfully!");
-                        setCourse((prevCourse) => ({
-                        ...prevCourse,
-                        purchase_id: response.data.purchase_id,
-                        is_enrolled: 'freemium',
-                    }));
-            }
+            toast.success("Course purchased successfully!");
+            setCourse((prevCourse) => ({
+                ...prevCourse,
+                purchase_id: response.data.purchase_id,
+                is_enrolled: 'freemium',
+            }));
+            
         } catch (error) {
             console.log("Purchase Error:", error);
             toast.error(error.response?.data?.detail || "Error purchasing course");
@@ -140,6 +174,7 @@ const StudentCourseDetails = () => {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-navy text-white pb-20">
@@ -213,7 +248,7 @@ const StudentCourseDetails = () => {
 
                                         {course?.subscription && course?.is_enrolled !== 'subscription' &&  (
                                             <button onClick={()=>{handlePurchase('subscription')}} className="btn-primary w-full mb-2">
-                                                Subscribe
+                                                {course?.is_enrolled !== 'freemium' ? 'Subscribe' : 'Subscribe to Upgrade'}
                                             </button>
                                         )}
 
@@ -224,7 +259,7 @@ const StudentCourseDetails = () => {
                                         )}
 
                                         {course?.is_enrolled && course?.is_enrolled !== 'No' && (
-                                            <Link to={`/student/study-room/my-course/${course?.purchase_id}`} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 flex items-center justify-center mb-4">
+                                            <Link to={`/student/study-room/my-course/${course?.id}`} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 flex items-center justify-center mb-4">
                                                 <span>Go to course</span>
                                             </Link>
                                         )}

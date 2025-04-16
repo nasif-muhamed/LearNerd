@@ -15,6 +15,8 @@ import ListTutorsLandingPage from "../pages/user/student/tutors/ListTutorsLandin
 import TutorDetails from "../pages/user/student/tutors/TutorDetails";
 import PaymentSuccess from "../pages/user/student/courses/subscription_result/paymentSuccess";
 import PaymentCancel from "../pages/user/student/courses/subscription_result/PaymentCancel";
+import CheckoutFormPage from "../pages/user/student/courses/subscription_result/CheckoutFormPage";
+import StripeProvider from "../services/stripe/StripeProvider";
 
 const StudentRoutes = () => {
     const role = useSelector((state) => state.auth.role);
@@ -39,9 +41,13 @@ const StudentRoutes = () => {
                 <Route path="/courses">
                     <Route index element={<StudentCourses />} />
                     <Route path=":id" element={<StudentCourseDetails/>} />
-                    <Route path=":id/success" element={<PaymentSuccess/>} />
+                    <Route path=":id/payment" element={<CheckoutFormPage />} />
+                    <Route path=":id/payment-success" element={
+                        <StripeProvider>
+                            <PaymentSuccess/>
+                        </StripeProvider>
+                    } />
                     <Route path=":id/cancel" element={<PaymentCancel/>} />
-
                 </Route>
 
                 <Route path="/study-room">

@@ -183,7 +183,7 @@ const StudyRoomLanding = () => {
                             myCourses.map((purchase, idx) => (
                                 <Link
                                     key={idx}
-                                    to={'/student/study-room/my-course/' + purchase?.id}
+                                    to={'/student/study-room/my-course/' + purchase?.course_id}
                                     className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:shadow-lg hover:shadow-blue-900/10 transition-all duration-300"
                                 >
                                     <div className="h-40 overflow-hidden relative">
