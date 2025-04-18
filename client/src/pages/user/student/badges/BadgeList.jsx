@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookOpenText, BadgeCheck } from "lucide-react";
-import LoadingSpinner from "../../../../../components/ui/LoadingSpinner";
+import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
 import axios from "axios";
 
 const BadgeList = () => {

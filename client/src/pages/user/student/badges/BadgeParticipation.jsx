@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
-import LoadingSpinner from "../../../../../components/ui/LoadingSpinner";
+import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
 import axios from "axios";
-import api from "../../../../../services/api/axiosInterceptor";
+import api from "../../../../services/api/axiosInterceptor";
 
 
 function QuizAttempt() {
