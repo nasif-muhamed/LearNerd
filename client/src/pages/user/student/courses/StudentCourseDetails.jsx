@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
+// import { useStripe } from '@stripe/react-stripe-js';
 import api from "../../../../services/api/axiosInterceptor";
 import handleError from "../../../../utils/handleError";
 import formatTimeHMS from "../../../../utils/formatTimeHMS";
@@ -13,8 +16,6 @@ import CourseFeature from "../../../../components/user/student/courses/course_de
 import InstructorCard from "../../../../components/user/student/courses/course_details/InstructorCard";
 import CourseReview from "../../../../components/user/student/courses/course_details/CourseReview";
 import CourseCard from "../../../../components/user/student/courses/course_details/CourseCard";
-import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
 
 const StudentCourseDetails = () => {
     const navigate = useNavigate();
@@ -68,11 +69,13 @@ const StudentCourseDetails = () => {
         ],
     };
 
+    // const stripe = useStripe();
     const { id } = useParams();
     const [course, setCourse] = useState(null);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(null);
     console.log("course:", course);
+    
     const fetchCourse = async () => {
         try {
             setLoading(true);
@@ -93,33 +96,85 @@ const StudentCourseDetails = () => {
         if (!course) fetchCourse();
     }, []);
 
+    // const handlePurchase = async (purchaseType) => {
+    //     try {
+    //         setLoading(true);
+    //         const body = {
+    //             course: id,
+    //             purchase_type: purchaseType,
+    //             frontend_url: window.location.origin
+    //         };
+        
+    //         if (purchaseType === "subscription") {
+    //             body.subscription_amount = course?.subscription_amount;
+    //             body.video_session = course?.video_session;
+    //             body.chat_upto = course?.chat_upto;
+    //             body.safe_period = course?.safe_period;
+    //         }
+        
+    //         const response = await api.post(`courses/${id}/purchase/`, body);
+            
+    //         if (purchaseType === 'subscription') {
+    //                 // Redirect to Stripe Checkout
+    //                 const { checkout_session_id } = response.data;
+    //                 const result = await stripe.redirectToCheckout({
+    //                 sessionId: checkout_session_id
+    //             });
+        
+    //             if (result.error) {
+    //                 throw new Error(result.error.message);
+    //             }
+    //         } else {
+    //                 // Handle freemium purchase
+    //                 toast.success("Course purchased successfully!");
+    //                     setCourse((prevCourse) => ({
+    //                     ...prevCourse,
+    //                     purchase_id: response.data.purchase_id,
+    //                     is_enrolled: 'freemium',
+    //                 }));
+    //         }
+    //     } catch (error) {
+    //         console.log("Purchase Error:", error);
+    //         toast.error(error.response?.data?.detail || "Error purchasing course");
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+
     const handlePurchase = async (purchaseType) => {
         try {
             setLoading(true);
+            
+            if (purchaseType === "subscription") {
+                // Redirect to our custom payment page instead of Stripe Checkout
+                navigate(`/student/courses/${id}/payment`);
+                return;
+            }
+            
+            // Handle freemium purchase (unchanged)
             const body = {
                 course: id,
                 purchase_type: purchaseType,
-                // subscription_amount: course?.subscription_amount,
-                // video_session: course?.video_session,
-                // chat_upto: course?.chat_upto,
-                // safe_period: course?.safe_period,
+                frontend_url: window.location.origin
             };
+            
             const response = await api.post(`courses/${id}/purchase/`, body);
-            console.log("Purchase response:", response);
+            
             toast.success("Course purchased successfully!");
-            const isEnrolled = purchaseType === "freemium" ? "freemium" : "subscription";
             setCourse((prevCourse) => ({
                 ...prevCourse,
                 purchase_id: response.data.purchase_id,
-                is_enrolled: isEnrolled,
+                is_enrolled: 'freemium',
             }));
+            
         } catch (error) {
             console.log("Purchase Error:", error);
-            handleError(error, "Error purchasing course");
+            toast.error(error.response?.data?.detail || "Error purchasing course");
         } finally {
             setLoading(false);
         }
     };
+
 
     return (
         <div className="min-h-screen bg-navy text-white pb-20">
@@ -192,8 +247,8 @@ const StudentCourseDetails = () => {
                                         </div>
 
                                         {course?.subscription && course?.is_enrolled !== 'subscription' &&  (
-                                            <button className="btn-primary w-full mb-2">
-                                                Subscribe
+                                            <button onClick={()=>{handlePurchase('subscription')}} className="btn-primary w-full mb-2">
+                                                {course?.is_enrolled !== 'freemium' ? 'Subscribe' : 'Subscribe to Upgrade'}
                                             </button>
                                         )}
 
@@ -204,7 +259,7 @@ const StudentCourseDetails = () => {
                                         )}
 
                                         {course?.is_enrolled && course?.is_enrolled !== 'No' && (
-                                            <Link to={`/student/study-room/my-course/${course?.purchase_id}`} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 flex items-center justify-center mb-4">
+                                            <Link to={`/student/study-room/my-course/${course?.id}`} className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md transition-all duration-300 flex items-center justify-center mb-4">
                                                 <span>Go to course</span>
                                             </Link>
                                         )}
@@ -451,7 +506,7 @@ const StudentCourseDetails = () => {
                                         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
                                     </svg>
                                     <span className="font-bold mr-1">
-                                        {courseData.rating}
+                                        {course?.average_rating}
                                     </span>
                                     <span className="text-gray-400">
                                         course rating
@@ -460,7 +515,7 @@ const StudentCourseDetails = () => {
                                         •
                                     </span>
                                     <span className="text-gray-400">
-                                        7K ratings
+                                        {course?.total_reviews} ratings
                                     </span>
                                 </div>
 

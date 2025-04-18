@@ -466,6 +466,7 @@ class PurchaseCreateSerializer(serializers.ModelSerializer):
             video_session= data.get('video_session')
             chat_upto= data.get('chat_upto')
             safe_period= data.get('safe_period')
+            stripe_payment_intent_id = data.get('stripe_payment_intent_id')
             print('inside try:', course, purchase_type, subscription_amount, video_session, chat_upto, safe_period)
         except TypeError:
             raise serializers.ValidationError('Invalid data format')
@@ -493,6 +494,9 @@ class PurchaseCreateSerializer(serializers.ModelSerializer):
         # Check if the course is available and complete
         if not course.is_available or not course.is_complete:
             raise serializers.ValidationError('This course is not available')
+        
+        if purchase_type=='subscription' and not stripe_payment_intent_id:
+            raise serializers.ValidationError('stripe_payment_intent_id is necessary for subscription')
 
         return data
 

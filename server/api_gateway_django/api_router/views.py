@@ -488,3 +488,38 @@ class BasicCouseCreationGateway(APIView):
                     return Response(error_data, status=response.status_code)
                 except (ValueError, AttributeError):
                     return Response({"error": "Failed to update course"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+from django.views.decorators.csrf import csrf_exempt
+@csrf_exempt
+@api_view(['POST'])
+def proxy_to_course_web_hook(request):
+    print('proxy_to_course_web_hook')
+    url = COURSE_SERVICE_URL[:-1] + request.path
+    query_params = request.GET.urlencode()
+    if query_params:
+        url = f"{url}?{query_params}"
+
+    print('url:', url)
+    print('method:', request.method)
+    headers = get_forwarded_headers(request)
+
+    print('Handling Stripe webhook')
+    try:
+        # Forward raw body without parsing
+        response = requests.post(
+            url=url,
+            headers=headers,
+            data=request.body,  # Use raw body other wise signature verification will fail
+            timeout=10
+        )
+        print("Webhook response status:", response.status_code)
+        print("Webhook response content:", response.content)
+        return Response(
+            data=response.content,
+            status=response.status_code,
+            content_type=response.headers.get('Content-Type', 'application/json'),
+        )
+    except requests.RequestException as e:
+        print(f"Webhook proxy error: {e}")
+        return Response({'detail': 'Webhook proxy failed'}, status=500)
+    

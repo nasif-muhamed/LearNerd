@@ -1,9 +1,11 @@
 import cloudinary.uploader
 import jwt
+import stripe
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.db import DatabaseError
+from django.conf import settings
 
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
@@ -619,12 +621,13 @@ class CourseUnAuthDetailView(generics.RetrieveAPIView):
         return response
 
 # Purchase a new course
+stripe.api_key = settings.STRIPE_SECRET_KEY
 class CoursePurchaseView(APIView):
     permission_classes = [IsProfileCompleted]
     
     def post(self, request, course_id):
         user_id = request.user_payload['user_id']
-        print('user_id:', user_id)
+        
         try:
             course = Course.objects.get(id=course_id)
         except Course.DoesNotExist:
@@ -636,20 +639,226 @@ class CoursePurchaseView(APIView):
         
         if course.instructor == user_id:
             return Response({'detail': 'You cannot purchase your own course'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        print('course_id:', course_id)
-        print('user_id:', user_id)
-        request.data['course'] = course_id
-        request.data['user'] = user_id
-        serializer = PurchaseCreateSerializer(data=request.data)
 
-        if serializer.is_valid():
-            serializer.save()
-            print('serializer.data:', serializer.data)
-            print('serializer.data:', serializer.data.get('id'))
-            return Response({'detail': 'Course purchased successfully', 'purchase_id': serializer.data.get('id')}, status=status.HTTP_201_CREATED)
+        purchase_type = request.data.get('purchase_type')
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if purchase_type == 'freemium':
+            # Handle freemium purchase (no payment required)
+            purchase_data = {
+                'user': user_id,
+                'course': course_id,
+                'purchase_type': 'freemium',
+            }
+            serializer = PurchaseCreateSerializer(data=purchase_data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'detail': 'Course purchased successfully',
+                    'purchase_id': serializer.data.get('id'),
+                    'is_freemium': True
+                }, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        # elif purchase_type == 'subscription':
+        #     try:
+        #         # Create Stripe Checkout Session
+        #         checkout_session = stripe.checkout.Session.create(
+        #             payment_method_types=['card'],
+        #             line_items=[
+        #                 {
+        #                     'price_data': {
+        #                         'currency': 'inr',
+        #                         'unit_amount': int(course.subscription_amount * 100),  # Convert to cents
+        #                         'product_data': {
+        #                             'name': course.title,
+        #                             'description': f'Subscription for {course.title}',
+        #                         },
+        #                     },
+        #                     'quantity': 1,
+        #                 },
+        #             ],
+        #             mode='payment',
+        #             success_url=f'{request.data.get("frontend_url")}/student/courses/{course_id}/success?session_id={{CHECKOUT_SESSION_ID}}',
+        #             cancel_url=f'{request.data.get("frontend_url")}/student/courses/{course_id}/cancel',
+        #             metadata={
+        #                 'user_id': str(user_id),
+        #                 'course_id': str(course_id),
+        #                 'purchase_type': 'subscription'
+        #             }
+        #         )
+                
+        #         # Create pending purchase
+        #         purchase_data = {
+        #             'user': user_id,
+        #             'course': course_id,
+        #             'purchase_type': 'subscription',
+        #             'subscription_amount': course.subscription_amount,
+        #             'video_session': course.video_session,
+        #             'chat_upto': course.chat_upto,
+        #             'safe_period': course.safe_period,
+        #             'payment_status': 'pending',
+        #             'stripe_checkout_session_id': checkout_session.id
+        #         }
+                
+        #         serializer = PurchaseCreateSerializer(data=purchase_data)
+        #         if serializer.is_valid():
+        #             # purchase = serializer.save()
+        #             print('checkout_session_id:', checkout_session.id)
+        #             return Response({
+        #                 'detail': 'Checkout session created',
+        #                 'checkout_session_id': checkout_session.id,
+        #                 'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY
+        #             }, status=status.HTTP_200_OK)
+        #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+        #     except stripe.error.StripeError as e:
+        #         return Response({
+        #             'detail': 'Error creating checkout session',
+        #             'error': str(e)
+        #         }, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response({'detail': 'Invalid purchase type'}, status=status.HTTP_400_BAD_REQUEST)
+
+# from rest_framework.decorators import api_view
+# @api_view(['POST'])
+# def create_payment_intent(request, course_id):
+#     """Create a payment intent for the course subscription"""
+#     try:
+#         course = Course.objects.get(id=course_id)
+        
+#         # Create a payment intent
+#         intent = stripe.PaymentIntent.create(
+#             amount=int(request.data.get('amount')),  # Amount in cents
+#             currency='usd',
+#             metadata={
+#                 'course_id': course_id,
+#                 'user_id': request.user.id,
+#                 'purchase_type': 'subscription'
+#             }
+#         )
+#         print('intent:', intent)
+#         return Response({
+#             'clientSecret': intent.client_secret
+#         })
+#     except Exception as e:
+#         return Response({'error': str(e)}, status=400)
+
+class CreatePaymentIntentView(APIView):
+    permission_classes = [IsProfileCompleted]
+
+    def post(self, request, course_id):
+        try:
+            user_id = request.user_payload['user_id']
+            print('user_id in CreatePaymentIntentView:', user_id)
+            course = Course.objects.get(id=course_id)
+            print(course.subscription_amount, request.data.get('amount'))
+            if course.subscription_amount != float(request.data.get('amount')):
+                return Response({'error': 'Invalid amount', 'details': 'Amount mismatch'}, status=400)
+            
+            # Create a payment intent
+            intent = stripe.PaymentIntent.create(
+                amount=int(course.subscription_amount * 100),  # Amount in cents
+                currency='usd',
+                metadata={
+                    'course_id': course_id,
+                    'user_id': user_id,
+                    'purchase_type': 'subscription'
+                }
+            )
+            print('intent:', intent)
+            return Response({
+                'clientSecret': intent.client_secret
+            })
+        
+        except Course.DoesNotExist:
+            return Response({'error': 'Course not found'}, status=404)
+        except stripe.error.StripeError as e:
+            return Response({'error': str(e)}, status=400)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+# webhook for stripe payment
+# from django.views.decorators.csrf import csrf_exempt
+# from django.utils.decorators import method_decorator
+# @method_decorator(csrf_exempt, name='dispatch')
+class StripeWebhookView(APIView):
+    def post(self, request):
+        print('Inside StripeWebhookView --------------------------------------------------')
+        payload = request.body
+        # print('payload:', payload)
+        sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+        # print('sig_header:', sig_header)
+        try:
+            print('before try')
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+            )
+            print('after try')
+        except ValueError as e:
+            print('value error:', e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        except stripe.error.SignatureVerificationError as e:
+            print('signature verification error:', e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        print("event['type']:", event['type'])
+        # if event['type'] == 'checkout.session.completed':
+        #     session = event['data']['object']
+        #     print('inside completed:', session['id'])
+            # purchase = Purchase.objects.get(stripe_checkout_session_id=session['id'])
+            # purchase.payment_status = 'completed'
+            # purchase.stripe_payment_intent_id = session.get('payment_intent')
+            # purchase.save()
+        if event['type'] == 'payment_intent.succeeded':
+            print('succeed++++++++++')
+            intent = event['data']['object']
+            user_id = intent['metadata']['user_id']
+            purchase_type = intent['metadata']['purchase_type']
+            course_id = intent['metadata']['course_id']
+            stripe_payment_intent_id = intent['id']
+
+            print('event data:', user_id, purchase_type, course_id, stripe_payment_intent_id)
+            try:
+                course = Course.objects.get(id=course_id)
+                print('course:', course)
+            except Course.DoesNotExist:
+                return Response({"error": "Course not found"}, status=404)
+            
+            purchase_data = {
+                'user': user_id,
+                'course': course_id,
+                'purchase_type': purchase_type,
+                'subscription_amount': course.subscription_amount,
+                'video_session': course.video_session,
+                'chat_upto': course.chat_upto,
+                'safe_period': course.safe_period,
+                'payment_status': 'completed',
+                'stripe_payment_intent_id': stripe_payment_intent_id,
+            }
+            exists = Purchase.objects.filter(user=user_id, course=course_id).exists()
+            if exists:
+                purchase = Purchase.objects.get(user=user_id, course=course_id)
+
+                # Only update if the existing purchase is freemium
+                if purchase.purchase_type == 'freemium':
+                    serializer = PurchaseCreateSerializer(purchase, data=purchase_data, partial=True)
+                    if serializer.is_valid():
+                        serializer.save()
+                        print('Freemium upgraded to subscription ----------------')
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                    print('serializer not valid', serializer.errors)
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                
+                return Response({"error": "User already has a subscription for this course"}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = PurchaseCreateSerializer(data=purchase_data)
+            if serializer.is_valid():
+                serializer.save()
+                print('saved----------------')
+                return Response( serializer.data, status=status.HTTP_201_CREATED )
+            print('serializer not valid', serializer.errors)
+            return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
+
+        return Response(status=status.HTTP_200_OK)
 
 # List all courses purchased by a student
 class StudentMyCoursesListView(APIView): 
@@ -706,10 +915,10 @@ class StudentMyCoursesListView(APIView):
 class StudentMyCourseDetailView(APIView):
     permission_classes = [IsProfileCompleted]
 
-    def get(self, request, purchase_id):
+    def get(self, request, course_id):
         try:
             user_id = request.user_payload['user_id']
-            purchase = Purchase.objects.get(id=purchase_id, user=user_id)
+            purchase = Purchase.objects.get(course=course_id, user=user_id)
             serializer = StudentMyCourseDetailSerializer(purchase)
             return Response(serializer.data)
         except Purchase.DoesNotExist:

@@ -9,43 +9,42 @@ import handleError from "../../../../utils/handleError";
 const StudyRoomLanding = () => {
     const navigate = useNavigate();
     const id = useSelector((state) => state.auth?.user?.id);
-    console.log('id', id)
-    const [categories, setCategories] = useState([]);
     const [myCourses, setMyCourses] = useState([])
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    // const [categories, setCategories] = useState([]);
+    // const [error, setError] = useState(null);
     const pageSize = 3; // Matches your backend response (3 items per page)
 
-    // Sample course data
-    const sampleCourses = [
-        {
-            id: 1,
-            title: "Complete web development course",
-            instructor: "Robert Chambers",
-            rating: 4.7,
-            reviewCount: 10560,
-            price: "$19.99",
-            image: "https://via.placeholder.com/150/FF8C00/FFFFFF"
-        },
-        {
-            id: 2,
-            title: "React - Complete Developer Course with Hands-On Projects",
-            instructor: "Technical Writing, React Digital Media",
-            rating: 4.3,
-            reviewCount: 265,
-            price: "$59.99",
-            image: "https://via.placeholder.com/150/00CED1/FFFFFF"
-        },
-        {
-            id: 3,
-            title: "React Redux Ultimate - State Management | w/ TypeScript, MERN",
-            instructor: "Jon Harman",
-            rating: 4.8,
-            reviewCount: 537,
-            price: "$79.99",
-            image: "https://via.placeholder.com/150/8A2BE2/FFFFFF"
-        }
-    ];
+    // // Sample course data
+    // const sampleCourses = [
+    //     {
+    //         id: 1,
+    //         title: "Complete web development course",
+    //         instructor: "Robert Chambers",
+    //         rating: 4.7,
+    //         reviewCount: 10560,
+    //         price: "$19.99",
+    //         image: "https://via.placeholder.com/150/FF8C00/FFFFFF"
+    //     },
+    //     {
+    //         id: 2,
+    //         title: "React - Complete Developer Course with Hands-On Projects",
+    //         instructor: "Technical Writing, React Digital Media",
+    //         rating: 4.3,
+    //         reviewCount: 265,
+    //         price: "$59.99",
+    //         image: "https://via.placeholder.com/150/00CED1/FFFFFF"
+    //     },
+    //     {
+    //         id: 3,
+    //         title: "React Redux Ultimate - State Management | w/ TypeScript, MERN",
+    //         instructor: "Jon Harman",
+    //         rating: 4.8,
+    //         reviewCount: 537,
+    //         price: "$79.99",
+    //         image: "https://via.placeholder.com/150/8A2BE2/FFFFFF"
+    //     }
+    // ];
 
     // const fetchCategories = useCallback(async () => {
     //     setLoading(true);
@@ -178,12 +177,12 @@ const StudyRoomLanding = () => {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {myCourses?.length > 0 ?
                             myCourses.map((purchase, idx) => (
                                 <Link
                                     key={idx}
-                                    to={'/student/study-room/my-course/' + purchase?.id}
+                                    to={'/student/study-room/my-course/' + purchase?.course_id}
                                     className="bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:shadow-lg hover:shadow-blue-900/10 transition-all duration-300"
                                 >
                                     <div className="h-40 overflow-hidden relative">

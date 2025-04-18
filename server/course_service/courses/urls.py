@@ -6,7 +6,7 @@ from .views import (
     SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseReviewsView,
-    AdminUserCoursesDetailsView,
+    AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView,
 )
 
 router = DefaultRouter()
@@ -15,7 +15,7 @@ router.register(r'categories', AdminCategoryViewSet)
 urlpatterns = [
     path('', CourseCreateAPIView.as_view(), name='course-creation'),
     path('<int:id>/', CourseUnAuthDetailView.as_view(), name='course-detail'),
-    path('stream/<int:purchase_id>/', StudentMyCourseDetailView.as_view(), name='course-auth-detail'),
+    path('stream/<int:course_id>/', StudentMyCourseDetailView.as_view(), name='course-auth-detail'),
     path('toggle-activation/', TutorToggleActivationCourseView.as_view(), name='activate-deactivate'),
     
     path('tutor/uploaded-courses/', TutorCourseListAPIView.as_view(), name='tutor-courses'),
@@ -49,8 +49,12 @@ urlpatterns = [
     path('incomplete-course/<int:course_id>/content/', CourseInCompleteView.as_view(), name='incomplete-course'),
     path('', include(router.urls)),
 
+    # purchase a course
     path('<int:course_id>/purchase/', CoursePurchaseView.as_view(), name='purchase-course'),
-
+    path('<int:course_id>/create-payment-intent/', CreatePaymentIntentView.as_view(), name='stripe-payment-intent'),
+    path('stripe/webhook/', StripeWebhookView.as_view(), name='stripe-webhook'),
+    
+    # all courses of a user
     path('student/<int:student_id>/my-courses/', StudentMyCoursesListView.as_view(), name='purchased-course-student'),
 
     # purchased course's section items completion
@@ -71,5 +75,4 @@ urlpatterns = [
 
     # Get all enrolled course and uploaded courses by a user
     path('admin/user/<int:user_id>/courses/', AdminUserCoursesDetailsView.as_view(), name='my-course-reviews'),
-
 ]

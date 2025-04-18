@@ -7,7 +7,7 @@ from django.conf import settings
 class IsAdminUserCustom(permissions.BasePermission):
     message = "You must be an admin to access this resource."
     def has_permission(self, request, view):
-        print('in permissions')
+        # print('in permissions')
         # Get the authentication token from the request header
         auth_header = request.headers.get('Authorization')
         if not auth_header:
@@ -41,9 +41,9 @@ class IsAdminUserCustom(permissions.BasePermission):
 class IsProfileCompleted(permissions.BasePermission):
     message = "You must complete your profile to access this resource."
     def has_permission(self, request, view):
-        print('in IsProfileCompleted')
+        # print('in IsProfileCompleted')
         user_payload = request.user_payload
-        print('user_payload:', user_payload)
+        # print('user_payload:', user_payload)
         if user_payload is not None and user_payload.get('is_profile_completed', False):
             return True
         return False
@@ -51,9 +51,9 @@ class IsProfileCompleted(permissions.BasePermission):
 class IsUser(permissions.BasePermission):
     message = "You must be a user to access this resource."
     def has_permission(self, request, view):
-        print('in IsUser')
+        # print('in IsUser')
         user_payload = request.user_payload
-        print('user_payload:', user_payload)
+        # print('user_payload:', user_payload)
         if user_payload is not None:
             return True
         return False
