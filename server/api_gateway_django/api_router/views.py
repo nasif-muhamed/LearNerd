@@ -62,11 +62,13 @@ class UserProfileGateway(APIView):
             print('response.content: ', response.content)
             response.raise_for_status()  # Raise exception for 4xx/5xx
 
-            return Response({'message': 'user updated successfully'}, status=response.status_code)
+            # return Response({'message': 'user updated successfully'}, status=response.status_code)
+            # Return the actual response from the user service. Previously I've returned like above line. But need the data in the frontend.
+            return Response(response.json(), status=response.status_code)
 
         except requests.exceptions.RequestException as e:
             try:
-                error_data = response.json()  # Try to parse error details
+                error_data = response.json()
                 return Response(error_data, status=response.status_code)
             except (ValueError, AttributeError):
                 return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -30,6 +30,7 @@ from .serializers import (
 )
 from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor
 from .services import CallUserService, UserServiceException
+from .rabbitmq_publisher import publish_notification_event
 
 call_user_service = CallUserService()
 
@@ -652,11 +653,21 @@ class CoursePurchaseView(APIView):
             serializer = PurchaseCreateSerializer(data=purchase_data)
             if serializer.is_valid():
                 serializer.save()
+                publish_notification_event(
+                   event_type='course.purchase',
+                   data={
+                       'student_id': user_id,
+                       'tutor_id': course.instructor,
+                       'course_title': course.title,
+                       'purchase_type': 'freemium',
+                   }
+                )
                 return Response({
                     'detail': 'Course purchased successfully',
                     'purchase_id': serializer.data.get('id'),
                     'is_freemium': True
                 }, status=status.HTTP_201_CREATED)
+
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         # elif purchase_type == 'subscription':
@@ -865,8 +876,6 @@ class StudentMyCoursesListView(APIView):
     # permission_classes = [IsAuthenticated]
 
     def get(self, request, student_id):
-        print('StudentMyCoursesListView headers:', request.headers)
-        print('StudentMyCoursesListView user_payload:', request.user_payload)
         user_id = request.user_payload['user_id']
 
         if not student_id == user_id:
@@ -1054,7 +1063,7 @@ class StudentFetchTopTutorsView(APIView):
                 total_courses=Count('id'),
                 total_enrollments=Count('purchases')
             ).order_by('-total_enrollments')
-            print('tutors:', tutors)
+            # print('tutors:', tutors)
             # If no tutors found, return a message
             if not tutors:
                 return Response({"message": "No tutors found."}, status=404)
@@ -1091,7 +1100,7 @@ class StudentFetchTopTutorsView(APIView):
                     'tutor_details': details
                 })
 
-            print('result:', result)
+            # print('result:', result)
             return paginator.get_paginated_response(result)
 
         except DatabaseError as db_error:

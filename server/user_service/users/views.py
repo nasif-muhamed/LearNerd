@@ -49,7 +49,6 @@ class RegisterView(APIView):
             print(message)
             recipient_list = [email]
             send_otp_email.delay(subject, message, recipient_list)
-                        
             cache_data = {
                 'otp': otp,
                 'data': serializer.validated_data,
@@ -305,7 +304,8 @@ class UserView(APIView):
     def patch(self, request):
         try:
             profile = request.user
-            print("Received Data:", request.data) # Debugging
+            is_profile_completed = profile.is_profile_completed
+            print("Received Data:", request.data)
 
         except Profile.DoesNotExist:
             return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -313,11 +313,17 @@ class UserView(APIView):
         serializer = ProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            response_data = {'message': 'user updated successfully'}
+            if not is_profile_completed:
+                refresh = CustomTokenObtainPairSerializer.get_token(profile)
+                access_token = refresh.access_token
+                response_data['refresh'] = str(refresh)
+                response_data['access'] = str(access_token)
+            print('serializer.data +++++++++++:', response_data)
+            return Response(response_data, status=status.HTTP_200_OK)
         
         print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
     queryset = Profile.objects.all()
