@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { fetchUserDetails } from "../../../../redux/features/authSlice";
+import { fetchUserDetails, updateAcess, updateRefresh } from "../../../../redux/features/authSlice";
 import { useDispatch } from "react-redux";
 import { toast } from 'sonner'
 import api from "../../../../services/api/axiosInterceptor";
 import { UserRoundPen } from "lucide-react";
 
-const ProfileForm = ({ user }) => {
+const ProfileForm = ({ user, refreshToken }) => {
     const dispatch = useDispatch();
     const [isEditing, setIsEditing] = useState(false);
 
@@ -35,6 +35,15 @@ const ProfileForm = ({ user }) => {
                     if (response.status !== 200) {
                         throw new Error(response.data);
                     }
+                    console.log('user updated response:', response)
+                    console.log('checking user is empty')
+                    if (!user.first_name || !user.last_name || !user.biography){
+                        console.log('new access:', response.data.access)
+                        dispatch(updateAcess({ access: response.data.access }));
+                        console.log('new refresh:', response.data.refresh)
+                        dispatch(updateRefresh({ refresh: response.data.refresh }));
+                    }
+
                     if (user) {
                         dispatch(fetchUserDetails());
                     }

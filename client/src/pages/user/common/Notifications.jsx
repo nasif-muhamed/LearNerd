@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Bell, Check, X, MessageSquare, Video, CreditCard, BookOpen, Star } from "lucide-react";
 
-export default function NotificationsPage() {
+const NotificationsPage = () => {
   const [activeTab, setActiveTab] = useState("unread");
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,7 +153,7 @@ export default function NotificationsPage() {
         >
           Unread
           {unreadNotifications.length > 0 && (
-            <span className="ml-2 bg-accent text-xs rounded-full px-2 py-0.5">
+            <span className="ml-2 bg-accent text-gray-200 text-xs rounded-full px-2 py-0.5">
               {unreadNotifications.length}
             </span>
           )}
@@ -226,3 +226,5 @@ export default function NotificationsPage() {
     </div>
   );
 }
+
+export default NotificationsPage

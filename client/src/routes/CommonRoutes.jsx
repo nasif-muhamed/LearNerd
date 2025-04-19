@@ -10,7 +10,7 @@ import Profile from "../pages/user/common/Profile";
 import FourNotFour from "../pages/FourNotFour";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import ForgotPassword from "../pages/user/common/ForgotPassword";
-import StripeProvider from "../services/stripe/StripeProvider";
+import NotificationsPage from "../pages/user/common/Notifications";
 
 const CommonRoutes = () => {
     return (
@@ -21,6 +21,7 @@ const CommonRoutes = () => {
             <Route path="/" element={<ProtectedRoute />}>
                 <Route path="/logout" element={<Logout />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>

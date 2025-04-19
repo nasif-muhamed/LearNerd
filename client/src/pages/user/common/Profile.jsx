@@ -7,6 +7,7 @@ import ProfileForm from '../../../components/user/common/Profile/ProfileForm'
 
 const Profile = () => {
     const user = useSelector((state) => state.auth.user);
+    const refreshToken = useSelector((state) => state.auth.refreshToken);
     // Modal states
     const [showModal, setShowModal] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
@@ -34,7 +35,7 @@ const Profile = () => {
                 />
 
                 {/* Profile information and update form */}
-                <ProfileForm user={user}/>
+                <ProfileForm user={user} refreshToken={refreshToken} />
             </div>
 
             {/* Image Preview Modal */}
