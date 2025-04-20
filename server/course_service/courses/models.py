@@ -59,8 +59,9 @@ class Course(models.Model):
 
     def get_average_rating(self):
         reviews = Review.objects.filter(course=self)
-        if reviews.exists():
-            return reviews.aggregate(models.Avg('rating'))['rating__avg']
+        if reviews.exists(): 
+            avg = reviews.aggregate(models.Avg('rating'))['rating__avg']
+            return round(avg, 1)
         return 0
 
     def get_total_reviews(self):

@@ -5,7 +5,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import exceptions
 
-from .models import BadgesAquired
+from .models import BadgesAquired, Notification
 
 Profile = get_user_model()
 
@@ -35,7 +35,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
-
 class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -45,11 +44,9 @@ class ForgotPasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError("No user is associated with this email.")
         return value
 
-
 class ForgotPasswordOTPVerifySerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField(max_length=6)
-
 
 class ForgotPasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -68,7 +65,6 @@ class ForgotPasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError("Password must contain at least one special character (!@#$%^&*()-_=+).")
         return data
     
-
 class ProfileSerializer(serializers.ModelSerializer):
     # badges_aquired = BadgesAquiredSerializer(many=True, read_only=True)
     
@@ -117,7 +113,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         return data
     
-
 class BadgesAquiredSerializer(serializers.ModelSerializer):
     class Meta:
         model = BadgesAquired
@@ -128,7 +123,6 @@ class BadgesAquiredSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-
 class BadgeSerializer(serializers.ModelSerializer):
     class Meta:
         model = BadgesAquired
@@ -138,5 +132,7 @@ class BadgeSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
 
-
-    
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'notification_type', 'message', 'is_read', 'created_at']

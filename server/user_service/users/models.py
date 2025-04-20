@@ -66,8 +66,14 @@ class NotificationManager(models.Manager):
     def unread(self, user):
         return self.filter(user=user, is_read=False)
 
+    def read(self, user):
+        return self.filter(user=user, is_read=True)
+
     def mark_read(self, user, notification_id):
         return self.filter(user=user, id=notification_id).update(is_read=True)
+
+    def mark_all_read(self, user):
+        return self.filter(user=user, is_read=False).update(is_read=True)
 
     def for_type(self, user, notification_type):
         return self.filter(user=user, notification_type=notification_type)

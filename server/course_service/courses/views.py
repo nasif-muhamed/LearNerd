@@ -1198,7 +1198,18 @@ class ReviewListCreateAPIView(APIView):
             serializer = ReviewCreateSerializer( data=request.data, context={'request': request} )
             
             if serializer.is_valid():
+                print('serializer before publish:', serializer)
                 serializer.save( user=user_id, course=course )
+                publish_notification_event(
+                    event_type='course.review',
+                    data={
+                        'student_id': user_id,
+                        'tutor_id': course.instructor,
+                        'course_title': course.title,
+                        'rating': serializer.data['rating'],
+                        'review': serializer.data['review']
+                    }
+                )
                 return Response( serializer.data, status=status.HTTP_201_CREATED )
             return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
             
@@ -1228,11 +1239,39 @@ class StudentCourseReviewsView(APIView):
             my_review = Review.objects.filter(course=course, user=user_id).first()
             if my_review:
                 my_review_serializer = ReviewSerializer(my_review)
-            reviews = Review.objects.filter(course=course).exclude(user=user_id)[:4]
+            reviews = Review.objects.filter(course=course).exclude(user=user_id)[:10]
             serializer = ReviewSerializer(reviews, many=True)
+            serializer_data = serializer.data
+            user_ids = [review['user'] for review in serializer_data]
+            print('user_ids:', user_ids)
+            result = []
+            if len(user_ids):
+                try:
+                    response_user_service = call_user_service.get_users_details(user_ids)
+                except UserServiceException as e:
+                    # Handle user service exceptions and return appropriate error
+                    return Response({"error": str(e)}, status=503)
+                except Exception as e:
+                    # Catch any unexpected exceptions
+                    return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+                users_data = response_user_service.json()
+                if len(users_data) != len(serializer_data):
+                    return Response(
+                        {"error": "Mismatch between number of tutors and tutor details returned."},
+                        status=500
+                    )
+
+                for review, user in zip(serializer_data, users_data):
+                    print('user:', user)
+                    review['full_name'] = user['first_name'] + ' ' + user['last_name']
+                    review['user_image'] = user['image']
+                    result.append(review)
+
+            print('result:', result)
             data = {
                 'my_review': my_review_serializer.data if my_review else None,
-                'reviews': serializer.data
+                'reviews': result
             }
             return Response(data, status=status.HTTP_200_OK)
         except Course.DoesNotExist:

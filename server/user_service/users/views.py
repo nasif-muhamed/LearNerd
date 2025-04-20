@@ -22,10 +22,10 @@ from rest_framework import generics
 from rest_framework.exceptions import AuthenticationFailed
 
 from . firebase_auth import auth as firebase_auth
-from . models import AdminUser, BadgesAquired
+from . models import AdminUser, BadgesAquired, Notification
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
     BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer, \
-    ProfileDetailsSerializer
+    ProfileDetailsSerializer, NotificationSerializer
 from .tasks import send_otp_email
 from .services import CallCourseService, CourseServiceException
 
@@ -528,14 +528,12 @@ class UsersView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class MyBadgesView(generics.ListAPIView):
     serializer_class = BadgeSerializer
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
 
     def get_queryset(self):
         return BadgesAquired.objects.filter(profile=self.request.user)
-
 
 class SubmitQuizView(APIView):
     permission_classes = [IsAuthenticated]
@@ -593,3 +591,49 @@ class SubmitQuizView(APIView):
             'aquired_mark': result['acquired_mark'],
             'is_passed': result['is_passed']
         }, status=status.HTTP_201_CREATED)
+
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        status_param = request.query_params.get('status', 'unread')  # Default is 'unread'
+        
+        if status_param == 'read':
+            notifications = Notification.objects.read(user)
+        else:
+            notifications = Notification.objects.unread(user)
+
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        user = request.user
+        notification_id = request.data.get('notification_id')
+        mark_all = request.data.get('mark_all', False)
+
+        updated = None  # Initialize to avoid potential "referenced before assignment"
+
+        if mark_all:
+            updated = Notification.objects.mark_all_read(user)
+
+        elif notification_id:
+            updated = Notification.objects.mark_read(user, notification_id)
+
+        else:
+            return Response(
+                {"error": "Either 'notification_id' or 'mark_all' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if updated:
+            notifications = Notification.objects.read(user)
+            serializer = NotificationSerializer(notifications, many=True)
+            return Response(
+                {"message": "Notification(s) marked as read", 'notifications': serializer.data},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {"error": "Notification not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )

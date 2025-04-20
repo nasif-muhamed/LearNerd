@@ -645,7 +645,7 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
         return SectionDetailWithItemsSerializer(
             sections,
             many=True,
-            context={'purchase': obj}  # Pass the purchase object to nested serializers
+            context={'purchase': obj}
         ).data
    
     def get_course(self, obj):

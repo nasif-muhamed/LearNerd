@@ -21,13 +21,13 @@ def callback(ch, method, properties, body):
         if event_type == 'purchase':
             config = {
                 'type': Notification.NotificationType.COURSE_PURCHASE,
-                'message': f"{student.full_name_or_email} purchased your course: {message.get('course_title')} with {message.get('purchase_type')} option"
+                'message': f'{student.full_name_or_email} purchased your course "{message.get('course_title')}" with {message.get('purchase_type')} option'
             }
 
         if event_type == 'review':
             config = {
                 'type': Notification.NotificationType.COURSE_REVIEW,
-                'message': f"Your course {message.get('course_title')} received a new review by {student.full_name_or_email}"
+                'message': f"{student.full_name_or_email} rated your course {message.get('course_title')} {message.get('rating')} out of 5"
             }
 
 
