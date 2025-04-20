@@ -14,16 +14,18 @@ import {
     FiRefreshCw,
     FiDownload,
 } from "react-icons/fi";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import api from "../../../../services/api/axiosInterceptor";
 import handleError from "../../../../utils/handleError";
 import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
 import { toast } from "sonner";
+import { UserRound } from "lucide-react";
 
 const StreamCourse = () => {
+    const BASE_URL = import.meta.env.VITE_BASE_URL
     const { purchaseId } = useParams();
     const [loading, setLoading] = useState(null);
-    const [myCourse, setCourse] = useState(null);
+    const [myCourse, setMyCourse] = useState(null);
     const [error, setError] = useState("");
 
     const [activeTab, setActiveTab] = useState("overview");
@@ -47,7 +49,7 @@ const StreamCourse = () => {
             const response = await api.get(`courses/stream/${purchaseId}/`);
             console.log("My Purchase response:", response);
             const result = response.data;
-            setCourse(result);
+            setMyCourse(result);
         } catch (error) {
             console.log("Couses Error:", error);
             handleError(error, "Error fetching Couses");
@@ -158,7 +160,7 @@ const StreamCourse = () => {
             const response = await api.post(`courses/assessments/${assessmentId}/submit/`, body);
             console.log('Assessment response:', response);
             const result = response.data;
-            if (result?.purchase) setCourse(result.purchase);
+            if (result?.purchase) setMyCourse(result.purchase);
     
             // Calculate score
             const totalQuestions = currentItem?.assessment?.questions.length;
@@ -202,7 +204,7 @@ const StreamCourse = () => {
                 console.log('Video response:', response);
                 const result = response.data;
         
-                if (result?.purchase) setCourse(result.purchase);
+                if (result?.purchase) setMyCourse(result.purchase);
                 toast.success("Video marked as completed successfully!");
             } catch (error) {
                 console.log("Courses Error:", error);
@@ -784,16 +786,26 @@ const StreamCourse = () => {
                                 {reviews && reviews.map((review) => (
                                     <div
                                         key={review.id}
-                                        className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0"
+                                        className="mb-3 pb-3 border-b border-border last:border-b-0 last:mb-0 last:pb-0"
                                     >
                                         <div className="flex items-center mb-3">
-                                            {/* <img
-                                                src={review.avatar}
-                                                alt={review.user}
-                                                className="w-10 h-10 rounded-full mr-3"
-                                            /> */}
-                                            <div>
-                                                <p className="text-gray-400 font-light">
+                                            {review.user_image ? (
+                                                <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
+                                                    <img
+                                                        src={BASE_URL + review.user_image}
+                                                        alt={review.full_name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center mr-3">
+                                                    <UserRound />
+                                                </div>
+                                            )}
+
+                                            <div className="flex-1">
+                                                <h5>{review.full_name}</h5>
+                                                <p className="text-gray-400 font-light line-clamp-2">
                                                     {review.review}
                                                 </p>
                                                 <div className="flex items-center">
@@ -851,11 +863,11 @@ const StreamCourse = () => {
                                 </div>
                             </div>
                             <p className="text-sm mb-4">
-                                {myCourse?.course?.instructor_details?.biography}                            
+                                {myCourse?.course?.instructor_details?.biography}                         
                             </p>
-                            <button className="btn-outline w-full">
+                            <Link to={`/student/tutors/${myCourse?.course?.instructor}`} className="btn-outline w-full">
                                 View Profile
-                            </button>
+                            </Link>
                         </div>
 
                     </div>
