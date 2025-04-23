@@ -1,10 +1,39 @@
-import React, { useState } from 'react';
-import { Menu, X, CheckCircle, BookOpen, Users, MessageCircle, ArrowRight, User, Search } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Menu, X, CheckCircle, BookOpen, Users, MessageCircle, ArrowRight, User, Search, UserRound } from 'lucide-react';
+import StudTutor from '../../../assets/user-auth/studs-login.png'
+import Studs from '../../../assets/user-auth/studs-register.png'
+import { useSelector } from "react-redux";
+import { Link } from 'react-router-dom';
+import api from '../../../services/api/axiosInterceptor';
+
 
 const LandingPage = () => {
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [isAuthenticated] = useState(false); // This would be from your auth context
-
+    const BASE_URL = import.meta.env.VITE_BASE_URL;
+    const token = useSelector((state) => state.auth.accessToken);
+    const [loading, setLoading] = useState(false);
+    const [tutors, setTutors] = useState([1, 2, 3, 4]);
+    // const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const pageSize = 4
+    const fetchTutors = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await api.get("courses/tutors/", {
+                params: {
+                    page_size: pageSize,
+                },
+            });
+            console.log('tutors response:', response);
+            setTutors(response.data.results);
+        } catch (err) {
+            console.log("err:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+    
+    useEffect(() => {
+        fetchTutors()
+    }, [])
   // Demo statistics data
     const stats = {
         courses: 1250,
@@ -49,165 +78,72 @@ const LandingPage = () => {
 
     return (
         <div className="min-h-screen flex flex-col">
-            {/* Navigation */}
-            <header className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-md">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between items-center py-4">
-                    <div className="flex items-center gap-2">
-                    {/* Logo */}
-                    <div className="flex items-center">
-                        <div className="bg-accent rounded-full p-2 mr-2">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#3B82F6" />
-                            <circle cx="8" cy="10" r="2" fill="white" />
-                            <circle cx="16" cy="10" r="2" fill="white" />
-                            <path d="M8 15H16M12 13V17" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                            <path d="M7 7L9 9M15 7L17 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                        </div>
-                        <span className="text-2xl font-bold text-foreground">LearNerds</span>
-                    </div>
-                    
-                    {/* Desktop Navigation */}
-                    <nav className="hidden md:flex items-center space-x-8 ml-10">
-                        <a href="#features" className="text-foreground hover:text-accent transition-colors">Features</a>
-                        <a href="#how-it-works" className="text-foreground hover:text-accent transition-colors">How It Works</a>
-                        <a href="#courses" className="text-foreground hover:text-accent transition-colors">Courses</a>
-                        <a href="#testimonials" className="text-foreground hover:text-accent transition-colors">Testimonials</a>
-                    </nav>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                    {/* Search bar - visible on medium screens and up */}
-                    <div className="hidden md:flex items-center bg-secondary rounded-md px-3 py-1">
-                        <Search size={18} className="text-muted-foreground mr-2" />
-                        <input 
-                        type="text" 
-                        placeholder="Search courses..." 
-                        className="bg-transparent border-none outline-none text-sm w-48 placeholder:text-muted-foreground text-foreground"
-                        />
-                    </div>
-                    
-                    {/* Authentication buttons */}
-                    <div className="hidden md:flex items-center gap-4">
-                        {isAuthenticated ? (
-                        <>
-                            <a href="/dashboard" className="btn-secondary flex items-center gap-2">
-                            <User size={16} />
-                            Dashboard
-                            </a>
-                        </>
-                        ) : (
-                        <>
-                            <a href="/login" className="btn-outline">Login</a>
-                            <a href="/register" className="btn-primary">Sign Up</a>
-                        </>
-                        )}
-                    </div>
-                    
-                    {/* Mobile menu button */}
-                    <button 
-                        className="md:hidden p-2 rounded-md text-foreground hover:bg-secondary"
-                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    >
-                        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                    </button>
-                    </div>
-                </div>
-                </div>
-                
-                {/* Mobile menu */}
-                {mobileMenuOpen && (
-                <div className="md:hidden glass-effect">
-                    <div className="px-4 pt-2 pb-4 space-y-2">
-                    <a href="#features" className="block py-2 text-foreground hover:text-accent">Features</a>
-                    <a href="#how-it-works" className="block py-2 text-foreground hover:text-accent">How It Works</a>
-                    <a href="#courses" className="block py-2 text-foreground hover:text-accent">Courses</a>
-                    <a href="#testimonials" className="block py-2 text-foreground hover:text-accent">Testimonials</a>
-                    
-                    <div className="pt-2 border-t border-border mt-2">
-                        {isAuthenticated ? (
-                        <a href="/dashboard" className="block py-2 text-accent">Dashboard</a>
-                        ) : (
-                        <>
-                            <a href="/login" className="block py-2 text-foreground hover:text-accent">Login</a>
-                            <a href="/register" className="block py-2 text-accent">Sign Up</a>
-                        </>
-                        )}
-                    </div>
-                    
-                    {/* Mobile search */}
-                    <div className="flex items-center bg-secondary rounded-md px-3 py-2 mt-4">
-                        <Search size={18} className="text-muted-foreground mr-2" />
-                        <input 
-                        type="text" 
-                        placeholder="Search courses..." 
-                        className="bg-transparent border-none outline-none w-full placeholder:text-muted-foreground text-foreground"
-                        />
-                    </div>
-                    </div>
-                </div>
-                )}
-            </header>
-
             <main className="flex-grow">
                 {/* Hero Section */}
                 <section className="relative overflow-hidden">
-                {/* Background gradient effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-primary/20 opacity-30"></div>
+                    {/* Background gradient effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-primary/20 opacity-30"></div>
                 
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 relative">
-                    <div className="grid md:grid-cols-2 gap-8 items-center">
-                    <div className="space-y-6">
-                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-balance leading-tight">
-                        Learn. Teach. <span className="text-accent">Connect.</span>
-                        </h1>
-                        <p className="text-lg md:text-xl text-muted-foreground max-w-lg">
-                        LearNerds is a community-driven platform where passionate learners meet dedicated teachers. Upload courses, learn at your pace, and connect through personalized sessions.
-                        </p>
-                        <div className="flex flex-wrap gap-4 pt-4">
-                        <a href="/register" className="btn-primary flex items-center gap-2">
-                            Get Started <ArrowRight size={16} />
-                        </a>
-                        <a href="#how-it-works" className="btn-outline">
-                            How It Works
-                        </a>
-                        </div>
-                        <div className="flex items-center gap-6 pt-2">
-                        <div className="flex -space-x-2">
-                            {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="w-8 h-8 rounded-full bg-secondary border-2 border-background flex items-center justify-center text-xs font-semibold">
-                                {i}
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 relative">
+                        <div className="grid md:grid-cols-2 gap-8 items-center">
+                        <div className="space-y-6">
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-balance leading-tight">
+                            Learn. Teach. <span className="text-accent">Connect.</span>
+                            </h1>
+                            <p className="text-lg md:text-xl text-muted-foreground max-w-lg">
+                            LearNerds is a community-driven platform where passionate learners meet dedicated teachers. Upload courses, learn at your pace, and connect through personalized sessions.
+                            </p>
+                            <div className="flex flex-wrap gap-4 pt-4">
+                            <Link to={token ? '/student/study-room' : '/register'} className="btn-primary flex items-center gap-2">
+                                {token ? 'My Study Room' : 'Get Started'} <ArrowRight size={16} />
+                            </Link>
+                            <a href="#how-it-works" className="btn-outline">
+                                How It Works
+                            </a>
                             </div>
-                            ))}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Joined by <span className="text-foreground font-semibold">{stats.users.toLocaleString()}+</span> learners
-                        </p>
-                        </div>
-                    </div>
-                    <div className="relative">
-                        <div className="glass-effect rounded-xl p-4 relative z-10">
-                        <img 
-                            src="/api/placeholder/600/400" 
-                            alt="E-learning in action" 
-                            className="rounded-lg w-full h-auto"
-                        />
-                        </div>
-                        <div className="absolute -bottom-6 -right-6 bg-card p-4 rounded-lg shadow-lg z-20 border border-border max-w-xs">
-                        <div className="flex items-start gap-3">
-                            <div className="bg-accent/20 p-2 rounded-full">
-                            <CheckCircle size={20} className="text-accent" />
+                            <div className="flex items-center gap-6 pt-2">
+                            <div className="flex -space-x-2">
+                                {tutors.map((tutor, i) => (
+                                <div key={i} className="w-8 h-8 rounded-full bg-secondary border-2 border-background flex items-center justify-center text-xs font-semibold overflow-hidden">
+                                    {tutor.tutor_details?.image ? (
+                                        <img
+                                            src={BASE_URL + tutor.tutor_details.image}
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <UserRound />
+                                    )}
+                                </div>
+                                ))}
                             </div>
-                            <div>
-                            <h3 className="font-semibold">Learn Your Way</h3>
-                            <p className="text-sm text-muted-foreground">Choose between free courses with ads or premium subscriptions with personalized support.</p>
+                            <p className="text-sm text-muted-foreground">
+                                Joined by <span className="text-foreground font-semibold">{stats.users.toLocaleString()}+</span> learners
+                            </p>
                             </div>
                         </div>
+                        <div className="relative">
+                            <div className="glass-effect rounded-xl p-4 relative z-10">
+                                <img 
+                                    src={Studs}
+                                    alt="E-learning in action" 
+                                    className="rounded-lg w-full h-auto"
+                                />
+                            </div>
+                            <div className="absolute -bottom-6 -right-6 bg-card p-4 rounded-lg shadow-lg z-20 border border-border max-w-xs">
+                            <div className="flex items-start gap-3">
+                                <div className="bg-accent/20 p-2 rounded-full">
+                                <CheckCircle size={20} className="text-accent" />
+                                </div>
+                                <div>
+                                <h3 className="font-semibold">Learn Your Way</h3>
+                                <p className="text-sm text-muted-foreground">Choose between free courses with ads or premium subscriptions with personalized support.</p>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
                         </div>
                     </div>
-                    </div>
-                </div>
                 </section>
                 
                 {/* Stats Section */}
@@ -330,11 +266,11 @@ const LandingPage = () => {
                     
                     <div className="relative">
                         <div className="glass-effect rounded-xl overflow-hidden">
-                        <img 
-                            src="/api/placeholder/600/500" 
-                            alt="LearNerds platform in action" 
-                            className="w-full h-auto"
-                        />
+                            <img 
+                                src={StudTutor}
+                                alt="LearNerds platform in action" 
+                                className="w-full h-auto"
+                            />
                         </div>
                         <div className="absolute -top-6 -left-6 bg-card p-4 rounded-lg shadow-lg border border-border max-w-xs">
                         <div className="flex items-center gap-3">

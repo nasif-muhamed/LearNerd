@@ -16,7 +16,7 @@ const AdminSideBar = ({ isSidebarOpen, toggleSidebar }) => {
 
     return (
         <aside
-            className={`fixed md:static h-full md:h-auto z-30 transition-all duration-300 ease-in-out bg-gray-800 text-white overflow-y-auto
+            className={`fixed md:static h-full md:h-auto z-30 transition-all duration-300 ease-in-out bg-gray-950 text-white overflow-y-auto
                 ${
                     isSidebarOpen ? "w-44 left-0" : "-left-64 md:left-0 md:w-16"
                 } md:block`}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Facebook, Github } from 'lucide-react';
+import { FaGoogle, FaFacebookF, FaGithub } from "react-icons/fa";
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
@@ -154,10 +154,10 @@ const LoginForm = ({ setLoading }) => {
                     <div
                         onClick={handleGoogleLogin}
                     >
-                        <SocialButton icon={Facebook} bgColor="bg-red-600" />
+                        <SocialButton icon={FaGoogle} bgColor="bg-red-600" />
                     </div>
-                    <SocialButton icon={Facebook} bgColor="bg-blue-600" />
-                    <SocialButton icon={Github} bgColor="bg-gray-700" />
+                    <SocialButton icon={FaFacebookF } bgColor="bg-blue-600" />
+                    <SocialButton icon={FaGithub} bgColor="bg-gray-700" />
                 </div>
 
                 <p className="text-center text-gray-400 mt-4">

@@ -1,9 +1,10 @@
-import React, { use, useState } from "react";
+import React, { useState } from "react";
 import { Star, Flag } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import api from "../../../../services/api/axiosInterceptor";
 import TutorProfile from "../../../../components/user/student/tutors/TutorProfile";
+import { FaLongArrowAltRight } from "react-icons/fa";
 
 const TutorDetails = () => {
     const { id } = useParams();
@@ -12,27 +13,7 @@ const TutorDetails = () => {
     const [courses, setCourses] = useState([]);
     const [count, setCount] = useState(0);
 
-    const enrolledCourses = [
-        {
-            title: "Complete web development course",
-            instructor: "John Chandler",
-            price: 3999,
-            image: "/api/placeholder/400/250?text=Web+Dev",
-        },
-        {
-            title: "React - Complete Developer Course with Hands-On Projects",
-            instructor: "Digital Media",
-            price: 2999,
-            image: "/api/placeholder/400/250?text=React",
-        },
-        {
-            title: "React Redux Ultimate - State Management",
-            instructor: "Types Info",
-            price: 2999,
-            image: "/api/placeholder/400/250?text=Redux",
-        },
-    ];
-
+    console.log('tutor courses:', courses)
     const reviews = [
         {
             text: "Thanks! Rohan Chaudhary for C++II. It was partly hard for me to even touch it but your explanation made things clear. I understood everything. Thank you so much!!!",
@@ -80,12 +61,23 @@ const TutorDetails = () => {
 
                 {/* Enrolled Courses */}
                 <div className="mb-8">
-                    <h2 className="text-2xl font-semibold mb-4">
-                        Total Courses({count})
-                    </h2>
+                    <div className="flex justify-between items-center mb-8">
+                        <h2 className="text-2xl font-semibold mb-4">
+                            Total Courses({count})
+                        </h2>
+                        <Link 
+                            to={`/student/courses`} 
+                            state={{ tutorId: id }}
+                            className="text-primary flex gap-2 items-center"
+                            >
+                                tutor's courses <span><FaLongArrowAltRight/></span>
+                        </Link>
+                    </div>
+                    
                     <div className="grid md:grid-cols-3 gap-6">
                         {courses?.map((course, index) => (
-                            <div
+                            <Link
+                                to={`/student/courses/${course.id}`}
                                 key={index}
                                 className="bg-gray-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
                             >
@@ -114,7 +106,7 @@ const TutorDetails = () => {
                                                         className={
                                                             i <
                                                             Math.floor(
-                                                                course.rating
+                                                                course.average_rating
                                                             )
                                                                 ? "text-amber-400"
                                                                 : "text-gray-400"
@@ -143,7 +135,7 @@ const TutorDetails = () => {
 
                                     </div>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </div>

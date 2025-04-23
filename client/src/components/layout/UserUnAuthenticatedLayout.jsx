@@ -11,7 +11,7 @@ const UserUnAuthenticatedLayout = () => {
             <HeaderUnAuth/>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col md:flex-row items-center justify-center p-4 gap-8">
+            <main className="flex-1 flex flex-col md:flex-row items-center justify-center  gap-8">
                 <Outlet/>
             </main>
 

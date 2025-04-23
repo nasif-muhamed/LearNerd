@@ -15,6 +15,10 @@ const StudentCourses = () => {
     const [prevPage, setPrevPage] = useState(null);
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState(location.state?.searchQuery || "");
+    const [tutorId, setTutorId] = useState(location.state?.tutorId || null);
+    console.log('location.state', location.state)
+    // const queryParams = new URLSearchParams(search);
+    // const tutorId = queryParams.get('tutor');
     const pageSize = 3; // Matches your backend response (9 items per page)
 
     console.log('search query course list:', searchQuery)
@@ -32,12 +36,16 @@ const StudentCourses = () => {
             setLoading(true)
             setError(null);
             console.log("CURRENT PAge:", currentPage, pageSize)
+            const params = {
+                page: currentPage,
+                page_size: pageSize,
+                search: searchQuery,
+            }
+
+            if (tutorId) params.tutor = tutorId
+
             const response = await api.get('courses/', {
-                params: {
-                    page: currentPage,
-                    page_size: pageSize,
-                    search: searchQuery,
-                },
+                params: params
             })
             console.log('My Course response:', response)
             const result = response.data?.results

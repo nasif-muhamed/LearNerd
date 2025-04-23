@@ -27,7 +27,7 @@ const AdminHeader = ({ toggleSidebar }) => {
     // };
 
     return (
-        <header className="w-full bg-gray-800 z-40">
+        <header className="w-full bg-gray-950 z-40">
             <div className="flex items-center justify-between p-4">
                 {/* Left Section: Logo and sidebar toggle */}
                 <div className="flex items-center">
@@ -48,7 +48,7 @@ const AdminHeader = ({ toggleSidebar }) => {
                                 className="h-10 w-10"
                             />
                             <span className="text-white text-xl font-bold hidden md:block">
-                                LearNerds
+                                Lear<span className="text-accent">nerds</span>
                             </span>
                         </div>
                     </Link>
