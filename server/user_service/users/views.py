@@ -61,7 +61,6 @@ class RegisterView(APIView):
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
 
@@ -88,7 +87,6 @@ class VerifyOTPView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ResendOTPView(APIView):
     permission_classes = [AllowAny]
@@ -143,10 +141,8 @@ class ResendOTPView(APIView):
 
         return Response({'message': 'New OTP sent successfully'}, status=status.HTTP_200_OK)
 
-
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-
 
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
@@ -185,7 +181,6 @@ class GoogleLoginView(APIView):
         except Exception as e:
             return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -214,7 +209,6 @@ class ForgotPasswordView(APIView):
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ForgotPasswordOTPVerifyView(APIView):
     permission_classes = [AllowAny]
@@ -245,7 +239,6 @@ class ForgotPasswordOTPVerifyView(APIView):
             return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ForgotPasswordResetView(APIView):
     permission_classes = [AllowAny]
@@ -286,7 +279,6 @@ class ForgotPasswordResetView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-
 class UserView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -437,7 +429,6 @@ class UserActionView(APIView):
 
         serializer = UserActionSerializer(user_to_modify)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class CustomPagination(PageNumberPagination):
     page_size = 3  # Default items per page
@@ -637,3 +628,4 @@ class NotificationListView(APIView):
             {"error": "Notification not found"},
             status=status.HTTP_404_NOT_FOUND
         )
+

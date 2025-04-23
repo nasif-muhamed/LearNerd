@@ -21,7 +21,7 @@ def callback(ch, method, properties, body):
         if event_type == 'purchase':
             config = {
                 'type': Notification.NotificationType.COURSE_PURCHASE,
-                'message': f'{student.full_name_or_email} purchased your course "{message.get('course_title')}" with {message.get('purchase_type')} option'
+                'message': f'{student.full_name_or_email} purchased your course "{message.get("course_title")}" with {message.get("purchase_type")} option'
             }
 
         if event_type == 'review':

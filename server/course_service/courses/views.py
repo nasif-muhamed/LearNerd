@@ -1,3 +1,4 @@
+import logging
 import cloudinary.uploader
 import jwt
 import stripe
@@ -6,6 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.db import DatabaseError
 from django.conf import settings
+from django.db import connection
 
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
@@ -32,6 +34,7 @@ from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTu
 from .services import CallUserService, UserServiceException
 from .rabbitmq_publisher import publish_notification_event
 
+logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
 
 # Custom pagination class to handle pagination in API responses
@@ -820,7 +823,6 @@ class StripeWebhookView(APIView):
             # purchase.stripe_payment_intent_id = session.get('payment_intent')
             # purchase.save()
         if event['type'] == 'payment_intent.succeeded':
-            print('succeed++++++++++')
             intent = event['data']['object']
             user_id = intent['metadata']['user_id']
             purchase_type = intent['metadata']['purchase_type']
@@ -864,6 +866,15 @@ class StripeWebhookView(APIView):
             serializer = PurchaseCreateSerializer(data=purchase_data)
             if serializer.is_valid():
                 serializer.save()
+                publish_notification_event(
+                   event_type='course.purchase',
+                   data={
+                       'student_id': user_id,
+                       'tutor_id': course.instructor,
+                       'course_title': course.title,
+                       'purchase_type': 'subscription',
+                   }
+                )
                 print('saved----------------')
                 return Response( serializer.data, status=status.HTTP_201_CREATED )
             print('serializer not valid', serializer.errors)
@@ -1058,13 +1069,29 @@ class StudentFetchTopTutorsView(APIView):
 
     def get(self, request):
         try:
-            # Fetch top tutors based on course enrollments or ratings
-            tutors = Course.objects.values('instructor').annotate(
-                total_courses=Count('id'),
-                total_enrollments=Count('purchases')
-            ).order_by('-total_enrollments')
-            # print('tutors:', tutors)
-            # If no tutors found, return a message
+            # tutors = Course.objects.values('instructor').annotate(
+            #     total_courses=Count('id'),
+            #     total_enrollments=Count('purchases')
+            # ).order_by('-total_enrollments')
+
+            # Fetch top tutors based on course enrollments or ratings. Previously used the above method but giving wrong results for total_courses & total_enrollments.
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        c.instructor, 
+                        COUNT(DISTINCT c.id) AS total_courses, 
+                        COUNT(p.id) AS total_enrollments 
+                    FROM courses_course c 
+                    LEFT JOIN courses_purchase p ON p.course_id = c.id 
+                    WHERE c.is_available = TRUE 
+                    GROUP BY c.instructor 
+                    ORDER BY total_enrollments DESC;
+                """)
+                # Fetch all rows and convert to list of dicts
+                columns = ['instructor', 'total_courses', 'total_enrollments']
+                rows = cursor.fetchall()
+                tutors = [dict(zip(columns, row)) for row in rows]
+
             if not tutors:
                 return Response({"message": "No tutors found."}, status=404)
 
@@ -1076,10 +1103,8 @@ class StudentFetchTopTutorsView(APIView):
             try:
                 response_user_service = call_user_service.get_users_details(tutor_ids)
             except UserServiceException as e:
-                # Handle user service exceptions and return appropriate error
                 return Response({"error": str(e)}, status=503)
             except Exception as e:
-                # Catch any unexpected exceptions
                 return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
             tutors_data = response_user_service.json()
@@ -1091,40 +1116,60 @@ class StudentFetchTopTutorsView(APIView):
                     status=500
                 )
 
-            result = []
-            for tutor, details in zip(paginated_tutors, tutors_data):
-                result.append({
+            result = [
+                {
                     'tutor_id': tutor['instructor'],
                     'course_count': tutor['total_courses'],
                     'enrollment_count': tutor['total_enrollments'],
                     'tutor_details': details
-                })
-
-            # print('result:', result)
+                }
+                for tutor, details in zip(paginated_tutors, tutors_data)
+            ]
+            # logger.debug(f"Returning {len(result)} top tutors: {result}")
             return paginator.get_paginated_response(result)
 
         except DatabaseError as db_error:
+            logger.error(f"Database error for instructor: {str(e)}")
             return Response({"error": f"Database error: {str(db_error)}"}, status=500)
 
         except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
 # Total courses and enrollments of a tutor - called from user_service
 class StudentTutorAnalysisView(APIView):
     def get(self, request, id):
         try:
-            # Count the number of courses uploaded by the tutor
-            stats = Course.objects.filter(instructor=id).aggregate(
-                total_courses=Count('id'),
-                total_enrollments=Count('purchases')
-            )
-            # Return a response with total courses and total enrollments
+            # stats = Course.objects.filter(instructor=id, is_available=True).aggregate(
+            #     total_courses=Count('id'),
+            #     total_enrollments=Count('purchases')
+            # )
+
+            # Count the number of courses uploaded by the tutor. Previously used the above method but giving wrong results for total_courses & total_enrollments. 
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COUNT(DISTINCT c.id) AS total_courses,
+                        COUNT(p.id) AS total_enrollments
+                    FROM courses_course c
+                    LEFT JOIN courses_purchase p ON p.course_id = c.id
+                    WHERE c.instructor = %s AND c.is_available = TRUE;
+                """, [id])
+                row = cursor.fetchone()  # returns tuple
+            total_courses, total_enrollments = row
+
+            logger.debug(f"instructor: {id}, total_courses: {total_courses}, total_enrollments: {total_enrollments}")
             return Response({
-                'total_courses': stats['total_courses'],
-                'total_enrollments': stats['total_enrollments']
+                'total_courses': total_courses,
+                'total_enrollments': total_enrollments,
             }, status=status.HTTP_200_OK)
+        
+        except DatabaseError as e:
+            logger.error(f"Database error for instructor {id}: {str(e)}")
+            return Response({"error": "A database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
+            logger.error(f"Unexpected error for instructor {id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Tutor can see the preview of the course and students enrolled in it
