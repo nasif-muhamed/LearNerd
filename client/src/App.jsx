@@ -1,5 +1,6 @@
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import NotificationHandler from './components/ui/NotificationHandler';
 import CommonRoutes from './routes/CommonRoutes';
 import StudentRoutes from './routes/StudentRoutes';
 import AdminRoutes from './routes/AdminRoutes'
@@ -10,6 +11,8 @@ function App() {
 
     return (
         <Router>
+            <NotificationHandler/>
+
             <Routes>
                 <Route path="/student/*" element={<StudentRoutes />} />
                 <Route path="/tutor/*" element={<TutorRoutes/>} />
