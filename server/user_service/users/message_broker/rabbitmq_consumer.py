@@ -3,14 +3,14 @@ import json
 import os
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
-from .models import Notification
+from ..models import Notification
 
 Profile = get_user_model()
 def callback(ch, method, properties, body):
     message = json.loads(body)
     routing_key = method.routing_key
     event_type = routing_key.split('.')[-1]  # e.g., 'purchase' from 'notification.course.purchase'
-    print('inside callback:', message, routing_key)
+    print('inside callback user_service:', message, routing_key)
     try:
         student_id = message['student_id']
         student = Profile.objects.get(id=student_id)
@@ -24,12 +24,17 @@ def callback(ch, method, properties, body):
                 'message': f'{student.full_name_or_email} purchased your course "{message.get("course_title")}" with {message.get("purchase_type")} option'
             }
 
-        if event_type == 'review':
+        elif event_type == 'upgraded':
+            config = {
+                'type': Notification.NotificationType.COURSE_UPGRADE,
+                'message': f'{student.full_name_or_email} upgraded the course "{message.get("course_title")}" to {message.get("purchase_type")}'
+            }
+
+        elif event_type == 'review':
             config = {
                 'type': Notification.NotificationType.COURSE_REVIEW,
                 'message': f"{student.full_name_or_email} rated your course {message.get('course_title')} {message.get('rating')} out of 5"
             }
-
 
         if config is None:
             print(f" [x] Unknown event type: {event_type}")

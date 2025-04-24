@@ -854,10 +854,21 @@ class StripeWebhookView(APIView):
                 # Only update if the existing purchase is freemium
                 if purchase.purchase_type == 'freemium':
                     serializer = PurchaseCreateSerializer(purchase, data=purchase_data, partial=True)
+                    
                     if serializer.is_valid():
                         serializer.save()
                         print('Freemium upgraded to subscription ----------------')
+                        publish_notification_event(
+                            event_type='course.upgraded',
+                            data={
+                                'student_id': user_id,
+                                'tutor_id': course.instructor,
+                                'course_title': course.title,
+                                'purchase_type': 'subscription',
+                            }
+                        )
                         return Response(serializer.data, status=status.HTTP_200_OK)
+                    
                     print('serializer not valid', serializer.errors)
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -1239,6 +1250,14 @@ class ReviewListCreateAPIView(APIView):
             # Check if user already reviewed this course
             if Review.objects.filter(user=user_id, course=course).exists():
                 return Response({"error": "You have already reviewed this course"}, status=status.HTTP_400_BAD_REQUEST)
+
+            purchase = Purchase.objects.get(user=user_id, course=course)
+            sections = SectionItem.objects.filter(section__course=course).count()
+            completed_sections = SectionItemCompletion.objects.filter(purchase=purchase, completed=True).count()
+            print('eligible to review:', sections, completed_sections)
+            if sections != completed_sections:
+                print('sections and completed are not equal')
+                return Response({"error": "You have to complete the course to post a review"}, status=status.HTTP_400_BAD_REQUEST)
 
             serializer = ReviewCreateSerializer( data=request.data, context={'request': request} )
             

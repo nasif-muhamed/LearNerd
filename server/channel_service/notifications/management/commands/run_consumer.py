@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from users.message_broker.rabbitmq_consumer import start_consumer
+from notifications.message_broker.rabbitmq_consumer import start_consumer
 
 class Command(BaseCommand):
     help = 'Starts the RabbitMQ consumer for notification events'
@@ -10,4 +10,4 @@ class Command(BaseCommand):
             start_consumer()
         except KeyboardInterrupt:
             self.stdout.write(self.style.WARNING('Consumer stopped.'))
-            
+

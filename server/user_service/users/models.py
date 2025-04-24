@@ -82,6 +82,7 @@ class Notification(models.Model):
     class NotificationType(models.TextChoices):
         COURSE_PURCHASE = 'COURSE_PURCHASE', 'Course Purchase'
         COURSE_REVIEW = 'COURSE_REVIEW', 'Course Review'
+        COURSE_UPGRADE = 'COURSE_UPGRADE', 'Course Upgrade'
         WALLET_CREDIT = 'WALLET_CREDIT', 'Wallet Credit'
         USER_REPORT = 'USER_REPORT', 'User Report'
         CHAT_MESSAGE = 'CHAT_MESSAGE', 'Chat Message'
