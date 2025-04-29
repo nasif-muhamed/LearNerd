@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from django.db import models
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, FileExtensionValidator, MaxLengthValidator, MaxValueValidator
@@ -216,11 +217,24 @@ class Purchase(models.Model):
 
     def __str__(self):
         return f"{self.user} + {self.course.title}"
+    
+    @property
+    def is_completed(self):
+        total_section_items = SectionItem.objects.filter(section__course=self.course).count()
+        completed_items = self.section_items_completed.filter(completed=True).count()
+        return total_section_items == completed_items
 
+    @property
+    def safe_period_expiry(self):
+        if self.safe_period and self.purchased_at:
+            return self.purchased_at + timedelta(days=self.safe_period)
+        return None
+    
 class SectionItemCompletion(models.Model):
-    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE)
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="section_items_completed")
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name="section_item_completion")
     completed = models.BooleanField(default=False)
+    ad_viewed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -228,7 +242,7 @@ class SectionItemCompletion(models.Model):
 
 class Review(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reviews')
-    user = models.BigIntegerField()
+    user = models.BigIntegerField(db_index=True)
     rating = models.PositiveIntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)])
     review = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -239,7 +253,21 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.user} for {self.course.title}"
-    
+
+class Report(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reports')
+    user = models.BigIntegerField(db_index=True)
+    report = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
+    resolved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('course', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report by {self.user} for {self.course.title}"
+
 class NoteSectionItem(models.Model):
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='notes')
     notes = models.TextField(blank=True, null=True)

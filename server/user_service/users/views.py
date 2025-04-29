@@ -22,10 +22,10 @@ from rest_framework import generics
 from rest_framework.exceptions import AuthenticationFailed
 
 from . firebase_auth import auth as firebase_auth
-from . models import AdminUser, BadgesAquired, Notification
+from . models import AdminUser, BadgesAquired, Notification, Wallet
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
     BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer, \
-    ProfileDetailsSerializer, NotificationSerializer
+    ProfileDetailsSerializer, NotificationSerializer, WalletSerializer
 from .tasks import send_otp_email
 from .services import CallCourseService, CourseServiceException
 
@@ -629,3 +629,27 @@ class NotificationListView(APIView):
             status=status.HTTP_404_NOT_FOUND
         )
 
+class WalletBalanceView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, id):
+        try:
+            user = Profile.objects.get(id=id)
+            # wallet = user.wallet  # for now commented because lots of users without wallet exist
+            wallet, created = Wallet.objects.get_or_create(user=user)
+            serializer = WalletSerializer(wallet)
+            if created:
+                serializer.save()
+            print('wallet:', serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Profile.DoesNotExist:
+            return Response(
+                {'error': 'Users not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

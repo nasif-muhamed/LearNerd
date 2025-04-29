@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
-# from django.contrib.postgres.fields import JSONBField
+from decimal import Decimal
 
 class ProfileManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -42,6 +42,10 @@ class Profile(AbstractBaseUser):
         elif self.first_name:
             return self.first_name
         return self.email
+    
+    @property
+    def unread_notifications(self):
+        return self.notifications.filter(is_read=False).count()
 
 class AdminUser(models.Model):
     profile = models.ForeignKey(Profile, related_name="admins", on_delete=models.CASCADE)
@@ -84,6 +88,7 @@ class Notification(models.Model):
         COURSE_REVIEW = 'COURSE_REVIEW', 'Course Review'
         COURSE_UPGRADE = 'COURSE_UPGRADE', 'Course Upgrade'
         WALLET_CREDIT = 'WALLET_CREDIT', 'Wallet Credit'
+        WALLET_DEBIT = 'WALLET_DEBIT', 'Wallet Debit'
         USER_REPORT = 'USER_REPORT', 'User Report'
         CHAT_MESSAGE = 'CHAT_MESSAGE', 'Chat Message'
 
@@ -131,3 +136,30 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.notification_type} for {self.user.username}: {self.message}"
+
+class Wallet(models.Model):
+    user = models.OneToOneField(Profile, on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Wallet for {self.user.full_name_or_email}"
+    
+    # @property
+    # def pending_balance(self):
+    #     pending_transactions = Transaction.objects.filter(
+    #         wallet=self,
+    #         status='pending',
+    #         transaction_type='course_sale'
+    #     )
+    #     return sum(transaction.amount for transaction in pending_transactions)
+    
+    def credit_balance(self, amount):
+        self.balance += Decimal(amount)
+        self.save()
+
+    def debit_balance(self, amount):
+        self.balance -= Decimal(amount)
+        self.save()
+    

@@ -43,7 +43,7 @@ INSTALLED_APPS = [
 
     'rest_framework_simplejwt',
     'rest_framework',
-    'django_celery_results',  # it's used for showing the celery results, such as success, pending, failure, etc
+    'django_celery_results',  # developer tool: it's used for showing the celery results, such as success, pending, failure, etc
 
     'users',
 ]
@@ -129,13 +129,13 @@ CACHES = {
 }
 
 
-# Celery Worker using Redis
-CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"  # Use Redis database 0 for Celery broker
+# Celery Worker using Redis. We can also use Rabbitmq as broker
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Asia/Kolkata'  # Match your project's timezone
+CELERY_TIMEZONE = 'Asia/Kolkata'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

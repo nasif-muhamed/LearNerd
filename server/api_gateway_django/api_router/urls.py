@@ -14,4 +14,6 @@ urlpatterns = [
     re_path(r'^v1/admin/.*$', views.proxy_to_admin_service, name='proxy-admin'),
     re_path(r'^v1/badges/.*$', views.proxy_to_badges_service, name='proxy-badges'),
     re_path(r'^v1/courses/.*$', views.proxy_to_course_service, name='proxy-course'),
+    re_path(r'^v1/transactions/.*$', views.proxy_to_course_service, name='proxy-transactions'),
+    re_path(r'^v1/banners/.*$', views.BannersGateway.as_view(), name="banner-creation"),
 ]

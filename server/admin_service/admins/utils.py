@@ -69,7 +69,6 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error while getting tokens: {str(e)}")
 
-
     # method to fetch a single user
     def get_user(self, pk, admin):
         if not admin:
@@ -189,6 +188,44 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error fetching users: {str(e)}")
         
+    def get_my_notifications(self, admin, query_params=None):
+        print('Here in get_my_notifications:', query_params)
+        if not admin:
+            raise ValueError("Admin parameter is required")
+
+        try:
+            token_obj = UserServiceToken.objects.get(admin=admin)
+        except UserServiceToken.DoesNotExist:
+            raise UserServiceException("Token not found for admin")
+
+        path = "api/v1/users/notifications/"
+        url = f"{self.USER_SERVICE_URL}{path}"
+        if query_params:
+            url = f"{url}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
+        headers = {"Authorization": f"Bearer {token_obj.access_token}"}
+
+        try:
+            response = self._make_request("GET", headers=headers, url=url)
+            
+            if response.status_code == status.HTTP_401_UNAUTHORIZED:
+                new_tokens = self._refresh_token(token_obj)
+                token_obj.access_token = new_tokens["access"]
+                token_obj.save()
+                headers["Authorization"] = f"Bearer {new_tokens['access']}"
+                response = self._make_request("GET", headers=headers, url=url)
+
+            if not response.ok:
+                raise UserServiceException(
+                    f"Failed to fetch users with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error fetching users: {str(e)}")
+
 
 class CallCourseService:
     COURSE_SERVICE_URL = os.getenv('COURSE_SERVICE_URL')

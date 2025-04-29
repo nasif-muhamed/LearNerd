@@ -2,7 +2,7 @@ from django.urls import path
 from . views import RegisterView, VerifyOTPView, ResendOTPView, LoginView,\
     UserView, UsersView, UserDetailsView, UserActionView, MyBadgesView, SubmitQuizView, ForgotPasswordView,\
     ForgotPasswordOTPVerifyView, ForgotPasswordResetView, GoogleLoginView, MultipleTutorDetailsView,\
-    SingleTutorDetailsView, NotificationListView
+    SingleTutorDetailsView, NotificationListView, WalletBalanceView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -29,4 +29,7 @@ urlpatterns = [
 
     # for fetching unread/read Notificaiton and update a single/all notifications as read
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
+
+    # fetch user's wallet balance
+    path('user-wallet/<int:id>/', WalletBalanceView.as_view(), name='wallet-balance'),
 ]

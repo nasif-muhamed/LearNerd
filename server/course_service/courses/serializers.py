@@ -4,10 +4,11 @@ from django.db import transaction
 from django.db.models import Sum
 import json
 from .models import (
-    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review,
+    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review, Report,
     Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion
 )
 from .services import CallUserService, UserServiceException
+from banners.utils import get_ad_content
 
 
 call_user_service = CallUserService()
@@ -620,6 +621,8 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
     purchase_type = serializers.CharField()
     completed_section_items = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
+    ad_viewed = serializers.SerializerMethodField()
+    ads = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
@@ -629,6 +632,8 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
             'purchase_type',
             'completed_section_items',
             'sections',
+            'ad_viewed',
+            'ads'
         ]
 
     def get_course_total_section_items(self, obj):
@@ -651,6 +656,17 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
     def get_course(self, obj):
         course = obj.course
         return CourseUnAuthDetailSerializer(course).data
+    
+    def get_ad_viewed(self, obj):
+        return SectionItemCompletion.objects.filter(
+            purchase=obj,
+            ad_viewed=True
+        ).values_list('section_item__id', flat=True)
+    
+    def get_ads(self, obj):  # <--- new method
+        if obj.purchase_type == 'freemium':
+            return get_ad_content()
+        return None
     
 class TutorCourseSerializer(serializers.ModelSerializer):
     total_courses = serializers.IntegerField()
@@ -675,3 +691,16 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = '__all__'
+
+class ReportCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'report', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = '__all__'
+
+

@@ -5,8 +5,8 @@ from .views import (
     RequirementListView, ObjectiveUpdateView, RequirementUpdateView, ObjectiveDeleteView, RequirementDeleteView, SectionCreateView,
     SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
-    TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseReviewsView,
-    AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView,
+    TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseFeedbackView,
+    ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView
 )
 
 router = DefaultRouter()
@@ -14,6 +14,7 @@ router.register(r'categories', AdminCategoryViewSet)
 
 urlpatterns = [
     path('', CourseCreateAPIView.as_view(), name='course-creation'),
+    path('home/', HomeView.as_view(), name='user-home'),
     path('<int:id>/', CourseUnAuthDetailView.as_view(), name='course-detail'),
     path('stream/<int:course_id>/', StudentMyCourseDetailView.as_view(), name='course-auth-detail'),
     path('toggle-activation/', TutorToggleActivationCourseView.as_view(), name='activate-deactivate'),
@@ -61,17 +62,21 @@ urlpatterns = [
     path('assessments/<int:assessment_id>/submit/', StudentAssessmentSubmitView.as_view(), name='assessment-submit-course-student'),
     path('lecture/<int:lecture_id>/submit/', StudentLectureSubmitView.as_view(), name='assessment-submit-course-student'),
 
+    # freemium course, mark as ad viewed
+    path('ad-viewed/<int:item_id>/', AdViewedSubmitView.as_view(), name='assessment-submit-course-student'),
+
     path('tutors/', StudentFetchTopTutorsView.as_view(), name='top-tutors'), # to list tutors with pagination and filter by category
     path('tutor/course-details/<int:id>/', StudentTutorAnalysisView.as_view(), name='tutor-analysis'), # tutor analytics like total course and enrollments
     path('tutor/course-preview/<int:course_id>/', TutorCoursePreviewView.as_view(), name='tutor-course-preview'), # to preview the course for a tutor    
 
-    # Create a new review for a course and get all reviews of a course
+    # Create a new review or report a course
     path('<int:course_id>/reviews/', ReviewListCreateAPIView.as_view(), name='review-list-create'),    
+    path('<int:course_id>/reports/', ReportListCreateAPIView.as_view(), name='report-list-create'),    
     # Get all reviews by a specific user
     # path('users/<int:user_id>/reviews/', UserReviewsView.as_view(), name='user-reviews'),
     
-    # Get current user's reviews
-    path('my-course/<int:course_id>/reviews/', StudentCourseReviewsView.as_view(), name='my-course-reviews'),
+    # Get current user's review + other student's review for a course
+    path('my-course/<int:course_id>/feedback/', StudentCourseFeedbackView.as_view(), name='my-course-reviews'),
 
     # Get all enrolled course and uploaded courses by a user
     path('admin/user/<int:user_id>/courses/', AdminUserCoursesDetailsView.as_view(), name='my-course-reviews'),

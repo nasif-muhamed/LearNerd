@@ -5,10 +5,9 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import exceptions
 
-from .models import BadgesAquired, Notification
+from .models import BadgesAquired, Notification, Wallet
 
 Profile = get_user_model()
-
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
@@ -67,10 +66,10 @@ class ForgotPasswordResetSerializer(serializers.Serializer):
     
 class ProfileSerializer(serializers.ModelSerializer):
     # badges_aquired = BadgesAquiredSerializer(many=True, read_only=True)
-    
+    unread_notifications = serializers.IntegerField(read_only=True)
     class Meta:
         model = Profile
-        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at']  # 'badges_aquired'
+        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'unread_notifications']  # 'badges_aquired'
         read_only_fields = ['id', 'email', 'is_tutor', 'is_active', 'created_at'] # 'badges_aquired'
 
 class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to see the profile details
@@ -80,6 +79,7 @@ class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to se
 
 class UserActionSerializer(serializers.ModelSerializer):
     is_profile_completed = serializers.ReadOnlyField()
+    
     class Meta:
         model = Profile
         fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'is_profile_completed']
@@ -136,3 +136,9 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'notification_type', 'message', 'is_read', 'created_at']
+
+class WalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = ['id', 'user', 'balance', 'created_at', 'updated_at']
+        read_only_fields = fields

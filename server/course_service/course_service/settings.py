@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 load_dotenv()
 
@@ -40,9 +41,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'cloudinary',
+    'cloudinary', # for storing media files
+    'django_celery_beat', # for scheduling tasks
 
     'courses',
+    'banners',
+    'transactions',
 ]
 
 REST_FRAMEWORK = {
@@ -159,3 +163,25 @@ DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
+
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = os.getenv('REDIS_PORT')
+
+# Celery Worker using Redis. We can also use Rabbitmq as broker
+CELERY_BROKER_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+CELERY_RESULT_BACKEND = f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+
+# celery beat setup for scheduled task. It'll run every day at 1am 
+from datetime import timedelta
+CELERY_BEAT_SCHEDULE = {
+    'check-safety-period-daily': {
+        'task': 'transactions.tasks.run_safe_period_check',
+        'schedule': crontab(), # crontab(hour=1, minute=0),  # Run daily at 1 AM # crontab(minute='*/5'),  # Run every 5 minutes
+    },
+}
+
+ADMIN_USER_ID = os.getenv('ADMIN_USER_ID')

@@ -1,5 +1,5 @@
 from django.urls import path
-from . views import LoginView, VerifyOTPView, AdminView, AdminUserActionView, UserListView, AdminAuthView
+from . views import LoginView, VerifyOTPView, AdminView, AdminUserActionView, UserListView, AdminNotificationView, AdminAuthView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -12,4 +12,7 @@ urlpatterns = [
     path('user-action/<int:pk>/', AdminUserActionView.as_view(), name='admin-user-action'),
     path('users/', UserListView.as_view(), name='list-user'),
     path('permission/', AdminAuthView.as_view(), name='permission'),
+
+    path('notifications/', AdminNotificationView.as_view(), name='list-admin-notifications'),
+
 ]

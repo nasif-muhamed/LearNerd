@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.db import DatabaseError
 from django.conf import settings
-from django.db import connection
+from django.db import connection, IntegrityError
 
 from rest_framework import viewsets, generics, status
 from rest_framework.views import APIView
@@ -20,7 +20,7 @@ from rest_framework.exceptions import PermissionDenied
 
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
-    SectionItemCompletion, Assessment, Review
+    SectionItemCompletion, Assessment, Review, Report, NoteSectionItem
 )
 
 from .serializers import (
@@ -28,14 +28,31 @@ from .serializers import (
     CourseRequirementSerializer, CourseObjectivesRequirementsSerializer, SectionSerializer,
     SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
-    ReviewCreateSerializer, ReviewSerializer
+    ReviewCreateSerializer, ReviewSerializer, ReportCreateSerializer, ReportSerializer,
 )
 from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor
 from .services import CallUserService, UserServiceException
 from .rabbitmq_publisher import publish_notification_event
+from banners.utils import get_home_banner
+from transactions.utils import record_course_purchase
 
 logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
+
+class HomeView(APIView):
+    permission_classes = [IsUser]
+    def get(self, request):
+        user_id = request.user_payload['user_id']
+        # Get 4 purchases for the user with related course data
+        purchases = Purchase.objects.filter(user=user_id).select_related('course')[:4]
+        my_course_serializer = StudentMyCourseSerializer(purchases, many=True)
+
+        courses = Course.objects.filter(is_complete=True, is_available=True)[:3]
+        course_serializer = CourseSerializer(courses, many=True)
+
+        ad_details = get_home_banner()
+        print('ad_details:', ad_details)
+        return Response({'my_courses': my_course_serializer.data, 'courses': course_serializer.data}, status=status.HTTP_200_OK)
 
 # Custom pagination class to handle pagination in API responses
 class CustomPagination(PageNumberPagination):
@@ -856,7 +873,15 @@ class StripeWebhookView(APIView):
                     serializer = PurchaseCreateSerializer(purchase, data=purchase_data, partial=True)
                     
                     if serializer.is_valid():
-                        serializer.save()
+                        purchase = serializer.save()
+
+                        try:
+                            record_course_purchase(purchase, 'stripe', stripe_payment_intent_id)
+                        except IntegrityError:
+                            return Response({"detail": "A database error occurred during course purchase. contact admin if amount is debited"}, status=status.HTTP_400_BAD_REQUEST)
+                        except Exception as e:
+                            return Response({"detail": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
                         print('Freemium upgraded to subscription ----------------')
                         publish_notification_event(
                             event_type='course.upgraded',
@@ -876,7 +901,13 @@ class StripeWebhookView(APIView):
 
             serializer = PurchaseCreateSerializer(data=purchase_data)
             if serializer.is_valid():
-                serializer.save()
+                purchase = serializer.save()
+                try:
+                    record_course_purchase(purchase, 'stripe', stripe_payment_intent_id)
+                except IntegrityError:
+                    return Response({"detail": "A database error occurred during course purchase. contact admin if amount is debited"}, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    return Response({"detail": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 publish_notification_event(
                    event_type='course.purchase',
                    data={
@@ -951,13 +982,17 @@ class StudentMyCourseDetailView(APIView):
             user_id = request.user_payload['user_id']
             purchase = Purchase.objects.get(course=course_id, user=user_id)
             serializer = StudentMyCourseDetailSerializer(purchase)
+            # response_data = serializer.data
+            # if purchase.purchase_type == 'freemium':
+            #     ad_content = get_ad_content()
+            #     response_data['ads'] = ad_content
             return Response(serializer.data)
         except Purchase.DoesNotExist:
             return Response({"error": "Course purchase not found"}, status=404)
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
-        
+
 # Mark checked - Submit Assessment Answers of an enrolled course
 class StudentAssessmentSubmitView(APIView):
     # permission_classes = [IsAuthenticated]
@@ -1021,6 +1056,32 @@ class StudentLectureSubmitView(APIView):
             return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+class AdViewedSubmitView(APIView):
+    def post(self, request, item_id):
+        try:
+            user_id = request.user_payload['user_id']
+            section_item = SectionItem.objects.get(id=item_id)
+            # Check if the user has already purchased the course
+            purchase = Purchase.objects.get(course=section_item.section.course, user=user_id)
+
+            section_item_completion, created = SectionItemCompletion.objects.get_or_create(
+                purchase=purchase, section_item=section_item,
+                defaults={'ad_viewed': True}
+            )
+            if not created and not section_item_completion.ad_viewed:
+                section_item_completion.ad_viewed = True
+                section_item_completion.save()
+
+            return Response({'status': 'updated ad_viewed'})
+        
+        except SectionItem.DoesNotExist:
+            return Response({"error": "Item not found"}, status=404)
+        except Purchase.DoesNotExist:
+            return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 
 # class EvaluateQuizView(APIView):
 #     permission_classes = [AllowAny]
@@ -1280,7 +1341,6 @@ class ReviewListCreateAPIView(APIView):
         except Course.DoesNotExist:
             return Response( {"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND )
         
-
 # class CourseReviewsView(generics.ListAPIView):
 #     serializer_class = ReviewSerializer
 
@@ -1289,8 +1349,45 @@ class ReviewListCreateAPIView(APIView):
 #         print()
 #         return Review.objects.filter(course__id=course_id).order_by('-created_at')
 
-# Fetch Reviews of a course for a student, incuding own review
-class StudentCourseReviewsView(APIView):
+# Report a course
+class ReportListCreateAPIView(APIView):
+    permission_classes = [IsProfileCompleted]
+
+    def post(self, request, course_id):
+        print('here in Report')
+        try:
+            user_id = request.user_payload['user_id']
+            course = Course.objects.get(id=course_id)
+            
+            if not Purchase.objects.filter(user=user_id, course=course).exists():
+                return Response({"error": "You must purchase the course to report it"}, status=status.HTTP_403_FORBIDDEN)
+            
+            # Check if user already reviewed this course
+            if Report.objects.filter(user=user_id, course=course).exists():
+                return Response({"error": "You have already reported this course"}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = ReportCreateSerializer( data=request.data, context={'request': request} )
+            
+            if serializer.is_valid():
+                print('serializer before publish:', serializer)
+                serializer.save( user=user_id, course=course )
+                publish_notification_event(
+                    event_type='course.report',
+                    data={
+                        'student_id': user_id,
+                        'tutor_id': course.instructor,
+                        'course_title': course.title,
+                        'report': serializer.data['report']
+                    }
+                )
+                return Response( serializer.data, status=status.HTTP_201_CREATED )
+            return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
+            
+        except Course.DoesNotExist:
+            return Response( {"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND )
+
+# Fetch Reviews of a course for a student, incuding own review and report if any
+class StudentCourseFeedbackView(APIView):
     permission_classes = [IsUser]
 
     def get(self, request, course_id):
@@ -1303,6 +1400,10 @@ class StudentCourseReviewsView(APIView):
             my_review = Review.objects.filter(course=course, user=user_id).first()
             if my_review:
                 my_review_serializer = ReviewSerializer(my_review)
+            my_report = Report.objects.filter(course=course, user=user_id).first()
+            if my_report:
+                my_report_serializer = ReportSerializer(my_report)
+
             reviews = Review.objects.filter(course=course).exclude(user=user_id)[:10]
             serializer = ReviewSerializer(reviews, many=True)
             serializer_data = serializer.data
@@ -1335,6 +1436,7 @@ class StudentCourseReviewsView(APIView):
             print('result:', result)
             data = {
                 'my_review': my_review_serializer.data if my_review else None,
+                'my_report': my_report_serializer.data if my_report else None,
                 'reviews': result
             }
             return Response(data, status=status.HTTP_200_OK)
@@ -1344,7 +1446,7 @@ class StudentCourseReviewsView(APIView):
             return Response({"error": "Review not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 # Fetch all courses uploaded by a tutor and enrolled by a student - for admin
 class AdminUserCoursesDetailsView(APIView):
     permission_classes = [IsAdminUserCustom]
@@ -1367,4 +1469,3 @@ class AdminUserCoursesDetailsView(APIView):
             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        

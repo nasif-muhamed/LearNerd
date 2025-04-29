@@ -265,7 +265,39 @@ class UserListView(APIView):
                 {"error": "An unexpected error occurred while fetching users"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# to get all notification related to the admin
+class AdminNotificationView(APIView):
+    permission_classes = [IsAdminUser]
+    
+    def get(self, request):
+        try:
+            # Get query parameters from request
+            query_params = request.GET.urlencode()
+            response = call_user_service.get_my_notifications(
+                admin=request.user,
+                query_params=query_params if query_params else None
+            )
+            
+            return Response(
+                response.json(),
+                status=response.status_code
+            )
+
+        except UserServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
         
+        except Exception as e:
+            return Response(
+                {"error": "An unexpected error occurred while fetching users"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+
 
 class AdminAuthView(APIView):
     permission_classes = [IsAdminUser]

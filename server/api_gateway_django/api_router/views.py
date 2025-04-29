@@ -125,7 +125,6 @@ def proxy_to_admin_service(request):
         content_type=response.headers['Content-Type']
     )
 
-
 @api_view(['GET', 'POST', 'PATCH', 'PUT'])
 def proxy_to_badges_service(request):
     url = ADMIN_SERVICE_URL[:-1] + request.path
@@ -171,7 +170,6 @@ def proxy_to_badges_service(request):
         status=response.status_code,
         content_type=response.headers.get('Content-Type', 'application/json'),
     )
-
 
 class BadgeGateway(APIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
@@ -285,7 +283,6 @@ class SingleBadgeGateway(APIView):
             except (ValueError, AttributeError):
                 return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 # # Proxy view to Order Service
 # @api_view(['GET', 'POST', 'PUT', 'DELETE'])
 # def proxy_to_order_service(request):
@@ -307,7 +304,6 @@ class SingleBadgeGateway(APIView):
 class SimpleAPIView(APIView):
     def get(self, request):
         return Response({'name': 'john'}, status=status.HTTP_200_OK)
-
 
 class MediaProxyView(APIView):
     SERVICE_MAP = {
@@ -338,7 +334,6 @@ class MediaProxyView(APIView):
         except requests.exceptions.RequestException as e:
             return Response({"error": "Media not found"}, status=status.HTTP_404_NOT_FOUND)
         
-
 @api_view(['GET', 'POST', 'PATCH', 'PUT', 'DELETE'])
 def proxy_to_course_service(request):
     print('proxy_to_course_service')
@@ -524,4 +519,99 @@ def proxy_to_course_web_hook(request):
     except requests.RequestException as e:
         print(f"Webhook proxy error: {e}")
         return Response({'detail': 'Webhook proxy failed'}, status=500)
-    
+
+class BannersGateway(APIView):
+    parser_classes = [MultiPartParser, FormParser, JSONParser]  # Forward multipart data
+
+    def get(self, request):
+        url = COURSE_SERVICE_URL + request.path  # Construct the external service URL
+        query_params = request.GET.urlencode()
+        if query_params:
+            url = f"{url}?{query_params}"
+        print('gateway courses request get:')
+        print('url:', url)
+        headers = get_forwarded_headers(request)
+
+        try:
+            # Make a GET request to the external service
+            response = requests.get(url, headers=headers)
+            print('response: ', response)
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+            json_data = response.json()
+            return Response(json_data, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            try:
+                error_data = response.json()  # Try to parse error details
+                return Response(error_data, status=response.status_code)
+            except (ValueError, AttributeError):
+                return Response({"error": "Failed to fetch course details"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        print('request post:')
+        url = COURSE_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")
+        }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
+        # Forward files and data
+        files = request.FILES
+        data = request.POST if files else request.data
+        print("files:", files)
+        print("data:", data)
+
+        try:
+            response = requests.post(url, headers=headers, data=data, files=files)
+            print('response: ', response)
+            # print('response.content: ', response.content)
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+            json_data = response.json()
+            return Response(json_data, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            try:
+                error_data = response.json()  # Try to parse error details
+                return Response(error_data, status=response.status_code)
+            except (ValueError, AttributeError):
+                return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    def patch(self, request):
+        url = COURSE_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")
+        }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
+        
+        # Determine if it's multipart or JSON data
+        files = request.FILES
+        if files:  # Multipart data (thumbnail upload)
+            data = request.POST
+            print("patch files:", files)
+            print("patch data:", data)
+            try:
+                response = requests.patch(url, headers=headers, data=data, files=files)
+                response.raise_for_status()
+                json_data = response.json()
+                return Response(json_data, status=response.status_code)
+            except requests.exceptions.RequestException as e:
+                try:
+                    error_data = response.json()
+                    return Response(error_data, status=response.status_code)
+                except (ValueError, AttributeError):
+                    return Response({"error": "Failed to update course"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:  # JSON data (course details)
+            data = request.data
+            print("patch json data:", data)
+            try:
+                response = requests.patch(url, headers=headers, json=data)
+                response.raise_for_status()
+                json_data = response.json()
+                return Response(json_data, status=response.status_code)
+            except requests.exceptions.RequestException as e:
+                try:
+                    error_data = response.json()
+                    return Response(error_data, status=response.status_code)
+                except (ValueError, AttributeError):
+                    return Response({"error": "Failed to update course"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
