@@ -9,7 +9,7 @@ import api from '../../../services/api/axiosInterceptor';
 
 const LandingPage = () => {
     const BASE_URL = import.meta.env.VITE_BASE_URL;
-    const token = useSelector((state) => state.auth.accessToken);
+    const role = useSelector((state) => state.auth?.role);
     const [loading, setLoading] = useState(false);
     const [tutors, setTutors] = useState([1, 2, 3, 4]);
     // const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -94,8 +94,8 @@ const LandingPage = () => {
                             LearNerds is a community-driven platform where passionate learners meet dedicated teachers. Upload courses, learn at your pace, and connect through personalized sessions.
                             </p>
                             <div className="flex flex-wrap gap-4 pt-4">
-                            <Link to={token ? '/student/study-room' : '/register'} className="btn-primary flex items-center gap-2">
-                                {token ? 'My Study Room' : 'Get Started'} <ArrowRight size={16} />
+                            <Link to={role==='student' ? '/student/study-room' : role==='tutor' ? '/tutor/my-courses' : role==='admin' ? '/admin/dashboard' : '/register'} className="btn-primary flex items-center gap-2">
+                                {role==='student' ? 'My Study Room' : role==='tutor' ? 'My Class Room' : role==='admin' ? 'My Dash Board' : 'Get Started'} <ArrowRight size={16} />
                             </Link>
                             <a href="#how-it-works" className="btn-outline">
                                 How It Works

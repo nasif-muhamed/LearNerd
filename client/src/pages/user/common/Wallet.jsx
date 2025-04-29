@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, AlertCircle, Wallet, CreditCard, Filter, ChevronDown, Info, DollarSign } from 'lucide-react';
-// import { format } from 'date-fns';
-
+import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import handleError from '../../../utils/handleError';
+import api from '../../../services/api/axiosInterceptor';
 // Mock data - Replace with your API calls
 const mockWalletData = {
   balance: 3450.75,
@@ -191,11 +192,11 @@ const TransactionCard = ({ transaction }) => {
   };
 
   const getTitleByType = () => {
-    switch (transaction.type) {
+    switch (transaction.transaction_type) {
       case 'course_sale':
-        return `Sale: ${transaction.courseName}`;
+        return `Sale: ${transaction.course_name}`;
       case 'course_purchase':
-        return `Purchase: ${transaction.courseName}`;
+        return `Purchase: ${transaction.course_name}`;
       case 'admin_payout':
         return 'Admin Payout';
       case 'commission':
@@ -210,8 +211,10 @@ const TransactionCard = ({ transaction }) => {
   };
 
   const formatDate = (date) => {
+    if (!date) return
+    const parsedDate = new Date(date); 
     const options = { month: 'short', day: '2-digit', year: 'numeric' };
-    return date.toLocaleDateString('en-US', options);
+    return parsedDate.toLocaleDateString('en-US', options);
   };
 
   return (
@@ -238,32 +241,32 @@ const TransactionCard = ({ transaction }) => {
         
         <div className="mt-2 md:mt-0 flex flex-col items-end">
           <span className={`font-semibold text-lg ${getAmountColor()}`}>
-            {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
+            {transaction.amount > 0 ? '+' : ''}₹{Math.abs(transaction.amount).toFixed(2)}
           </span>
-          <span className="text-xs text-muted-foreground">{formatDate(transaction.date)}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(transaction.created_at)}</span>
         </div>
       </div>
       
       <div className="mt-3 flex flex-wrap gap-2">
         <StatusBadge status={transaction.status} />
-        <TypeBadge type={transaction.type} />
+        <TypeBadge type={transaction.transaction_type} />
         
-        {transaction.status === 'pending' && transaction.maturityDate && (
+        {transaction.status === 'pending' && transaction.mature_date && (
           <span className="inline-flex items-center text-xs px-2 py-1 rounded-md bg-secondary text-muted-foreground">
             <Clock className="w-3 h-3 mr-1" />
-            Matures on {formatDate(transaction.maturityDate)}
+            Matures on {formatDate(transaction.mature_date)}
           </span>
         )}
       </div>
 
-      {transaction.type === 'course_sale' && transaction.status === 'pending' && (
+      {transaction.transaction_type === 'course_sale' && transaction.status === 'pending' && (
         <div className="mt-3 text-xs text-muted-foreground flex items-center">
           <Info className="w-3 h-3 mr-1" />
           Funds will be available after the safety period ends
         </div>
       )}
       
-      {expanded && (
+      {/* {expanded && (
         <div className="mt-4 pt-3 border-t border-border text-sm space-y-2">
           {transaction.buyer && (
             <p className="text-muted-foreground">Buyer: <span className="text-foreground">{transaction.buyer}</span></p>
@@ -289,25 +292,36 @@ const TransactionCard = ({ transaction }) => {
       >
         {expanded ? 'Show less' : 'Show details'}
         <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${expanded ? 'transform rotate-180' : ''}`} />
-      </button>
+      </button> */}
     </div>
   );
 };
 
 const WalletPage = () => {
   const [wallet, setWallet] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
+  const fetchTransactions = async () => {
+    try{
+      setIsLoading(true)
+      const response = await api.get(`transactions/`, {params: {}})
+      setWallet(response.data)
+      console.log('response featch transactions:', response)
+    }catch (error) {
+        console.log('error fetching transactions:', error)
+        handleError(error, 'Error fetching transactions')
+    }finally{
+        setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     // In real implementation, fetch data from your API
-    setTimeout(() => {
-      setWallet(mockWalletData);
-      setIsLoading(false);
-    }, 800);
+    fetchTransactions()
   }, []);
 
   const handleWithdraw = (e) => {
@@ -341,17 +355,14 @@ const WalletPage = () => {
     if (activeFilter === 'completed') return transaction.status === 'completed';
     if (activeFilter === 'income') return transaction.amount > 0;
     if (activeFilter === 'expense') return transaction.amount < 0;
-    return transaction.type === activeFilter;
+    return transaction.transaction_type === activeFilter;
   });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="h-12 w-12 border-4 border-t-primary rounded-full animate-spin mb-4"></div>
-          <p className="text-muted-foreground">Loading your wallet...</p>
+        <div className="min-h-screen flex items-center justify-center">
+            <LoadingSpinner/>      
         </div>
-      </div>
     );
   }
 
@@ -362,7 +373,7 @@ const WalletPage = () => {
         <button 
           onClick={() => setShowWithdrawModal(true)}
           className="btn-primary flex items-center"
-          disabled={wallet.balance <= 0}
+          disabled={wallet?.balance <= 0}
         >
           <CreditCard className="w-4 h-4 mr-2" />
           Withdraw Funds
@@ -376,7 +387,7 @@ const WalletPage = () => {
             <Wallet className="w-5 h-5 text-primary mr-2" />
             <h2 className="text-lg font-semibold">Available Balance</h2>
           </div>
-          <p className="text-3xl font-bold">${wallet.balance.toFixed(2)}</p>
+          <p className="text-3xl font-bold">₹{wallet?.balance.toFixed(2)}</p>
           <p className="text-sm text-muted-foreground mt-2">
             Funds that can be withdrawn to your bank account
           </p>
@@ -387,7 +398,7 @@ const WalletPage = () => {
             <Clock className="w-5 h-5 text-yellow-400 mr-2" />
             <h2 className="text-lg font-semibold">Pending Balance</h2>
           </div>
-          <p className="text-3xl font-bold text-yellow-400">${wallet.pendingBalance.toFixed(2)}</p>
+          <p className="text-3xl font-bold text-yellow-400">₹{wallet?.pendingBalance.toFixed(2)}</p>
           <p className="text-sm text-muted-foreground mt-2">
             Funds that will be available after safety periods end
           </p>
@@ -486,17 +497,17 @@ const WalletPage = () => {
             <form onSubmit={handleWithdraw}>
               <div className="mb-4">
                 <label className="block text-sm text-muted-foreground mb-2">Available Balance</label>
-                <p className="text-2xl font-bold">${wallet.balance.toFixed(2)}</p>
+                <p className="text-2xl font-bold">₹{wallet?.balance.toFixed(2)}</p>
               </div>
               <div className="mb-6">
                 <label className="block text-sm text-muted-foreground mb-2">Withdrawal Amount</label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">₹</span>
                   <input
                     type="number"
                     step="0.01"
                     min="1"
-                    max={wallet.balance}
+                    max={wallet?.balance}
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(e.target.value)}
                     className="bg-background border border-input w-full py-2 px-8 rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
@@ -516,7 +527,7 @@ const WalletPage = () => {
                 <button 
                   type="submit" 
                   className="btn-primary"
-                  disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > wallet.balance}
+                  disabled={isWithdrawing || !withdrawAmount || parseFloat(withdrawAmount) <= 0 || parseFloat(withdrawAmount) > wallet?.balance}
                 >
                   {isWithdrawing ? (
                     <>

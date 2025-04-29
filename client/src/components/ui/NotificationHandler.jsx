@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { changeNotificationCount } from '../../redux/features/authSlice';
 
 
 const NotificationHandler = () => {
-    const BASE_URL = import.meta.env.VITE_BASE_URL;
-    const userId = useSelector((state) => state.auth?.user?.id);
+    const role = useSelector((state) => state.auth?.role);
+    const authUserId = useSelector((state) => state.auth?.user?.id);
+    const userId = role == 'admin' ? 9 : authUserId;
     console.log('NotificationHandler::::::::::::::::', userId)
     const [ws, setWs] = useState(null);
+    const dispatch = useDispatch()
 
     useEffect(() => {
-        if (!userId) return;
+        if (!userId && role == 'admin') return;
         // Establish WebSocket connection
         const websocket = new WebSocket(`ws://localhost:8004/ws/notifications/${userId}/`);
         
@@ -22,9 +25,10 @@ const NotificationHandler = () => {
             const data = JSON.parse(event.data);
             console.log('message recieved:', data)
             toast.info(`${data.message}`, {
-                position: 'top-right',
-                autoClose: 5000,
+                position: 'top-left',
+                autoClose: 3000,
             });
+            dispatch(changeNotificationCount('add'))
         };
     
         websocket.onerror = (error) => {

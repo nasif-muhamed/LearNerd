@@ -8,22 +8,27 @@ import {
     CreditCard,
     BookOpen,
     Star,
+    ShieldAlert,
 } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { changeNotificationCount } from "../../../redux/features/authSlice";
 import formatTimeAgo from "../../../utils/formatTimeAgo";
 import handleError from "../../../utils/handleError";
 import api from "../../../services/api/axiosInterceptor";
 
 const NotificationsPage = () => {
+    const role = useSelector((state) => state.auth?.role);
     const [activeTab, setActiveTab] = useState("unread");
-    const [notifications, setNotifications] = useState([]);
     const [unReadNotifications, setUnReadNotifications] = useState(null)
     const [readNotifications, setReadNotifications] = useState(null)
     const [loading, setLoading] = useState(true);
+    const url = role == 'admin' ? 'admin/notifications/' : 'users/notifications/'
+    const dispatch = useDispatch()
 
     const fetchUnReadNotifications = async () => {
         try{
             setLoading(true)
-            const response = await api.get(`users/notifications/`, {params: {status: 'unread',}})
+            const response = await api.get(url, {params: {status: 'unread',}})
             console.log('response featch unread notifications:', response)
             setUnReadNotifications(response.data)
         }catch (error) {
@@ -37,7 +42,7 @@ const NotificationsPage = () => {
     const fetchReadNotifications = async () => {
         try{
             setLoading(true)
-            const response = await api.get(`users/notifications/`, {params: {status: 'read',}})
+            const response = await api.get(url, {params: {status: 'read',}})
             console.log('response featch read notifications:', response)
             setReadNotifications(response.data)
         }catch (error) {
@@ -49,51 +54,6 @@ const NotificationsPage = () => {
     }
 
     useEffect(() => {
-        setTimeout(() => {
-            setNotifications([
-                {
-                    id: 1,
-                    message:
-                        "You have purchased 'Advanced JavaScript Patterns' course",
-                    notification_type: "purchase",
-                    is_read: false,
-                    created_at: "2025-04-18T14:30:00Z",
-                },
-                {
-                    id: 2,
-                    message: "Admin has credited $50 to your wallet",
-                    notification_type: "wallet",
-                    is_read: false,
-                    created_at: "2025-04-17T10:15:00Z",
-                },
-                {
-                    id: 3,
-                    message:
-                        "Tutor John Smith has scheduled a video call for tomorrow at 3 PM",
-                    notification_type: "video_call",
-                    is_read: false,
-                    created_at: "2025-04-16T18:45:00Z",
-                },
-                {
-                    id: 4,
-                    message:
-                        "You have a new message from Instructor Emily in the React course",
-                    notification_type: "message",
-                    is_read: true,
-                    created_at: "2025-04-15T09:20:00Z",
-                },
-                {
-                    id: 5,
-                    message:
-                        "Thank you for reviewing 'Data Structures and Algorithms' course",
-                    notification_type: "review",
-                    is_read: true,
-                    created_at: "2025-04-14T16:05:00Z",
-                },
-            ]);
-            setLoading(false);
-        }, 1000);
-
         if (activeTab === 'unread' && !unReadNotifications){
             fetchUnReadNotifications()
         }
@@ -106,9 +66,6 @@ const NotificationsPage = () => {
         setActiveTab("history")
     }
 
-    const unreadNotificationx = notifications.filter((n) => !n.is_read);
-    const readNotificationx = notifications.filter((n) => n.is_read);
-
     const markAsRead = async (id, idx) => {
         const toRead = unReadNotifications[idx]
         console.log('toREad:', toRead)
@@ -117,16 +74,18 @@ const NotificationsPage = () => {
             newUnread.splice(idx, 1);
             return newUnread;
         });
-        const response = await api.patch('/users/notifications/', {notification_id : id})
+        const response = await api.patch(url, {notification_id : id})
         console.log('mark as read response:',response)
         setReadNotifications(response?.data?.notifications || []);
+        dispatch(changeNotificationCount('deduct'))
     };
 
     const markAllAsRead = async () => {
         if (!unReadNotifications || unReadNotifications.length === 0) return
         setUnReadNotifications([]);
-        const response = await api.patch('/users/notifications/', {mark_all : true})
+        const response = await api.patch(url, {mark_all : true})
         setReadNotifications(response?.data?.notifications || []);
+        dispatch(changeNotificationCount('readAll'))
     };
 
 
@@ -135,8 +94,10 @@ const NotificationsPage = () => {
         switch (type) {
             case "COURSE_PURCHASE":
                 return <BookOpen className="text-blue-400" />;
-            case "wallet":
+            case "WALLET_CREDIT":
                 return <CreditCard className="text-green-400" />;
+            case "USER_REPORT":
+                return <ShieldAlert  className="text-red-400" />;
             case "video_call":
                 return <Video className="text-purple-400" />;
             case "message":
@@ -153,10 +114,12 @@ const NotificationsPage = () => {
         switch (type) {
             case "COURSE_PURCHASE":
                 return "bg-blue-500/10";
-            case "wallet":
+            case "WALLET_CREDIT":
                 return "bg-green-500/10";
+            case "USER_REPORT":
+                return "bg-red-500/10";
             case "video_call":
-                return "bg-purple-500/10";
+                return "bg-purple-500/10";    
             case "message":
                 return "bg-orange-500/10";
             case "COURSE_REVIEW":
@@ -196,7 +159,7 @@ const NotificationsPage = () => {
                     onClick={() => setActiveTab("unread")}
                 >
                     Unread
-                    {unreadNotificationx.length > 0 && (
+                    {unReadNotifications?.length > 0 && (
                         <span className="ml-2 bg-accent text-gray-200 text-xs rounded-full px-2 py-0.5">
                             {unReadNotifications?.length || 0}
                         </span>

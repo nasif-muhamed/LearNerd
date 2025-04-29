@@ -298,7 +298,7 @@ const CheckoutForm = ({ course, id }) => {
             Processing...
           </span>
         ) : (
-          `Complete Payment - $${course?.subscription_amount}`
+          `Complete Payment - ₹${course?.subscription_amount}`
         )}
       </button>
     </form>
@@ -320,7 +320,7 @@ const CourseInfo = ({ course }) => {
           <h3 className="text-lg md:text-xl font-bold text-foreground mb-2">{course?.title}</h3>
           <p className="text-muted-foreground mb-3 text-sm">{course?.short_description}</p>
           <div className="inline-block px-3 py-1 text-secondary bg-primary bg-opacity-20 rounded-md font-medium">
-            ${course?.subscription_amount}
+          ₹{course?.subscription_amount}
           </div>
         </div>
       </div>

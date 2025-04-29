@@ -69,6 +69,28 @@ const authSlice = createSlice({
         switchRole: (state, action) => {
             state.role = action.payload.role
         },
+        changeNotificationCount: (state, action) => {
+            if (!state.user || typeof state.user.unread_notifications !== 'number') return;
+        
+            const actionType = action.payload;
+        
+            switch (actionType) {
+                case "add":
+                    state.user.unread_notifications += 1;
+                    break;
+        
+                case "deduct":
+                    state.user.unread_notifications -= 1;
+                    break;
+        
+                case "readAll":
+                    state.user.unread_notifications = 0;
+                    break;
+        
+                default:
+                    break;
+            }
+        },
         logout: (state) => {
             state.user = null;
             // state.badges = null;
@@ -108,5 +130,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { login, logout, switchRole, updateAcess, updateRefresh } = authSlice.actions;
+export const { login, logout, switchRole, updateAcess, updateRefresh, changeNotificationCount } = authSlice.actions;
 export default authSlice.reducer;

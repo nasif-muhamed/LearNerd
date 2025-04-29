@@ -21,40 +21,62 @@ const Home = () => {
     const [tutorsLoading, setTutorsLoading] = useState(false);
     const pageSize = 3;
 
-    const fetchMyCourses = async () => {
+    // const fetchMyCourses = async () => {
+    //     if (!user) return
+    //     try{
+    //         setMyCoursesLoading(true)
+    //         const response1 = await api.get(`courses/home/`)
+    //         console.log('response 1:', response1)
+    //         const response = await api.get(`courses/student/${user.id}/my-courses/`)
+    //         console.log('My Course response:', response)
+    //         const result = response.data
+    //         setMyCourses(result.slice(0, 4))
+    //     }catch (error) {
+    //         console.log('Mycourse Error:', error)
+    //         handleError(error, "Error fetching uploaded courses")
+    //     }finally{
+    //         setMyCoursesLoading(false)
+    //     }
+    // }
+    
+    // const fetchAllCourses = async () => {
+    //     try{
+    //         setAllCoursesLoading(true)
+    //         const response = await api.get('courses/', {
+    //             params: {
+    //                 page_size: pageSize,
+    //             },
+    //         })
+    //         console.log('All Courses response:', response)
+    //         const result = response.data?.results
+    //         setAllCourses(result)
+    //     }catch (error) {
+    //         console.log('Couses Error:', error)
+    //         handleError(error, "Error fetching Couses")
+    //     }finally{
+    //         setAllCoursesLoading(false)
+    //     }
+    // }
+
+    const fetchCourses = async () => {
         if (!user) return
         try{
             setMyCoursesLoading(true)
-            const response = await api.get(`courses/student/${user.id}/my-courses/`)
-            console.log('My Course response:', response)
+            setAllCoursesLoading(true)
+            const response = await api.get(`courses/home/`)
+            console.log('response courses:', response)
             const result = response.data
-            setMyCourses(result.slice(0, 4))
+            setMyCourses(result.my_courses)
+            setAllCourses(result.courses)
         }catch (error) {
             console.log('Mycourse Error:', error)
-            handleError(error, "Error fetching uploaded courses")
+            handleError(error, "Error fetching courses")
         }finally{
             setMyCoursesLoading(false)
-        }
-    }
-    
-    const fetchAllCourses = async () => {
-        try{
-            setAllCoursesLoading(true)
-            const response = await api.get('courses/', {
-                params: {
-                    page_size: pageSize,
-                },
-            })
-            console.log('All Courses response:', response)
-            const result = response.data?.results
-            setAllCourses(result)
-        }catch (error) {
-            console.log('Couses Error:', error)
-            handleError(error, "Error fetching Couses")
-        }finally{
             setAllCoursesLoading(false)
         }
     }
+
 
     const fetchTutors = useCallback(async () => {        
         try {
@@ -76,8 +98,9 @@ const Home = () => {
 
     console.log('mycourses =', myCourses)
     useEffect(() => {  
-        fetchMyCourses()
-        fetchAllCourses()
+        // fetchMyCourses()
+        // fetchAllCourses()
+        fetchCourses()
         fetchTutors()
     }, [])
 

@@ -12,7 +12,8 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
         { name: "Courses", icon: GraduationCap, route: '/student/courses' },
         { name: "Study Room", icon: Presentation, route: '/student/study-room' },
         { name: "Tutors", icon: Users, route: '/student/tutors' },
-        { name: "News", icon: Newspaper, route: '/student/news' },
+        // { name: "News", icon: Newspaper, route: '/student/news' },
+        { name: "Wallet", icon: WalletMinimal, route: '/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Badges", icon: Medal, route: '/student/badges' },
         { name: "Profile", icon: UserRound, route: '/profile' },
@@ -22,7 +23,7 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
         { name: "Dashboard", icon: LayoutDashboard, route: '/tutor/dashboard' },
         { name: "My Courses", icon: GraduationCap, route: '/tutor/my-courses' },
         { name: "Class Room", icon: Presentation, route: '/tutor/class-room/' },
-        { name: "Wallet", icon: WalletMinimal, route: '/tutor/wallet' },
+        { name: "Wallet", icon: WalletMinimal, route: '/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Profile", icon: UserRound, route: '/profile' },
     ]

@@ -12,6 +12,7 @@ import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import ForgotPassword from "../pages/user/common/ForgotPassword";
 import NotificationsPage from "../pages/user/common/Notifications";
 import LandingPage from "../pages/user/common/LandingPage";
+import Wallet from "../pages/user/common/Wallet";
 
 const CommonRoutes = () => {
     return (
@@ -25,6 +26,7 @@ const CommonRoutes = () => {
                 <Route path="/logout" element={<Logout />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/wallet" element={<Wallet />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>

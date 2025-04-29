@@ -88,10 +88,10 @@ const AdminHeader = ({ toggleSidebar }) => {
 
                     {/* Desktop view - show all buttons */}
                     <div className="hidden md:flex items-center space-x-6">
-                        <button className="text-white text-2xl">
+                        <Link to={'/admin/notifications'} className="text-white text-2xl">
                             {" "}
                             <Bell />{" "}
-                        </button>
+                        </Link>
                         <Link
                             to="admin/profile"
                             className="text-white text-2xl"
@@ -140,7 +140,7 @@ const AdminHeader = ({ toggleSidebar }) => {
                                         </span>
                                     </div>
                                 </div>
-                                <Link className="flex px-4 py-2 text-white hover:bg-gray-600">
+                                <Link to={'/admin/notifications'} className="flex px-4 py-2 text-white hover:bg-gray-600">
                                     <span className="mr-2">
                                         {" "}
                                         <Bell />{" "}

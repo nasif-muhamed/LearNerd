@@ -14,6 +14,8 @@ import AdminBadgeUpdate from "../pages/admin/badges/AdminBadgeUpdate";
 import AdminCoursesLanding from "../pages/admin/courses/AdminCoursesLanding";
 import AdminCategoriesList from "../pages/admin/courses/AdminCategoriesList";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
+import BillboardLanding from "../pages/admin/billboard/BillboardLanding";
+import NotificationsPage from "../pages/user/common/Notifications";
 
 const CommonRoutes = () => {
     return (
@@ -39,6 +41,14 @@ const CommonRoutes = () => {
                 <Route path="/courses">
                     <Route index element={<AdminCoursesLanding />} />
                     <Route path="categories" element={<AdminCategoriesList />} />
+                </Route>
+
+                <Route path="/billboard">
+                    <Route index element={<BillboardLanding />} />
+                </Route>
+
+                <Route path="/notifications">
+                    <Route index element={<NotificationsPage />} />
                 </Route>
 
                 <Route path="/logout" element={<Logout />} />
