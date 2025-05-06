@@ -31,8 +31,6 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 215 28% 17%;
     --sidebar-ring: 216 34% 32%;
-    
-    /* Added wallet-specific colors */
     --success: 142 70% 45%;
     --success-foreground: 210 40% 98%;
     --warning: 38 92% 50%;
@@ -131,6 +129,9 @@
   }
   .btn-outline {
     @apply border border-muted text-muted-foreground hover:bg-muted/20 font-semibold py-2 px-4 rounded-md transition-all duration-300;
+  }
+  .btn-destructive {
+    @apply bg-destructive hover:bg-opacity-90 text-secondary-foreground font-semibold py-2 px-4 rounded-md transition-all duration-300;
   }
   .checklist-item {
     @apply flex items-start space-x-3 mb-3;

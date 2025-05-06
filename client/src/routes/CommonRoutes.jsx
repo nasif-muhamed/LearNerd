@@ -10,9 +10,10 @@ import Profile from "../pages/user/common/Profile";
 import FourNotFour from "../pages/FourNotFour";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import ForgotPassword from "../pages/user/common/ForgotPassword";
-import NotificationsPage from "../pages/user/common/Notifications";
+import NotificationsPage from "../pages/common/Notifications";
 import LandingPage from "../pages/user/common/LandingPage";
 import Wallet from "../pages/user/common/Wallet";
+import ChatPage from "../pages/common/ChatPage";
 
 const CommonRoutes = () => {
     return (
@@ -27,6 +28,7 @@ const CommonRoutes = () => {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/wallet" element={<Wallet />} />
+                <Route path="/chat" element={<ChatPage />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>

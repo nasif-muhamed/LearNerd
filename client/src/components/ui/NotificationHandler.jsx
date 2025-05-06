@@ -13,7 +13,7 @@ const NotificationHandler = () => {
     const dispatch = useDispatch()
 
     useEffect(() => {
-        if (!userId && role == 'admin') return;
+        if ((!userId && role == 'admin') || !role) return;
         // Establish WebSocket connection
         const websocket = new WebSocket(`ws://localhost:8004/ws/notifications/${userId}/`);
         

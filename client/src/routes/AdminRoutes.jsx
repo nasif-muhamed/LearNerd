@@ -13,9 +13,10 @@ import AdminBadgeCreate from "../pages/admin/badges/AdminBadgeCreate";
 import AdminBadgeUpdate from "../pages/admin/badges/AdminBadgeUpdate";
 import AdminCoursesLanding from "../pages/admin/courses/AdminCoursesLanding";
 import AdminCategoriesList from "../pages/admin/courses/AdminCategoriesList";
+import AdminListReports from "../pages/admin/courses/AdminListReports";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import BillboardLanding from "../pages/admin/billboard/BillboardLanding";
-import NotificationsPage from "../pages/user/common/Notifications";
+import NotificationsPage from "../pages/common/Notifications";
 
 const CommonRoutes = () => {
     return (
@@ -29,10 +30,12 @@ const CommonRoutes = () => {
                 <Route path="/users" element={<AdminUserMgt />} />
                 <Route path="/users/:id" element={<AdminUserDetails />} />
                 <Route path="/badges" element={<AdminBadge />} />
+
                 <Route
                     path="/badges/create-badge"
                     element={<AdminBadgeCreate />}
                 />
+
                 <Route
                     path="/badges/update-badge/:badgeId"
                     element={<AdminBadgeUpdate />}
@@ -41,7 +44,9 @@ const CommonRoutes = () => {
                 <Route path="/courses">
                     <Route index element={<AdminCoursesLanding />} />
                     <Route path="categories" element={<AdminCategoriesList />} />
+                    <Route path="reports" element={<AdminListReports />} />
                 </Route>
+
 
                 <Route path="/billboard">
                     <Route index element={<BillboardLanding />} />

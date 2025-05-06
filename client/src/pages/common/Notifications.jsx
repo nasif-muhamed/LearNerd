@@ -11,10 +11,10 @@ import {
     ShieldAlert,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { changeNotificationCount } from "../../../redux/features/authSlice";
-import formatTimeAgo from "../../../utils/formatTimeAgo";
-import handleError from "../../../utils/handleError";
-import api from "../../../services/api/axiosInterceptor";
+import { changeNotificationCount } from "../../redux/features/authSlice";
+import formatTimeAgo from "../../utils/formatTimeAgo";
+import handleError from "../../utils/handleError";
+import api from "../../services/api/axiosInterceptor";
 
 const NotificationsPage = () => {
     const role = useSelector((state) => state.auth?.role);
