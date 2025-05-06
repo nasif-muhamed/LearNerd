@@ -86,10 +86,14 @@ class Notification(models.Model):
     class NotificationType(models.TextChoices):
         COURSE_PURCHASE = 'COURSE_PURCHASE', 'Course Purchase'
         COURSE_REVIEW = 'COURSE_REVIEW', 'Course Review'
+        COURSE_REFUND_CREDIT = 'COURSE_REFUND_CREDIT', 'Course Refund Credit'
+        COURSE_REFUND_DEBIT = 'COURSE_REFUND_DEBIT', 'Course Refund Debit'
         COURSE_UPGRADE = 'COURSE_UPGRADE', 'Course Upgrade'
         WALLET_CREDIT = 'WALLET_CREDIT', 'Wallet Credit'
         WALLET_DEBIT = 'WALLET_DEBIT', 'Wallet Debit'
         USER_REPORT = 'USER_REPORT', 'User Report'
+        REPORT_REJECTED = 'REPORT_REJECTED', 'Report Rejected'
+        REPORT_RESOLVED = 'REPORT_RESOLVED', 'Report Resolved'
         CHAT_MESSAGE = 'CHAT_MESSAGE', 'Chat Message'
 
     user = models.ForeignKey(

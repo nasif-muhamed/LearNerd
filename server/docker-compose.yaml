@@ -97,9 +97,10 @@ services:
         depends_on:
             - db
             - redis
+            - rabbitmq
+            - api_gateway_django
         networks:
             - learn_network
-
     admin_service:
         build:
             context: ./admin_service
@@ -118,6 +119,7 @@ services:
             - EMAIL_HOST_USER=${EMAIL_HOST_USER}
             - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
             - USER_SERVICE_URL=${USER_SERVICE_URL}
+            - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
             - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
             - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
             - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
@@ -133,7 +135,6 @@ services:
             - user_service
         networks:
             - learn_network
-
 volumes:
     postgres_data:
     redis_data:

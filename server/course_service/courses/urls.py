@@ -6,7 +6,8 @@ from .views import (
     SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseFeedbackView,
-    ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView
+    ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView, AdminListReportsAPIView,
+    AdminReportActionPIView,
 )
 
 router = DefaultRouter()
@@ -74,9 +75,10 @@ urlpatterns = [
     path('<int:course_id>/reports/', ReportListCreateAPIView.as_view(), name='report-list-create'),    
     # Get all reviews by a specific user
     # path('users/<int:user_id>/reviews/', UserReviewsView.as_view(), name='user-reviews'),
-    
-    # Get current user's review + other student's review for a course
+    # Get current user's review and report + other student's review for a course
     path('my-course/<int:course_id>/feedback/', StudentCourseFeedbackView.as_view(), name='my-course-reviews'),
+    path('admin/all-reports/', AdminListReportsAPIView.as_view(), name='admin-list-reports'),  # fetch list of reports for admin
+    path('admin/report/<int:report_id>/', AdminReportActionPIView.as_view(), name='admin-list-reports'),  # fetch list of reports for admin
 
     # Get all enrolled course and uploaded courses by a user
     path('admin/user/<int:user_id>/courses/', AdminUserCoursesDetailsView.as_view(), name='my-course-reviews'),

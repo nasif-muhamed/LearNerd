@@ -16,10 +16,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from . models import AdminUser, UserServiceToken
 from . serializers import AdminUserSerializer
-from . utils import CallUserService, UserServiceException
+from . utils import CallUserService, UserServiceException, CallCourseService, CourseServiceException
 
 
 call_user_service = CallUserService()
+call_course_service = CallCourseService()
 
 
 class LoginView(APIView):
@@ -297,7 +298,94 @@ class AdminNotificationView(APIView):
             )
         
 
+class AdminListReportsAPIView(APIView):
+    permission_classes = [IsAdminUser]
 
+    def get(self, request):
+        try:
+            print('AdminListReportsPIView')
+            # Get query parameters from request
+            query_params = request.GET.urlencode()
+            course_service_response = call_course_service.get_all_reports(
+                request= request,
+                query_params=query_params if query_params else None
+            )
+            
+            reports_response = course_service_response.json()
+            reports = reports_response.get('results', [])
+            print('reports:', reports)
+            ids = set()
+            for report in reports:
+                student = report['user']
+                instructor = report['instructor']
+                if student not in ids:
+                    ids.add(student)
+                if instructor not in ids:
+                    ids.add(instructor)
+
+            user_service_response = call_user_service.get_users_details(list(ids))
+            users = user_service_response.json()
+            users_dict = {user['id']: user for user in users}
+            for report in reports:
+                student = report['user']
+                instructor = report['instructor']
+                print('instructor:', instructor)
+                report['user'] = users_dict.get(student, {})
+                report['instructor'] = users_dict.get(instructor, {})
+
+            reports_response['results'] = reports
+
+            return Response(
+                reports_response,
+                status=course_service_response.status_code
+            )
+
+        except CourseServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        
+        except UserServiceException as e:
+            return Response(
+                {'error': f'User service error: {str(e)}'},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class AdminReportActionAPIView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, pk):
+        try:
+            response = call_course_service.update_report(
+                request=request,
+                pk=pk,
+                method=request.method,
+                data=request.data
+            )
+            
+            return Response(
+                response.json(),
+                status=response.status_code
+            )
+
+        except CourseServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        
+        except Exception as e:
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class AdminAuthView(APIView):
     permission_classes = [IsAdminUser]

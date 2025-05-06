@@ -11,7 +11,8 @@ Profile = get_user_model()
 def notification_callback(ch, method, properties, body):
     message = json.loads(body)
     routing_key = method.routing_key
-    event_type = routing_key.split('.')[-1]  # e.g., 'purchase' from 'notification.course.purchase'
+    routing_key_arr = routing_key.split('.')
+    event_type = '.'.join(routing_key_arr[2:])  # e.g., 'purchase' from 'notification.course.purchase' and 'report.refund' incase of 'notification.course.report.refund'
     print('inside callback user_service:', message, routing_key)
     try:
         student_id = message['student_id']
@@ -44,15 +45,40 @@ def notification_callback(ch, method, properties, body):
                 'message': f"{student.full_name_or_email} reported course {message.get('course_title')} by {student.full_name_or_email}"
             }
 
+        elif event_type == 'report.refund':
+            config = {
+                'student': {
+                    'type': Notification.NotificationType.COURSE_REFUND_CREDIT,
+                    'message': f"Refund request for course '{message.get('course_title')}' by {tutor.full_name_or_email} has been approved. Amount {message.get('amount')} credited to your wallet."
+                },
+                'instructor': {
+                    'type': Notification.NotificationType.COURSE_REFUND_DEBIT,
+                    'message': f"Refund request by {student.full_name_or_email} for course '{message.get('course_title')}' has been approved. Amount {message.get('amount')} won't be credited to your wallet."
+                }
+            }
+
+        elif event_type == 'report.resolved' or event_type == 'report.rejected':
+            config = {
+                'type': Notification.NotificationType.REPORT_REJECTED if event_type == 'report.rejected' else Notification.NotificationType.REPORT_RESOLVED,
+                'message': f"Your report for course '{message.get('course_title')}' has been {event_type.split('.')[-1]} by admin."
+            }
+
         if config is None:
             print(f" [x] Unknown event type: {event_type}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         # Create notification
-        if event_type == 'purchase' or event_type == 'review':
+        if event_type == 'purchase' or event_type == 'review' or event_type == 'upgraded':
             Notification.objects.create(
                 user=tutor,
+                notification_type=config['type'],
+                message=config['message'],
+            )
+
+        elif event_type == 'report.resolved' or event_type == 'report.rejected':
+            Notification.objects.create(
+                user=student,
                 notification_type=config['type'],
                 message=config['message'],
             )
@@ -65,6 +91,18 @@ def notification_callback(ch, method, properties, body):
                     notification_type=config['type'],
                     message=config['message'],
                 )
+
+        elif event_type == 'report.refund':
+            Notification.objects.create(
+                user=student,
+                notification_type=config['student']['type'],
+                message=config['student']['message'],
+            )
+            Notification.objects.create(
+                user=tutor,
+                notification_type=config['instructor']['type'],
+                message=config['instructor']['message'],
+            )
 
         print(f" [x] Created notification for user {tutor}: {config['message']}")
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -94,7 +132,6 @@ def transaction_callback(ch, method, properties, body):
                 notification_type=Notification.NotificationType.WALLET_CREDIT,
                 message=f"{amount} credited to your wallet",
             )
-
 
         elif event_type == 'wallet_debit':
             wallet.debit_balance(Decimal(amount))
@@ -131,7 +168,7 @@ def start_consumer():
     notification_queue = 'user_service_notifications'
     channel.exchange_declare(exchange=notification_exchange, exchange_type='topic', durable=True)  # Declare exchange 
     channel.queue_declare(queue=notification_queue, durable=True)  # Declare a queue
-    channel.queue_bind(exchange=notification_exchange, queue=notification_queue, routing_key='notification.course.*')  # Bind queue to exchange
+    channel.queue_bind(exchange=notification_exchange, queue=notification_queue, routing_key='notification.course.#')  # Bind queue to exchange
 
     transaction_exchange = 'transaction_events'
     transaction_queue = 'user_service_transactions'

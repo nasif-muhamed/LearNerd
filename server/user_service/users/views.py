@@ -323,6 +323,7 @@ class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
     permission_classes = [AllowAny]
     lookup_field = 'pk'
 
+# used for fetching multiple users details - not only tutors.
 class MultipleTutorDetailsView(APIView):
     permission_classes = [AllowAny]
 
@@ -638,7 +639,10 @@ class WalletBalanceView(APIView):
             wallet, created = Wallet.objects.get_or_create(user=user)
             serializer = WalletSerializer(wallet)
             if created:
-                serializer.save()
+                if serializer.is_valid():
+                    serializer.save()
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             print('wallet:', serializer.data)
             return Response(serializer.data, status=status.HTTP_200_OK)
         
@@ -653,3 +657,23 @@ class WalletBalanceView(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# class AdminListAllReportsView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def get(self, request):
+#         print('inside get ::::')
+#         user =  request.user
+#         if not is_admin(user):
+#             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+
+#         try:
+#             reports_response = call_course_service.get_all_reports()
+#             reports = reports_response.json()
+#             return Response(reports, status=status.HTTP_200_OK)
+
+#         except CourseServiceException as e:
+#             return Response({"error": str(e)}, status=503)
+        
+#         except Exception as e:
+#             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)

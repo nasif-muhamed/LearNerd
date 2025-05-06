@@ -32,4 +32,7 @@ urlpatterns = [
 
     # fetch user's wallet balance
     path('user-wallet/<int:id>/', WalletBalanceView.as_view(), name='wallet-balance'),
+
+    # fetch all reports list.
+    # path('admin/all-reports/', AdminListAllReportsView.as_view(), name='list-reports-admin'),
 ]

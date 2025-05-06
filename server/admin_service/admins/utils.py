@@ -18,9 +18,10 @@ class CallUserService:
 
     # Helper method to make HTTP requests with proper timeout
     def _make_request(self, method, headers, path=None, data=None, url=None):
+        print('inside make reqeust')
         if not url:
             url = self.USER_SERVICE_URL + path
-
+        print('urls:', url, headers, data)
         try:
             return requests.request(
                 method,
@@ -149,7 +150,7 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
         
-    # method to fetch users, supports filters
+    # method to fetch users, supports filters. For Admin only, lists all users
     def get_users(self, admin, query_params=None):
         print('HEre,', query_params)
         if not admin:
@@ -188,6 +189,7 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error fetching users: {str(e)}")
         
+    # to get all notifications for admin
     def get_my_notifications(self, admin, query_params=None):
         print('Here in get_my_notifications:', query_params)
         if not admin:
@@ -226,6 +228,100 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error fetching users: {str(e)}")
 
+    # accessed by 
+    def get_users_details(self, ids):
+        # print('here in get_tutor_detail', ids)
+        if not ids:
+            raise ValueError("user identifiers are required")
+
+        path = "api/v1/users/tutor-details/"
+        print('paht::', path)
+        try:
+            response = self._make_request("GET", headers=None, path=path, data={"ids": ids})
+            if response.status_code != 200:
+                raise UserServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error: {str(e)}")
+
+
+class CourseServiceException(APIException):
+    """Custom exception for course service related errors"""
+    default_detail = 'Course service operation failed'
+    default_code = 'course_service_error'
 
 class CallCourseService:
     COURSE_SERVICE_URL = os.getenv('COURSE_SERVICE_URL')
+
+    def __init__(self):
+        if not self.COURSE_SERVICE_URL:
+            raise ValueError("COURSE_SERVICE_URL environment variable is not set")
+
+    # Helper method to make HTTP requests with proper timeout
+    def _make_request(self, method, headers, path=None, data=None, url=None):
+        print('inside make reqeust')
+        if not url:
+            url = self.COURSE_SERVICE_URL + path
+        print('urls:', url)
+        try:
+            return requests.request(
+                method,
+                url,
+                json=data,
+                headers=headers,
+                timeout=10
+            )
+        except requests.exceptions.RequestException as e:
+            raise CourseServiceException(f"Request failed: {str(e)}")
+
+    # method to fetch a all reports from course service
+    def get_all_reports(self, request, query_params=None):
+        path = f"api/v1/courses/admin/all-reports/"
+        headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
+        if query_params:
+            path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
+        print('path:', path)
+        print('headers:', headers)
+        try:
+            response = self._make_request("GET", headers, path)
+            
+            print('response:', response.json())
+            print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise CourseServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except CourseServiceException as e:
+            raise
+
+        except Exception as e:
+            raise CourseServiceException(f"Unexpected error: {str(e)}")
+
+    def update_report(self, request, pk, method, data):
+        path = f"api/v1/courses/admin/report/{pk}/"
+        headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
+        try:
+            response = self._make_request(method, headers, path, data)
+            
+            if response.status_code != 200:
+                raise CourseServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except CourseServiceException as e:
+            raise
+
+        except Exception as e:
+            raise CourseServiceException(f"Unexpected error: {str(e)}")

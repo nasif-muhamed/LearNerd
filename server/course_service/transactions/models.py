@@ -19,6 +19,8 @@ class Transaction(models.Model):
         ('credited', 'Credited'),
         ('failed', 'Failed'),
         ('cancelled', 'Cancelled'),
+        ('refunded', 'Refunded'),
+        ('reported', 'Reported'),
     )
     
     user = models.BigIntegerField()

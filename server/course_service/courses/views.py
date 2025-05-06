@@ -34,7 +34,7 @@ from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTu
 from .services import CallUserService, UserServiceException
 from .rabbitmq_publisher import publish_notification_event
 from banners.utils import get_home_banner
-from transactions.utils import record_course_purchase
+from transactions.utils import record_course_purchase, record_course_refund, record_transaction_reported, change_transaction_status_back_to_pending
 
 logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
@@ -1359,18 +1359,18 @@ class ReportListCreateAPIView(APIView):
             user_id = request.user_payload['user_id']
             course = Course.objects.get(id=course_id)
             
-            if not Purchase.objects.filter(user=user_id, course=course).exists():
-                return Response({"error": "You must purchase the course to report it"}, status=status.HTTP_403_FORBIDDEN)
-            
-            # Check if user already reviewed this course
+            # Check if user already reported this course
             if Report.objects.filter(user=user_id, course=course).exists():
                 return Response({"error": "You have already reported this course"}, status=status.HTTP_400_BAD_REQUEST)
 
+            purchase = Purchase.objects.get(user=user_id, course=course)
             serializer = ReportCreateSerializer( data=request.data, context={'request': request} )
-            
+
             if serializer.is_valid():
                 print('serializer before publish:', serializer)
                 serializer.save( user=user_id, course=course )
+                if purchase.purchase_type == 'subscription' and not purchase.is_safe_period_over: 
+                    record_transaction_reported(purchase)
                 publish_notification_event(
                     event_type='course.report',
                     data={
@@ -1383,8 +1383,78 @@ class ReportListCreateAPIView(APIView):
                 return Response( serializer.data, status=status.HTTP_201_CREATED )
             return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
             
+        except Purchase.DoesNotExist:
+            return Response({"error": "You must purchase the course to report it"}, status=status.HTTP_403_FORBIDDEN)
+
         except Course.DoesNotExist:
             return Response( {"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND )
+
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+class AdminListReportsAPIView(APIView):
+    permission_classes = [IsAdminUserCustom]
+    pagination_class = CustomPagination
+
+    def get(self, request):
+        try:
+            reports = Report.objects.all()
+            paginator = self.pagination_class()
+            page = paginator.paginate_queryset(reports, request)
+            serializer = ReportSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminReportActionPIView(APIView):
+    permission_classes = [IsAdminUserCustom]
+
+    def patch(self, request, report_id):
+        try:
+            print('AdminReportActionPIView course_service')
+            report = Report.objects.get(id=report_id)
+            purchase = Purchase.objects.get(course=report.course, user=report.user)
+            if request.data.get('status') == 'refunded':
+                if report.resolved:
+                    return Response({"error": "Report already resolved"}, status=status.HTTP_400_BAD_REQUEST)
+                if purchase.purchase_type == 'freemium':
+                    return Response({"error": "Freemium purchase cannot be refunded"}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = ReportSerializer(report, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save(resolved = True)
+                if serializer.data['status'] == 'refunded':
+                    record_course_refund(purchase)
+                    publish_notification_event(
+                        event_type='course.report.refund',
+                        data={
+                            'student_id': report.user,
+                            'tutor_id': report.course.instructor,
+                            'course_title': report.course.title,
+                            'amount': str(purchase.subscription_amount),
+                        }
+                    )
+
+                if serializer.data['status'] == 'rejected' or serializer.data['status'] == 'resolved':
+                    if purchase.purchase_type == 'subscription':
+                        change_transaction_status_back_to_pending(purchase)
+                    publish_notification_event(
+                        event_type='course.report.resolved' if serializer.data['status'] == 'resolved' else 'course.report.rejected',
+                        data={
+                            'student_id': report.user,
+                            'tutor_id': report.course.instructor,
+                            'course_title': report.course.title,
+                            'amount': str(purchase.subscription_amount),
+                        }
+                    )
+
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Report.DoesNotExist:
+            return Response({"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        
 
 # Fetch Reviews of a course for a student, incuding own review and report if any
 class StudentCourseFeedbackView(APIView):
@@ -1469,3 +1539,4 @@ class AdminUserCoursesDetailsView(APIView):
             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

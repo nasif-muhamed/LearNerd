@@ -1,3 +1,4 @@
+from datetime import timedelta
 from rest_framework import serializers
 import cloudinary.uploader
 from django.db import transaction
@@ -699,8 +700,22 @@ class ReportCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
     
 class ReportSerializer(serializers.ModelSerializer):
+    instructor = serializers.IntegerField(source='course.instructor')
+    course_title = serializers.CharField(source='course.title')
+    purchase_details = serializers.SerializerMethodField()
+
     class Meta:
         model = Report
-        fields = '__all__'
+        fields = ['id', 'course', 'course_title', 'user', 'report', 'resolved', 'status', 'reason', 'instructor', 'created_at', 'purchase_details']
+        read_only_fields = ['id', 'created_at']
 
-
+    def get_purchase_details(self, obj):
+        purchase = Purchase.objects.get(course=obj.course, user=obj.user)
+        purchase_details = {
+            'purchase_type': purchase.purchase_type,
+            'subscription_amount': purchase.subscription_amount,
+            'purchased_at': purchase.purchased_at,
+            'expire_at': purchase.safe_period_expiry if purchase.purchase_type == 'subscription' else None
+        }
+        # print('purchase_details:', purchase_details)
+        return purchase_details

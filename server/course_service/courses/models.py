@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+from django.utils import timezone
 from django.db import models
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, FileExtensionValidator, MaxLengthValidator, MaxValueValidator
@@ -96,7 +97,6 @@ class CourseRequirement(models.Model):
     def __str__(self):
         return self.requirement
     
-
 class Section(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
     title = models.CharField(max_length=255)
@@ -230,6 +230,12 @@ class Purchase(models.Model):
             return self.purchased_at + timedelta(days=self.safe_period)
         return None
     
+    @property
+    def is_safe_period_over(self):
+        if self.safe_period_expiry:
+            return self.safe_period_expiry < timezone.now()
+        return False
+
 class SectionItemCompletion(models.Model):
     purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="section_items_completed")
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name="section_item_completion")
@@ -255,10 +261,20 @@ class Review(models.Model):
         return f"Review by {self.user} for {self.course.title}"
 
 class Report(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('resolved', 'Resolved'),
+        ('rejected', 'Rejected'),
+        ('refunded', 'Refunded'),
+    )
+
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reports')
+    # purchase = models.OneToOneField(Purchase, on_delete=models.CASCADE, related_name='reports')
     user = models.BigIntegerField(db_index=True)
     report = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
     resolved = models.BooleanField(default=False)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    reason = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -267,6 +283,7 @@ class Report(models.Model):
 
     def __str__(self):
         return f"Report by {self.user} for {self.course.title}"
+
 
 class NoteSectionItem(models.Model):
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='notes')
