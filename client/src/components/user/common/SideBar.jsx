@@ -3,6 +3,7 @@ import { House, GraduationCap, Presentation, Users, Newspaper,
     MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash, 
     LayoutDashboard, WalletMinimal, Medal } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import useMessageCount from '../../../hooks/useMessageCount';
 
 const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
     const location = useLocation(); // current URL path
@@ -27,6 +28,8 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Profile", icon: UserRound, route: '/profile' },
     ]
+
+    const urReadMessageCount = useMessageCount()
 
     const sideContent = role == 'student' ? sideContentStudent : sideContentTutor
 
@@ -69,8 +72,14 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
                             ) : (
                                 item.name[0]
                             )} */}
-                            <div className={`w-[70%] flex items-center ${!isSidebarOpen && 'justify-center'}`}>
+                            <div className={`w-[70%] relative flex items-center ${!isSidebarOpen && 'justify-center'}`}>
                                 <item.icon className={`${isSidebarOpen && 'mr-2'} h-6 w-6`} /> {isSidebarOpen && <span>{item.name}</span>}
+                                
+                                {item.name === 'Chats' && urReadMessageCount > 0 && (
+                                    <span className={`absolute ${!isSidebarOpen && '-top-1'} -right-1 bg-accent text-white text-xs px-1.5 py-0.5 rounded-full`}>
+                                        {urReadMessageCount}
+                                    </span>
+                                )}
                             </div>
                         </Link>
                     ))}

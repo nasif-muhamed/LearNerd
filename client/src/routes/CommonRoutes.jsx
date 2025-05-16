@@ -28,7 +28,7 @@ const CommonRoutes = () => {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/wallet" element={<Wallet />} />
-                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/chats" element={<ChatPage />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>

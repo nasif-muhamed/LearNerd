@@ -168,7 +168,7 @@ const ProfileForm = ({ user, refreshToken }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="relative w-full bg-slate-800 text-white rounded p-3 min-h-32">
+                        <div className="relative w-full bg-slate-800 text-white rounded p-3 min-h-32 break-words">
                             <p>{user.biography}</p>
                         </div>
                     )}

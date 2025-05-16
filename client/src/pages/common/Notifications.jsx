@@ -16,6 +16,7 @@ import formatTimeAgo from "../../utils/formatTimeAgo";
 import handleError from "../../utils/handleError";
 import api from "../../services/api/axiosInterceptor";
 
+
 const NotificationsPage = () => {
     const role = useSelector((state) => state.auth?.role);
     const [activeTab, setActiveTab] = useState("unread");

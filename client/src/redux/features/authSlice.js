@@ -21,6 +21,26 @@ export const fetchUserDetails = createAsyncThunk(
     }
 );
 
+// Fetch user details after login
+export const fetchUnreadMsgCount = createAsyncThunk(
+    "auth/fetchUnreadMsgCount",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await api.get("/chats/rooms/unread-messages/");
+            console.log('thunk-fetchUnreadMsgCount-response:', response)
+            if (response.status !== 200) {
+                throw new Error("Failed to fetch user details");
+            }
+            const data = response.data;
+            return data;
+            
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || error.message || 'An unknown error occurred');
+        }
+    }
+);
+
+
 // export const fetchBadges = createAsyncThunk(
 //     "auth/fetchBadges",
 //     async (_, { rejectWithValue }) => {
@@ -48,6 +68,9 @@ const initialState = {
     role: null,
     status: 'idle',
     error: null,
+    unReadMessages: {},
+    unReadMsgStatus: 'idle',
+    unReadMsgError: null,
 };
 
 const authSlice = createSlice({
@@ -91,6 +114,42 @@ const authSlice = createSlice({
                     break;
             }
         },
+        changeMessageCount: (state, action) => {
+            const actionType = action.payload.actionType;
+            console.log('inside changeMessageCount')
+            if (!state.unReadMessages) {
+                state.unReadMessages = {};  // Ensure it's initialized
+            }
+
+            switch (actionType) {
+                case "add":{ 
+                    const obj = action.payload.unReadMessages;
+                    if (!obj || typeof obj !== 'object') return;
+                    state.unReadMessages = obj;
+                    // Object.entries(obj).forEach(([roomId, count]) => {
+                    //     state.unReadMessages[roomId] = count;
+                    // });
+                    // console.log('obj redux:', obj, state.unReadMessages)
+                    break;
+                }
+                case "increase":{
+                    const roomId = action.payload.roomId;
+                    if (roomId in state.unReadMessages){
+                        state.unReadMessages[roomId]++;
+                    }else{
+                        state.unReadMessages[roomId]=1
+                    }
+                    break;
+                }
+                case "reset":{
+                    const roomId = action.payload.roomId;
+                    delete state.unReadMessages[roomId];
+                    break;
+                }
+                default:
+                    break;
+            }
+        },
         logout: (state) => {
             state.user = null;
             // state.badges = null;
@@ -99,6 +158,9 @@ const authSlice = createSlice({
             state.status = 'idle';
             state.role = null
             state.error = null;
+            state.unReadMessages= {};
+            state.unReadMsgStatus = 'idle';
+            state.unReadMsgError = null;
             storage.removeItem("persist:auth");
         },
     },
@@ -114,21 +176,21 @@ const authSlice = createSlice({
             .addCase(fetchUserDetails.rejected, (state, action) => {
                 state.status = "failed";
                 state.error = action.payload;
+            })
+            .addCase(fetchUnreadMsgCount.pending, (state) => {
+                state.unReadMsgStatus = "loading";
+            })
+            .addCase(fetchUnreadMsgCount.fulfilled, (state, action) => {
+                state.unReadMsgStatus = "succeeded";
+                state.unReadMessages = action.payload;
+            })
+            .addCase(fetchUnreadMsgCount.rejected, (state, action) => {
+                state.unReadMsgStatus = "failed";
+                state.unReadMsgError = action.payload;
             });
-            // .addCase(fetchBadges.pending, (state) => {
-            //     state.status = "loading";
-            // })
-            // .addCase(fetchBadges.fulfilled, (state, action) => {
-            //     state.status = "succeeded";
-            //     state.badges = action.payload;
-            // })
-            // .addCase(fetchBadges.rejected, (state, action) => {
-            //     state.status = "failed";
-            //     state.error = action.payload;
-            // });
 
     },
 });
 
-export const { login, logout, switchRole, updateAcess, updateRefresh, changeNotificationCount } = authSlice.actions;
+export const { login, logout, switchRole, updateAcess, updateRefresh, changeNotificationCount, changeMessageCount } = authSlice.actions;
 export default authSlice.reducer;

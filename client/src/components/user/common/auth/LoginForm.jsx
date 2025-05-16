@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { useDispatch } from "react-redux";
 import { toast } from 'sonner'
 import { signInWithPopup } from "firebase/auth";
-import { login, fetchUserDetails } from "../../../../redux/features/authSlice";
+import { login, fetchUserDetails, fetchUnreadMsgCount } from "../../../../redux/features/authSlice";
 import { auth, googleProvider } from "../../../../services/firebase/firebase";
 import SocialButton from './SocialButton';
 import InputField from './InputField';
@@ -32,6 +32,7 @@ const LoginForm = ({ setLoading }) => {
             
             dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'student'}));
             dispatch(fetchUserDetails());
+            dispatch(fetchUnreadMsgCount());
             toast.success('Login success. Welcome back!')
             reset();
             navigate("/student/home");
