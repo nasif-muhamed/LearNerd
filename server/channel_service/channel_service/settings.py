@@ -12,7 +12,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 from dotenv import load_dotenv
+from mongoengine import connect
 
 load_dotenv()
 
@@ -24,13 +26,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_COURSE')
+SECRET_KEY = os.getenv('DJANGO_SECRET_CHANNEL')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
 
 # Application definition
 
@@ -44,11 +45,19 @@ INSTALLED_APPS = [
 
     # installed apps
     'corsheaders',
+    'rest_framework',
     'channels',
+    'django_mongoengine',
 
     # my apps
     'notifications',
+    'chats',
 ]
+
+SIMPLE_JWT = {
+    'SIGNING_KEY': os.getenv('JWT_SECRET_KEY_USER'),  
+    'ALGORITHM': os.getenv('JWT_ALGORITHM_USER'),
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -56,9 +65,11 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # CORS middleware
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+    # 'channel_service.middlewares.token_validation.TokenValidationMiddleware', # Custom middleware for token validation, not needed anymore
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'channel_service.middlewares.request_populator.RequestPopulatorMiddleware', # Custom middleware for populating request with user payload
 ]
 
 ROOT_URLCONF = 'channel_service.urls'
@@ -85,17 +96,45 @@ ASGI_APPLICATION = 'channel_service.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': os.getenv('DB_ENGINE'),
+#         'NAME': os.getenv('DB_NAME_CHANNEL'),
+#         'USER': os.getenv('DB_USER'),
+#         'PASSWORD': os.getenv('DB_PASSWORD'),
+#         'HOST': os.getenv('DB_HOST'),
+#         'PORT': os.getenv('DB_PORT'),
+#     }
+# }
+
+# Optional: Disable default Django SQL database. Because we are using MongoDB.
 DATABASES = {
     'default': {
-        'ENGINE': os.getenv('DB_ENGINE'),
-        'NAME': os.getenv('DB_NAME_CHANNEL'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'ENGINE': 'django.db.backends.dummy',
     }
 }
 
+# MongoDB Atlas connection
+MONGODB_DATABASES = {
+    "default": {
+        "name": os.getenv("MONGODB_DATABASENAME"),
+        "host": os.getenv("MONGODB_URI"),
+        "username": os.getenv("MONGODB_USERNAME"),
+        "password": os.getenv("MONGODB_PASSWORD"),
+        "authentication_source": "admin",
+    }
+}
+
+
+# print('MONGODB_SETTINGS:', MONGODB_SETTINGS)
+# # Connect to MongoDB
+# connect(
+#     name=MONGODB_SETTINGS['name'],
+#     host=MONGODB_SETTINGS['host'],
+#     username=MONGODB_SETTINGS['username'],
+#     password=MONGODB_SETTINGS['password'],
+#     authentication_source=MONGODB_SETTINGS['authentication_source']
+# )
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -121,7 +160,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'Asia/Kolkata'
+# TIME_ZONE = 'Asia/Kolkata'
+TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
@@ -151,6 +191,17 @@ CORS_ALLOW_CREDENTIALS = True
 # Channels Layers using Redis
 REDIS_HOST = os.getenv('REDIS_HOST')
 REDIS_PORT = os.getenv('REDIS_PORT')
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/2",  
+        # /2 is the Redis DB index. Using 0 for celery and 1 for user_service. Redis defaultly have 16(0 - 15) DB index. It's used just for the partition.
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
 
 CHANNEL_LAYERS = {
     'default': {

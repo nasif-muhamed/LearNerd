@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from notifications.message_broker.rabbitmq_consumer import start_consumer
+from channel_service.message_broker.rabbitmq_consumer import start_consumer
 
 class Command(BaseCommand):
     help = 'Starts the RabbitMQ consumer for notification events'
