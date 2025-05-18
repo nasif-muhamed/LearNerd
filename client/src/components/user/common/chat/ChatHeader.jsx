@@ -5,7 +5,7 @@ import RoundedImage from '../../../ui/RoundedImage';
 const ChatHeader = ({ selectedChat, activeTab }) => {
     const BASE_URL = import.meta.env.VITE_BASE_URL;
     console.log('selectedChat:', selectedChat)
-    const onlineUsersCount = selectedChat.online_user_count ? selectedChat.online_user_count : 0;
+    const onlineUsersCount = selectedChat.online_user_count ? (selectedChat.online_user_count) - 1 : 0;
 
     return (
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -20,7 +20,7 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
 
                 <RoundedImage 
                     style={`w-10 h-10 bg-primary/20`}
-                    source={`${BASE_URL}${selectedChat.room_type === "group" ? selectedChat.image : selectedChat.participants.image}`} 
+                    source={`${selectedChat.room_type === "group" ? '' : BASE_URL}${selectedChat.room_type === "group" ? selectedChat.image : selectedChat.participants.image}`} 
                     alternative={selectedChat.room_type === "group" ? selectedChat.name : selectedChat.participants.full_name}
                     userName={selectedChat.room_type === "group" ? selectedChat.name : selectedChat.participants.full_name}
                 />
@@ -35,8 +35,8 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
                     )} */}
 
                     {selectedChat.room_type === "one-to-one" && (
-                        <p className={`text-xs ${onlineUsersCount > 1 ? 'text-green-500' : 'text-gray-400'}`}>
-                            {onlineUsersCount > 1 ? 'Online' : 'Offline'}
+                        <p className={`text-xs ${onlineUsersCount > 0 ? 'text-green-500' : 'text-gray-400'}`}>
+                            {onlineUsersCount > 0 ? 'Online' : 'Offline'}
                         </p>
                     )}
 
@@ -46,7 +46,7 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
                         <div className="flex items-center gap-2">
                             <p className="text-xs text-muted-foreground flex items-center">
                                 <Users size={12} className="mr-1" />
-                                {selectedChat.members} members
+                                {selectedChat.participants.length} members
                             </p>
                             {onlineUsersCount > 0 && (
                                 <p className="text-xs text-green-500">

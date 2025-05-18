@@ -68,8 +68,9 @@ function QuizAttempt() {
         try {
             setLoading(true);
             const response = await api.post("users/quiz/submit/", body);
-            const { badge_acquired, is_passed, aquired_mark } = response.data; // Assuming score is returned
-            setResult({ badge_acquired, is_passed, aquired_mark: aquired_mark || 0 }); // Default score to 0 if not provided
+            console.log('response from badge submission:', response)
+            const { badge_acquired, is_passed, aquired_mark } = response.data;
+            setResult({ badge_acquired, is_passed, aquired_mark: aquired_mark || 0 });
             setIsQuizCompleted(true); // Show result on the same page
             if (is_passed) {
                 toast.success("Congratulations! You earned the badge!");
@@ -90,22 +91,24 @@ function QuizAttempt() {
             {!isQuizCompleted ? (
                 // Step 1 & Step 2: Quiz Questions
                 <div className="max-w-3xl w-full mx-auto">
-                    <div className="mb-4 text-white">
+                    <div className="mb-4 text-white flex gap-2">
                         <div className="h-24 w-24">
                             <img
-                                className="object-fill h-full w-full"
+                                className="object-cover h-full w-full"
                                 src={quiz?.image_url}
                                 alt={quiz?.title}
                             />
                         </div>
-                        <h1 className="text-2xl font-bold mb-2">{quiz?.title}</h1>
-                        <p className="mb-4 font-light text-sm">{quiz?.description}</p>
-                        <p className="mb-1 font-extralight text-xs">
-                            Total Questions: {quiz?.total_questions}
-                        </p>
-                        <p className="mb-1 font-extralight text-xs">
-                            Pass Mark: {quiz?.pass_mark}
-                        </p>
+                        <div className="">
+                            <h1 className="text-2xl font-bold mb-2">{quiz?.title}</h1>
+                            <p className="mb-1 font-light text-gray-300 text-sm">{quiz?.description}</p>
+                            <p className="mb-1 font-extralight text-gray-300 text-xs">
+                                Total Questions: {quiz?.total_questions}
+                            </p>
+                            <p className="mb-1 font-extralight text-gray-300 text-xs">
+                                Pass Mark: {quiz?.pass_mark}
+                            </p>
+                        </div>
                     </div>
 
                     <div className="bg-[#242B3D] rounded-lg p-6 mb-6 text-white">

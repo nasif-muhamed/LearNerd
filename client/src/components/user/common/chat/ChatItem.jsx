@@ -37,7 +37,7 @@ const ChatItem = ({ chat, unReadMessages, isSelected, onSelect, isCommunity }) =
             <div className='relative'>
                 <RoundedImage
                     style={`w-10 h-10 bg-primary/20`}
-                    source={`${BASE_URL}${chat.room_type === "group" ? chat.image : chat.participants.image}`} 
+                    source={`${chat.room_type === "group" ? '' : BASE_URL}${chat.room_type === "group" ? chat.image : chat.participants.image}`} 
                     alternative={chat.room_type === "group" ? chat.name : chat.participants.full_name}
                     userName={chat.room_type === "group" ? chat.name : chat.participants.full_name}
                 />
@@ -57,10 +57,10 @@ const ChatItem = ({ chat, unReadMessages, isSelected, onSelect, isCommunity }) =
                 <div className="flex justify-between items-center">
                     <p className="text-sm text-muted-foreground truncate">{chat.last_message? chat.last_message.content : "start a new chat"}</p>
                     
-                    {isCommunity && (
+                    {isCommunity && chat.room_type == "group" &&(
                         <span className="text-xs bg-muted rounded-full px-2 py-0.5 flex items-center">
                             <Users size={12} className="mr-1" />
-                            {chat.members}
+                            {chat.participants.length}
                         </span>
                     )}
 

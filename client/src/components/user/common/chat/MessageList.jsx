@@ -3,8 +3,9 @@ import { Check, CheckCheck, Loader } from 'lucide-react';
 import useUser from '../../../../hooks/useUser'
 import formatTimeAgo from '../../../../utils/formatTimeAgo';
 import TypingIndicator from '../../../ui/TypingIndicator';
+import RoundedImage from '../../../ui/RoundedImage';
 
-const MessageList = ({ messages, loading, activeTyper }) => {
+const MessageList = ({ messages, loading, activeTyper, activeTab }) => {
     const messageEndRef = useRef(null);
     const user = useUser()
     const userId = user?.id
@@ -27,6 +28,18 @@ const MessageList = ({ messages, loading, activeTyper }) => {
                             key={msg.id} 
                             className={`flex ${msg.sender?.user_id == userId? 'justify-end' : 'justify-start'}`}
                         >
+                            {activeTab === 'community' && msg.sender?.user_id !== user.id &&
+                                (
+                                    <div className='mr-2'>
+                                        <RoundedImage
+                                            style={`w-10 h-10 bg-primary/20`}
+                                            source={`${BASE_URL}${msg.sender?.image}`} 
+                                            alternative={msg.sender?.full_name}
+                                            userName={msg.sender?.full_name}
+                                        />
+                                    </div>
+                                )
+                            }
                             <div className={`max-w-[75%] ${msg.sender?.user_id == userId ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'} rounded-2xl px-4 py-2`}>
                             {!msg.sender?.user_id == userId && (
                                 <div className="font-medium text-xs mb-1">{msg.sender.full_name}</div>
@@ -34,7 +47,7 @@ const MessageList = ({ messages, loading, activeTyper }) => {
                                 <p>{msg.content}</p>
                                 <div className="text-xs opacity-70 text-right mt-1 flex items-center justify-end gap-1">
                                     {formatTimeAgo(msg.timestamp)}
-                                    {msg.sender?.user_id === userId && (
+                                    {activeTab !== 'community' && msg.sender?.user_id === userId && (
                                         msg.is_read === 'no' ? 
                                             <Check size={14} /> 
                                             : <CheckCheck size={14} />
@@ -52,7 +65,22 @@ const MessageList = ({ messages, loading, activeTyper }) => {
                         //         </p>
                         //     </div>
                         // </div>
-                        <TypingIndicator />
+                        <div className='flex'>
+                            {activeTab === 'community' && activeTyper.user?.user_id !== user.id &&
+                                (
+                                    <div className='mr-2'>
+                                        <RoundedImage
+                                            style={`w-10 h-10 bg-primary/20`}
+                                            source={`${BASE_URL}${activeTyper.user?.image}`} 
+                                            alternative={activeTyper.user?.full_name}
+                                            userName={activeTyper.user?.full_name}
+                                        />
+                                    </div>
+                                )
+                            }
+
+                            <TypingIndicator />
+                        </div>
                     )}
 
                     <div ref={messageEndRef} />

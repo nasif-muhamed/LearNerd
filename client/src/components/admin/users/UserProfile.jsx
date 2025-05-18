@@ -75,17 +75,19 @@ const UserProfile = ( {id, user, setUser, api, toast, BASE_URL } ) => {
             </div>
 
             {/* Right Section */}
-            <div className="flex flex-col items-center gap-4 w-full md:w-3/4 bg-gray-800 px-6 py-2 rounded-lg mb-2">
+            <div className="flex flex-col items-center gap-4 w-full md:w-3/4 bg-gray-800 px-6 py-2 rounded-lg mb-2 break-words">
                 {/* Biography */}
                 {user?.is_profile_completed ? (
                     <>
                         <h2 className="text-2xl font-bold">
                             {user?.first_name} {user?.last_name}
                         </h2>
-
-                        <p className="text-gray-300">
-                            {user?.biography}
-                        </p>
+                    
+                        <div className="relative w-full break-words">
+                            <p className="text-gray-300">
+                                {user?.biography}
+                            </p>
+                        </div>
                         {/* Course Details */}
                         <div className="w-full flex justify-between flex-wrap">
 

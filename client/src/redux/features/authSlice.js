@@ -71,6 +71,8 @@ const initialState = {
     unReadMessages: {},
     unReadMsgStatus: 'idle',
     unReadMsgError: null,
+    adminUserAccessToken: null,
+    adminUserRefreshToken: null,
 };
 
 const authSlice = createSlice({
@@ -82,6 +84,10 @@ const authSlice = createSlice({
             state.accessToken = action.payload.access;
             state.refreshToken = action.payload.refresh;
             state.role = action.payload.role
+            if (action.payload.role == 'admin'){
+                state.adminUserAccessToken = action.payload.userAccess;
+                state.adminUserRefreshToken = action.payload.userRefresh;
+            }
         },
         updateAcess: (state, action) => {
             state.accessToken = action.payload.access;

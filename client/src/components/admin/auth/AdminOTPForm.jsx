@@ -49,6 +49,7 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                     password: data.pass,
                 }
                 const response = await api.post("admin/login/verify-otp/", credentials);
+                console.log('resoponse admin login:', response)
                 if (response.status !== 200) {
                     console.log(response.status, response.data);
                     throw new Error(response.data);
@@ -56,7 +57,8 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                 sessionStorage.removeItem("adminUsername");
                 sessionStorage.removeItem("adminUsernameExpiry");
                 // dispatch(adminLogin({'adminAccessToken':response.data.access, 'adminRefreshToken':response.data.refresh}));
-                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin'}));
+                
+                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin', 'userAccess': response.data.user_access, 'userRefresh': response.data.user_refresh}));
                 toast.success('Login successfull')
                 reset()
                 navigate("/admin/dashboard");

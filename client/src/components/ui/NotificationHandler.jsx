@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useSelector, useDispatch } from "react-redux";
 import { changeMessageCount, changeNotificationCount } from '../../redux/features/authSlice';
 import useAccessToken from '../../hooks/useAccessToken';
-import useWebSocket from '../../hooks/useWebSocket';
+// import useWebSocket from '../../hooks/useWebSocket';
 
 const NotificationHandler = () => {
     const role = useSelector((state) => state.auth?.role);
