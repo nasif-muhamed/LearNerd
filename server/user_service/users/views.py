@@ -28,6 +28,7 @@ from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObta
     ProfileDetailsSerializer, NotificationSerializer, WalletSerializer
 from .tasks import send_otp_email
 from .services import CallCourseService, CourseServiceException
+from .message_broker.rabbitmq_publisher import publish_chat_event
 
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
@@ -431,6 +432,22 @@ class UserActionView(APIView):
         serializer = UserActionSerializer(user_to_modify)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class AdminUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user =  request.user
+        if not is_admin(user):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            serializer = ProfileDetailsSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'error': f'Un expected error {e}'}, status=status.HTTP_404_NOT_FOUND)
+
+
 class CustomPagination(PageNumberPagination):
     page_size = 3  # Default items per page
     page_size_query_param = 'page_size'  # Allow client to override page size
@@ -552,6 +569,13 @@ class SubmitQuizView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
+        if not result['is_passed']:
+            return Response({
+                'badge_acquired': None,
+                'aquired_mark': result['acquired_mark'],
+                'is_passed': result['is_passed']
+            }, status=status.HTTP_201_CREATED)
+
         # Check if this is a new attempt or update existing
         print('here1')
         badge_acquired, created = BadgesAquired.objects.get_or_create(
@@ -567,6 +591,15 @@ class SubmitQuizView(APIView):
             }
         )
         print('here2')
+
+        if result['community'] and created:
+            publish_chat_event(
+                event_type='group_add',
+                data={
+                    'user_id': user.id,
+                    'badge_title': result['title']
+                }
+            )
 
         if not created:
             # Update existing record

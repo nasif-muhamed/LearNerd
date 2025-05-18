@@ -251,6 +251,45 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
 
+    def get_admin_user_details(self, admin):
+        if not admin:
+            raise ValueError("Admin parameter is required")
+
+        try:
+            token_obj = UserServiceToken.objects.get(admin=admin)
+        except UserServiceToken.DoesNotExist:
+            raise UserServiceException("Token not found for admin")
+
+        path = f"api/v1/users/admin-details/"
+        headers = {"Authorization": f"Bearer {token_obj.access_token}"}
+
+        try:
+            response = self._make_request('GET', headers, path)
+            
+            if response.status_code == 401:
+                # Handle token refresh in case of access token expiration
+                new_token = self._refresh_token(token_obj)
+                token_obj.access_token = new_token["access"]
+                token_obj.save()
+                
+                # Retry with new access token
+                headers["Authorization"] = f"Bearer {new_token['access']}"
+                response = self._make_request('GET', headers, path)
+
+            print(response.ok)
+            if response.status_code != 200:
+                raise UserServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error: {str(e)}")
+
 
 class CourseServiceException(APIException):
     """Custom exception for course service related errors"""
@@ -325,3 +364,4 @@ class CallCourseService:
 
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
+        

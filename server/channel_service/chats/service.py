@@ -1,4 +1,5 @@
 from mongoengine.errors import DoesNotExist, ValidationError
+from mongoengine import Q
 from .models import User, Room, Message
 from channel_service.service_calls import CallUserService, UserServiceException
 from django.db import DatabaseError
@@ -98,9 +99,12 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date):
             ).get()
             print('Chat room found:', room.to_json())
             created = False
-            if room.expires_at and expiry_dt > room.expires_at:
-                room.expires_at = expiry_dt
-                room.save()
+            if room.expires_at:
+                expires_at_aware = room.expires_at.replace(tzinfo=timezone.utc) if room.expires_at.tzinfo is None else room.expires_at
+
+                if expiry_dt > expires_at_aware:
+                    room.expires_at = expiry_dt
+                    room.save()
 
         except DoesNotExist:
             # Create a new channel
@@ -122,3 +126,80 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date):
     except Exception as e:
         raise UserServiceException(f"Unexpected error in chat room operation: {str(e)}")
 
+def create_or_update_group_chat_room(name, image, admin):
+    try:
+        admin_id = int(admin['id'])
+        user = User.objects.get(user_id=admin_id)
+    except DoesNotExist:
+        email = admin['email']
+        first_name = 'admin'
+        last_name = str(admin_id)
+        image_url = admin['image']
+        full_name = f"{first_name} {last_name}".strip()
+        user = User(user_id=admin_id, full_name=full_name, email=email, image=image_url)
+        print(f"Attempting to save user: {user.to_json()}")
+        user.save()
+    try:
+        room = Room.objects(
+            room_type="group",
+            name=name,
+        ).get()
+        print('Group room found:', room.to_json())
+        created = False
+        changed = False
+        if name is not None and room.name != name:
+            room.name = name
+            changed = True
+        if image is not None and room.image != image:
+            room.image = image
+            changed = True
+        if changed:
+            room.save()
+
+    except DoesNotExist:
+        # Create a new channel
+        print('Creating new group chat room...')
+        room = Room(
+            room_type="group",
+            name=name,
+            image=image,
+            participants=[user,],
+        )
+        room.save()
+        created = True
+        print(f"Chat room created: {room.to_json()}")
+
+    except Exception as e:
+        raise Exception(f"Unexpected error in group chat room operation: {str(e)}")
+    
+    return room, created
+    
+def add_to_group_chat(user_id, badge_title):
+    try:
+        user_id = int(user_id)
+        print('add_to_group_chat:', user_id)
+        user, _ = get_or_create_user(user_id)
+        print('user fount in add_to_group_chat:', user)
+        room = Room.objects(
+            room_type="group",
+            name=badge_title
+        ).get()
+        print('Chat room found:', room.to_json())
+        added = False
+        if user not in room.participants:
+            room.update(
+                push__participants=user,
+                set__updated_at=datetime.utcnow()
+            )
+            added = True
+        room.reload()
+        return room, added
+
+    except DoesNotExist:
+        raise 
+    except UserServiceException as e:
+        raise  # Re-raise user service errors
+    except DatabaseError as e:
+        raise Exception(f"Database error while managing chat room: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Unexpected error in chat room operation: {str(e)}")

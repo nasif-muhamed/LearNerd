@@ -3,7 +3,7 @@ import json
 import os
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from chats.service import create_or_update_user, create_or_update_chat_room
+from chats.service import create_or_update_user, create_or_update_chat_room, create_or_update_group_chat_room, add_to_group_chat
 
 def notification_callback(ch, method, properties, body):
     body = json.loads(body)
@@ -53,7 +53,7 @@ def chat_callback(ch, method, properties, body):
             if user is None:
                 raise Exception("Failed to create or update user")
             
-        if event_type == 'create_chat_room':
+        elif event_type == 'create_chat_room':
             student_id = body['student_id']
             tutor_id = body['tutor_id']
             expiry_date = body['expiry_date']
@@ -61,6 +61,24 @@ def chat_callback(ch, method, properties, body):
             room, _ = create_or_update_chat_room(student_id, tutor_id, expiry_date)
             if room is None:
                 raise Exception("Failed to create or update user")
+
+        elif event_type == 'create_group_chat_room':
+            name = body['name']
+            image = body['image']
+            admin = body['admin']
+            print('create room chat room:', name, image, admin)
+            room, _ = create_or_update_group_chat_room(name, image, admin)
+            if room is None:
+                raise Exception("Failed to create or update user")
+    
+        elif event_type == 'group_add':
+            user_id = body['user_id']
+            badge_title = body['badge_title']
+            print('create room chat room:', user_id, badge_title)
+            room, _ = add_to_group_chat(user_id, badge_title)
+            if room is None:
+                raise Exception("Failed to create or update user")
+
 
         print(f" [x] chat event received: {event_type}")
         ch.basic_ack(delivery_tag=method.delivery_tag)

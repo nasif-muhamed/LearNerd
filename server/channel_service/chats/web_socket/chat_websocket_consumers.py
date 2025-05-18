@@ -6,7 +6,7 @@ from channels.layers import get_channel_layer
 from django_redis import get_redis_connection
 from asgiref.sync import sync_to_async
 from ..models import User, Message, Room
-from ..serializers import MessageSerializer
+from ..serializers import MessageSerializer, UserSerializer
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -234,8 +234,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def save_message(self, message):
         user = User.objects.get(user_id=self.user_id)
         room = Room.objects.get(id=self.room_id)
-        print('now > expiry:', datetime.utcnow() > room.expires_at, datetime.utcnow(), room.expires_at)
-        if datetime.utcnow() > room.expires_at:
+        print('now > expiry:', room.room_type, room.room_type == 'one-to-one' and datetime.utcnow() > room.expires_at, datetime.utcnow(), room.expires_at)
+        if room.room_type == 'one-to-one' and datetime.utcnow() > room.expires_at:
             return
         msg = Message(
             room=room,
@@ -255,10 +255,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def get_user(self, user_id):
         try:
             user = User.objects.get(user_id=user_id)
+            serializer = UserSerializer(user)
+            print('serializer get_user:', serializer.data)
             return {
-                'user_id': user.user_id,
-                'full_name': user.full_name,
-                'image': user.image,
+                'user_id': serializer.data['user_id'],
+                'full_name': serializer.data['full_name'],
+                'image': serializer.data['image'],
             }
         except User.DoesNotExist:
             return None

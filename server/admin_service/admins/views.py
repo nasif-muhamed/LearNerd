@@ -116,7 +116,7 @@ class VerifyOTPView(APIView):
                         'email': user.email,
                         'password': password
                     }
-                    user_response = call_user_service.get_tokens(method, data)
+                    # user_response = call_user_service.get_tokens(method, data)
 
                     try:
                         user_response = call_user_service.get_tokens(method, data)
@@ -133,6 +133,8 @@ class VerifyOTPView(APIView):
                         return Response({
                             'refresh': str(refresh),
                             'access': str(refresh.access_token),
+                            'user_access': user_data.get('access'),
+                            'user_refresh': user_data.get('refresh'),
                             'message': 'Login successful'
                         }, status=status.HTTP_200_OK)
 

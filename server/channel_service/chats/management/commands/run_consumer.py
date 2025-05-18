@@ -10,4 +10,3 @@ class Command(BaseCommand):
             start_consumer()
         except KeyboardInterrupt:
             self.stdout.write(self.style.WARNING('Consumer stopped.'))
-

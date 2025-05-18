@@ -20,9 +20,9 @@ class Room(Document):
     name = StringField(max_length=100)
     image = StringField(max_length=255)
     last_message = ReferenceField('Message')
-    expires_at = DateTimeField()
-    created_at = DateTimeField(default=datetime.utcnow)
-    updated_at = DateTimeField(default=datetime.utcnow)
+    expires_at = DateTimeField(tz_aware=True)
+    created_at = DateTimeField(default=datetime.utcnow, tz_aware=True)
+    updated_at = DateTimeField(default=datetime.utcnow, tz_aware=True)
 
     meta = {
         'collection': 'rooms',

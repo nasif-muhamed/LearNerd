@@ -143,6 +143,9 @@ services:
             - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
             - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
             - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
         ports:
             - "8002:8002"
         volumes:

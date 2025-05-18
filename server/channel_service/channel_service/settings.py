@@ -50,7 +50,6 @@ INSTALLED_APPS = [
     'django_mongoengine',
 
     # my apps
-    'notifications',
     'chats',
 ]
 
