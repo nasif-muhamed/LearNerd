@@ -7,7 +7,7 @@ from .views import (
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseFeedbackView,
     ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView, AdminListReportsAPIView,
-    AdminReportActionPIView,
+    AdminReportActionPIView, ScheduleSessionView
 )
 
 router = DefaultRouter()
@@ -82,4 +82,7 @@ urlpatterns = [
 
     # Get all enrolled course and uploaded courses by a user
     path('admin/user/<int:user_id>/courses/', AdminUserCoursesDetailsView.as_view(), name='my-course-reviews'),
+
+    # video session related
+    path('video-session/<int:purchase_id>/', ScheduleSessionView.as_view(), name='video-session'),
 ]

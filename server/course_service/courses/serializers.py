@@ -6,7 +6,7 @@ from django.db.models import Sum
 import json
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review, Report,
-    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion
+    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion, VideoSession
 )
 from .services import CallUserService, UserServiceException
 from banners.utils import get_ad_content
@@ -513,6 +513,7 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
     course_total_section_items = serializers.SerializerMethodField()
     purchase_type = serializers.CharField()
     completed_section_items = serializers.SerializerMethodField()
+    video_session_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
@@ -524,7 +525,8 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
             'course_thumbnail',
             'course_total_section_items',
             'purchase_type',
-            'completed_section_items'
+            'completed_section_items',
+            'video_session_status'
         ]
 
     def get_completed_section_items(self, obj):
@@ -537,6 +539,12 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
     def get_course_total_section_items(self, obj):
         # Count total section items for the course related to this purchase
         return SectionItem.objects.filter(section__course=obj.course).count()
+    
+    def get_video_session_status(self, obj):
+        # Count total section items for the course related to this purchase
+        print('session status:', obj.video_sessions.first())
+        return obj.video_sessions.first().status if obj.video_sessions.first() else None
+
 
 # class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
 #     objectives = LearningObjectiveSerializer(many=True, read_only=True)
@@ -624,17 +632,20 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
     sections = serializers.SerializerMethodField()
     ad_viewed = serializers.SerializerMethodField()
     ads = serializers.SerializerMethodField()
+    video_session = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
         fields = [
+            'id',
             'course',
             'course_total_section_items',
             'purchase_type',
             'completed_section_items',
             'sections',
             'ad_viewed',
-            'ads'
+            'ads',
+            'video_session',
         ]
 
     def get_course_total_section_items(self, obj):
@@ -668,6 +679,12 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
         if obj.purchase_type == 'freemium':
             return get_ad_content()
         return None
+    
+    def get_video_session(self, obj):
+        sessions = obj.video_sessions.all()
+        serializer = VideoSessionSerializer(sessions, many=True)
+        return serializer.data if sessions else None
+    
     
 class TutorCourseSerializer(serializers.ModelSerializer):
     total_courses = serializers.IntegerField()
@@ -719,3 +736,11 @@ class ReportSerializer(serializers.ModelSerializer):
         }
         # print('purchase_details:', purchase_details)
         return purchase_details
+
+class VideoSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VideoSession
+        fields = ["id", "tutor", "student", "purchase", "room_id", "status", "scheduled_time", "is_active", "created_at"]
+        read_only_fields = ["id", "purchase", "room_id", "created_at"]
+
+        

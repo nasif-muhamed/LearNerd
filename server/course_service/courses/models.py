@@ -1,4 +1,5 @@
 import os
+import uuid
 from datetime import timedelta
 from django.utils import timezone
 from django.db import models
@@ -179,11 +180,11 @@ class Choice(models.Model):
     def __str__(self):
         return self.text
 
-def validate_pdf(value):
-    ext = os.path.splitext(value.name)[1].lower()
-    valid_extensions = ['.pdf']
-    if ext not in valid_extensions:
-        raise ValidationError('Unsupported file type. Only PDFs are allowed.')
+# def validate_pdf(value):
+#     ext = os.path.splitext(value.name)[1].lower()
+#     valid_extensions = ['.pdf']
+#     if ext not in valid_extensions:
+#         raise ValidationError('Unsupported file type. Only PDFs are allowed.')
     
 class SupportingDocument(models.Model):
     section_item = models.OneToOneField(SectionItem, on_delete=models.CASCADE, related_name='documents')
@@ -284,10 +285,38 @@ class Report(models.Model):
     def __str__(self):
         return f"Report by {self.user} for {self.course.title}"
 
-
 class NoteSectionItem(models.Model):
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='notes')
     notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Notes for {self.section_item.title}"
+
+class VideoSession(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'approved'),
+        ('completed', 'completed'),
+    )
+
+    tutor = models.BigIntegerField(db_index=True)
+    student = models.BigIntegerField(db_index=True)
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="video_sessions")
+    room_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    scheduled_time = models.DateTimeField(null=True, blank=True)
+    ending_time = models.DateTimeField(null=True, blank=True)
+    # duration_minutes = models.PositiveIntegerField(default=60)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Session {self.room_id} - {self.tutor} with {self.student}"
+
+    @property
+    def is_upcoming(self):
+        return self.scheduled_time > timezone.now()
+

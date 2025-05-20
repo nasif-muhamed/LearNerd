@@ -28,7 +28,7 @@ from .serializers import (
     CourseRequirementSerializer, CourseObjectivesRequirementsSerializer, SectionSerializer,
     SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
-    ReviewCreateSerializer, ReviewSerializer, ReportCreateSerializer, ReportSerializer,
+    ReviewCreateSerializer, ReviewSerializer, ReportCreateSerializer, ReportSerializer, VideoSessionSerializer,
 )
 from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor
 from .services import CallUserService, UserServiceException
@@ -786,6 +786,9 @@ class CreatePaymentIntentView(APIView):
             if course.subscription_amount != float(request.data.get('amount')):
                 return Response({'error': 'Invalid amount', 'details': 'Amount mismatch'}, status=400)
             
+            if course.instructor == user_id:
+                return Response({'detail': 'You cannot purchase your own course'}, status=status.HTTP_400_BAD_REQUEST)
+
             # Create a payment intent
             intent = stripe.PaymentIntent.create(
                 amount=int(course.subscription_amount * 100),  # Amount in cents
@@ -1455,7 +1458,6 @@ class AdminReportActionPIView(APIView):
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
         
-
 # Fetch Reviews of a course for a student, incuding own review and report if any
 class StudentCourseFeedbackView(APIView):
     permission_classes = [IsUser]
@@ -1540,3 +1542,50 @@ class AdminUserCoursesDetailsView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# Schedule a video session.
+class ScheduleSessionView(APIView):
+    permission_classes = [IsUser]
+
+    def post(self, request, purchase_id):
+        user_id = request.user_payload['user_id']
+        purchase = Purchase.objects.get(id=purchase_id)
+        tutor = purchase.course.instructor
+        student = purchase.user
+
+        # checking if not the requested user is either tutor or student.
+        if tutor != user_id and student != user_id:
+            return Response({'detail': 'you should be a member of the purchase to schedule a session'}, status=status.HTTP_403_FORBIDDEN)
+
+        # checking if the tutor trying to request a session.
+        if request.data.get('status') == 'pending' and student != user_id:
+            return Response({'detail': 'only student can request a session'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # checking if the student trying to change the status of the schedule.
+        if request.data.get('status') == 'approved' and tutor != user_id:
+            return Response({'detail': 'only tutor have the authority to approve a session'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # checking if freemium user trying for a video session.
+        if purchase.purchase_type != 'subscription' and not purchase.video_session:
+            return Response({'detail': 'Only subscribed user has access to the feature'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # checking if the user already has a pending session or not.
+        if purchase.video_sessions.filter(Q(status='pending') | Q(status='approved')).exists():
+            return Response({'detail': 'You already have a pending session'}, status=status.HTTP_409_CONFLICT)
+
+        # checking if the user have already used all his available video sessions or not.
+        if purchase.video_sessions.count() >= purchase.video_session:
+            return Response({'detail': 'Your available video sessions are over'}, status=status.HTTP_403_FORBIDDEN)
+        
+
+        request.data['tutor'] = tutor
+        request.data['student'] = student
+
+        print('request data;', request.data)
+
+        serializer = VideoSessionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(purchase=purchase)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        print('errors:', serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
