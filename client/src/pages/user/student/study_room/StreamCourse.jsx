@@ -16,15 +16,17 @@ import {
 } from "react-icons/fi";
 import { MdError } from "react-icons/md";
 import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { UserRound } from "lucide-react";
 import api from "../../../../services/api/axiosInterceptor";
 import handleError from "../../../../utils/handleError";
 import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
-import { toast } from "sonner";
-import { UserRound } from "lucide-react";
+import InstructorDetails from "../../../../components/user/student/study_room/my_course/InstructorDetails";
+import VideoSessionList from "../../../../components/user/student/study_room/my_course/VideoSessionList";
 
 const StreamCourse = () => {
     const BASE_URL = import.meta.env.VITE_BASE_URL
-    const { purchaseId } = useParams();
+    const { courseId } = useParams();
     const [loading, setLoading] = useState(null);
     const [myCourse, setMyCourse] = useState(null);
     const [error, setError] = useState("");
@@ -46,11 +48,12 @@ const StreamCourse = () => {
     const [showVideoAd, setShowVideoAd] = useState(false);
     const [adViewed, setAdViewed] = useState([])
     const contentRef = useRef(null);
+    const videoSessions = myCourse ? myCourse.video_session : null
 
     const fetchCourse = async () => {
         try {
             setLoading(true);
-            const response = await api.get(`courses/stream/${purchaseId}/`);
+            const response = await api.get(`courses/stream/${courseId}/`);
             console.log("My Purchased course response:", response);
             const result = response.data;
             setMyCourse(result);
@@ -263,6 +266,27 @@ const StreamCourse = () => {
         }
     };
     
+    const handleRequestSession = async () => {
+        try{
+            setLoading(true)
+            const body = {
+                status: 'pending'
+            }
+            const response = await api.post(`courses/video-session/${myCourse.id}/`, body);
+            console.log('request a session response:', response)
+            toast.success('Requested for a new session')
+            setMyCourse(prev => ({
+                ...prev,
+                video_session_status: 'pending'
+            }))
+        }catch(err){
+            console.log('error requestion a session', err)
+            handleError(err, 'error requesting a session')
+        }finally{
+            setLoading(false)
+        }
+    }
+
     return (
         <div className="min-h-screen text-foreground">
             {loading && <LoadingSpinner />}
@@ -297,6 +321,7 @@ const StreamCourse = () => {
                                     onEnded={() => {
                                         showVideoAd ? handleAdEnded() : submitVideo()
                                     }}
+                                    onContextMenu={e => e.preventDefault()}
                                 >
                                     Your browser does not support the video tag.
                                     Try with another browser.
@@ -665,9 +690,17 @@ const StreamCourse = () => {
                         {activeTab === "overview" && (
                             <div className="bg-card rounded-lg p-6">
                                 <div className="">
-                                    <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                                        {myCourse?.course?.title}
-                                    </h1>
+                                    <div className="flex">
+                                        <h1 className="text-2xl md:text-3xl font-bold mb-2">
+                                            {myCourse?.course?.title}
+                                        </h1>
+
+                                        {myCourse?.subscription && myCourse?.is_enrolled !== 'subscription' &&  (
+                                            <button onClick={()=>{handlePurchase('subscription')}} className="btn-primary w-full mb-2">
+                                                {myCourse.is_enrolled !== 'freemium' ? 'Subscribe' : 'Subscribe to Upgrade'}
+                                            </button>
+                                        )}
+                                    </div>
                                     <p className="text-muted-foreground mb-4">
                                         {myCourse?.course?.description}
                                     </p>
@@ -751,7 +784,13 @@ const StreamCourse = () => {
                                         <p>{myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
                                     </div>
                                     <div>
-                                        <p className="text-muted-foreground">
+                                        <button onClick={handleRequestSession} className={`w-full mb-2 ${videoSessions && videoSessions[0].status == 'approved' ? 'btn-destructive' : videoSessions && videoSessions[0].status == 'pending' ? 'btn-secondary' : 'btn-primary'}`} disabled={videoSessions && videoSessions[0].status} >
+                                            {
+
+                                                videoSessions && videoSessions[0].status == 'approved' ? 'Scheduled Session Exists' : videoSessions && videoSessions[0].status == 'pending' ? 'Request is Pending' : 'Request a Session'
+                                            }
+                                        </button>
+                                        {/* <p className="text-muted-foreground">
                                             Chat up to
                                         </p>
                                         <p>
@@ -760,7 +799,7 @@ const StreamCourse = () => {
                                             date.setDate(date.getDate() + myCourse?.course?.chat_upto); // Adds 30 days to the current date
                                             return date.toLocaleDateString(); // Formats the date into a readable string
                                         })()}
-                                        </p>
+                                        </p> */}
                                     </div>
                                 </div>)}
                                 <div className="grid grid-cols-2 gap-4">
@@ -960,7 +999,7 @@ const StreamCourse = () => {
 
                     {/* Right Column - Instructor & More */}
                     <div className="lg:w-1/3">
-                        <div className="bg-card rounded-lg p-6 mb-6">
+                        {/* <div className="bg-card rounded-lg p-6 mb-6">
                             <h2 className="text-xl font-bold mb-4">
                                 Instructor
                             </h2>
@@ -987,7 +1026,11 @@ const StreamCourse = () => {
                             <Link to={`/student/tutors/${myCourse?.course?.instructor}`} className="btn-outline w-full">
                                 View Profile
                             </Link>
-                        </div>
+                        </div> */}
+
+                        {myCourse && <InstructorDetails course={myCourse.course} />}
+
+                        {videoSessions && <VideoSessionList videoSessions={videoSessions} />}
 
                     </div>
                 </div>

@@ -1,299 +1,426 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, Send, Users, UserCircle, ChevronLeft, MoreVertical, Paperclip, Smile, Check, Menu } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, Check, X, ArrowRight, User, MessageCircle } from 'lucide-react';
+import axios from 'axios';
+import { format, parseISO, addMinutes } from 'date-fns';
 
-// Mock data for demonstration
-const mockPersonalChats = [
-  { id: 1, name: "Sarah Johnson", avatar: null, lastMessage: "Thanks for the help with the project!", time: "10:30 AM", unread: 2 },
-  { id: 2, name: "Michael Chen", avatar: null, lastMessage: "When is the next live session?", time: "Yesterday", unread: 0 },
-  { id: 3, name: "Alex Rodriguez", avatar: null, lastMessage: "I've submitted my assignment", time: "Yesterday", unread: 0 },
-  { id: 4, name: "Emily Williams", avatar: null, lastMessage: "Can you explain the concept again?", time: "Monday", unread: 1 },
-];
-
-const mockCommunityChats = [
-  { id: 101, name: "Frontend Development", avatar: null, lastMessage: "Any tips for optimizing React performance?", time: "11:45 AM", unread: 5, members: 28 },
-  { id: 102, name: "Python Study Group", avatar: null, lastMessage: "Check out this new Django tutorial", time: "Yesterday", unread: 0, members: 42 },
-  { id: 103, name: "UI/UX Design", avatar: null, lastMessage: "What design tools do you recommend?", time: "Sunday", unread: 3, members: 19 },
-];
-
-const mockMessages = [
-  { id: 1, sender: "Sarah Johnson", content: "Hey there! How's the course going?", time: "10:15 AM", isUser: false },
-  { id: 2, sender: "You", content: "It's going well! I'm working on the final project now.", time: "10:20 AM", isUser: true },
-  { id: 3, sender: "Sarah Johnson", content: "That's great! Do you need any help with it?", time: "10:25 AM", isUser: false },
-  { id: 4, sender: "You", content: "Thanks for asking! I might need some guidance with the API integration later.", time: "10:28 AM", isUser: true },
-  { id: 5, sender: "Sarah Johnson", content: "No problem at all. Thanks for the help with the project!", time: "10:30 AM", isUser: false },
-];
-
-const ChatPage = () => {
-  const [activeTab, setActiveTab] = useState('personal');
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState(mockMessages);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const messageEndRef = useRef(null);
+const TutorSessionsPage = () => {
+  // State management
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Auto-scroll to bottom of messages
-  useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  // Form state for scheduling
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState(60);
 
-  const handleSendMessage = () => {
-    if (message.trim() === '') return;
-    
-    const newMessage = {
-      id: messages.length + 1,
-      sender: 'You',
-      content: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isUser: true
+  // Common durations
+  const commonDurations = [30, 45, 60, 90, 120];
+  
+  // Fetch sessions with pagination and filtering
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams({
+          page: currentPage,
+        });
+        
+        if (statusFilter !== 'all') {
+          params.append('status', statusFilter);
+        }
+        
+        const response = await axios.get(`/api/tutor/sessions/?${params.toString()}`);
+        setSessions(response.data.results);
+        setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 items per page
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load sessions');
+        setLoading(false);
+        console.error('Error fetching sessions:', err);
+      }
     };
     
-    setMessages([...messages, newMessage]);
-    setMessage('');
+    fetchSessions();
+  }, [currentPage, statusFilter]);
+
+  // Handle pagination change
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  // Handle filter change
+  const handleFilterChange = (status) => {
+    setStatusFilter(status);
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  // Open modal for session approval and scheduling
+  const handleApproveClick = (session) => {
+    setSelectedSession(session);
+    setIsModalOpen(true);
+    // Reset form fields
+    setScheduledDate('');
+    setScheduledTime('');
+    setDurationMinutes(60);
+  };
+
+  // Close modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedSession(null);
+  };
+
+  // Submit session approval
+  const handleSubmitSchedule = async (e) => {
+    e.preventDefault();
+    
+    if (!scheduledDate || !scheduledTime || !durationMinutes) {
+      return; // Form validation
+    }
+    
+    try {
+      const scheduledDateTime = `${scheduledDate}T${scheduledTime}`;
+      
+      // Calculate ending time based on duration
+      const startDate = new Date(`${scheduledDate}T${scheduledTime}`);
+      const endDate = addMinutes(startDate, parseInt(durationMinutes));
+      
+      const response = await axios.patch(`/api/tutor/sessions/${selectedSession.id}/`, {
+        status: 'approved',
+        scheduled_time: scheduledDateTime,
+        ending_time: endDate.toISOString()
+      });
+      
+      // Update the sessions list with the new data
+      setSessions(sessions.map(session => 
+        session.id === selectedSession.id ? response.data : session
+      ));
+      
+      // Close modal
+      setIsModalOpen(false);
+      setSelectedSession(null);
+    } catch (err) {
+      setError('Failed to schedule session');
+      console.error('Error scheduling session:', err);
     }
   };
 
-  return (
-    <div className="flex h-full bg-background text-foreground overflow-hidden">
-      {/* Mobile sidebar toggle */}
-      {!isMobileSidebarOpen && (
-        <button 
-          className="fixed z-10 top-20 left-4 md:hidden bg-primary rounded-full p-2 shadow-lg"
-          onClick={() => setIsMobileSidebarOpen(true)}
-        >
-          <Menu size={20} />
-        </button>
-      )}
-      
-      {/* Sidebar */}
-      <div className={`${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
-          md:translate-x-0 transition-transform duration-300 w-full md:w-80 lg:w-96 
-          border-r border-border bg-sidebar-background flex flex-col h-full 
-          fixed md:relative z-20`}>
-        {/* Sidebar header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h2 className="text-xl font-bold">Messages</h2>
-          <div className="flex gap-2">
-            <button 
-              className="md:hidden p-2 rounded-full hover:bg-muted"
-              onClick={() => setIsMobileSidebarOpen(false)}
-            >
-              <ChevronLeft size={20} />
-            </button>
+  // Get badge class based on status
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-warning/20 text-warning';
+      case 'approved':
+        return 'bg-info/20 text-info';
+      case 'completed':
+        return 'bg-success/20 text-success';
+      default:
+        return 'bg-secondary text-secondary-foreground';
+    }
+  };
+
+  // Render loading state
+  if (loading && sessions.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-pulse flex flex-col space-y-4 w-full max-w-4xl">
+          <div className="h-12 bg-secondary rounded-md w-1/4"></div>
+          <div className="h-10 bg-secondary rounded-md w-1/3"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-24 bg-card rounded-lg border border-border"></div>
+            ))}
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-border">
-          <button 
-            className={`flex-1 py-3 font-medium ${activeTab === 'personal' ? 'text-accent border-b-2 border-accent' : 'text-muted-foreground'}`}
-            onClick={() => setActiveTab('personal')}
-          >
-            <UserCircle size={18} className="inline mr-2" />
-            Personal
-          </button>
-          <button 
-            className={`flex-1 py-3 font-medium ${activeTab === 'community' ? 'text-accent border-b-2 border-accent' : 'text-muted-foreground'}`}
-            onClick={() => setActiveTab('community')}
-          >
-            <Users size={18} className="inline mr-2" />
-            Community
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="p-4">
-          <div className="relative">
-            <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-            <input 
-              type="text" 
-              placeholder="Search messages..." 
-              className="w-full bg-muted rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-          </div>
-        </div>
-
-        {/* Chat list */}
-        <div className="flex-1 overflow-y-auto">
-          {activeTab === 'personal' ? (
-            mockPersonalChats.map(chat => (
-              <div 
-                key={chat.id}
-                className={`p-4 flex items-center gap-3 hover:bg-muted/30 cursor-pointer transition-colors ${selectedChat && selectedChat.id === chat.id ? 'bg-muted/50' : ''}`}
-                onClick={() => {
-                  setSelectedChat(chat);
-                  setIsMobileSidebarOpen(false);
-                }}
-              >
-                <div className="relative">
-                  {chat.avatar ? (
-                    <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-lg font-medium">{chat.name.charAt(0)}</span>
-                    </div>
-                  )}
-                  {chat.unread > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-destructive text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium truncate">{chat.name}</h3>
-                    <span className="text-xs text-muted-foreground">{chat.time}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">{chat.lastMessage}</p>
-                </div>
-              </div>
-            ))
-          ) : (
-            mockCommunityChats.map(chat => (
-              <div 
-                key={chat.id}
-                className={`p-4 flex items-center gap-3 hover:bg-muted/30 cursor-pointer transition-colors ${selectedChat && selectedChat.id === chat.id ? 'bg-muted/50' : ''}`}
-                onClick={() => {
-                  setSelectedChat(chat);
-                  setIsMobileSidebarOpen(false);
-                }}
-              >
-                <div className="relative">
-                  {chat.avatar ? (
-                    <img src={chat.avatar} alt={chat.name} className="w-12 h-12 rounded-full" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
-                      <span className="text-lg font-medium">{chat.name.charAt(0)}</span>
-                    </div>
-                  )}
-                  {chat.unread > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-destructive text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {chat.unread}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-medium truncate">{chat.name}</h3>
-                    <span className="text-xs text-muted-foreground">{chat.time}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground truncate">{chat.lastMessage}</p>
-                    <span className="text-xs bg-muted rounded-full px-2 py-0.5 flex items-center">
-                      <Users size={12} className="mr-1" />
-                      {chat.members}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
         </div>
       </div>
+    );
+  }
 
-      {/* Chat area */}
-      <div className={`flex-1 flex-col h-full relative ${isMobileSidebarOpen ? 'hidden' : 'flex'}`}>
-        {selectedChat ? (
-          <>
-            {/* Chat header */}
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                {selectedChat.avatar ? (
-                  <img src={selectedChat.avatar} alt={selectedChat.name} className="w-10 h-10 rounded-full" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-md font-medium">{selectedChat.name.charAt(0)}</span>
+  // Render error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="text-destructive text-lg font-semibold mb-2">Failed to load sessions</div>
+        <p className="text-muted-foreground mb-4">Please try again later</p>
+        <button 
+          className="btn-primary"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Your Teaching Sessions</h1>
+      
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <span className="text-sm text-muted-foreground self-center mr-2">Filter by:</span>
+        {['all', 'pending', 'approved', 'completed'].map((status) => (
+          <button
+            key={status}
+            onClick={() => handleFilterChange(status)}
+            className={`filter-button ${
+              statusFilter === status 
+                ? 'filter-button-active' 
+                : 'filter-button-inactive'
+            }`}
+          >
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </button>
+        ))}
+      </div>
+      
+      {/* Sessions list */}
+      <div className="space-y-4 mb-8">
+        {sessions.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-lg border border-border">
+            <p className="text-lg text-muted-foreground">No sessions found</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              {statusFilter !== 'all' 
+                ? `Try changing your filter from "${statusFilter}"`
+                : 'Students will appear here when they request sessions'}
+            </p>
+          </div>
+        ) : (
+          sessions.map((session) => (
+            <div key={session.id} className="transaction-card flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                {/* Student Info */}
+                <div className="flex items-center mb-2">
+                  <div className="transaction-icon transaction-icon-credit mr-3">
+                    <User size={18} className="text-success" />
+                  </div>
+                  <div>
+                    <span className="font-medium">Student ID: {session.student}</span>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      Room: {session.room_id.slice(0, 8)}...
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Session Details */}
+                <div className="pl-12">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusBadge(session.status)}`}>
+                      {session.status.toUpperCase()}
+                    </span>
+                    
+                    {session.scheduled_time && (
+                      <span className="flex items-center text-muted-foreground">
+                        <Calendar size={14} className="mr-1" />
+                        {format(parseISO(session.scheduled_time), 'MMM dd, yyyy')}
+                      </span>
+                    )}
+                    
+                    {session.scheduled_time && session.ending_time && (
+                      <span className="flex items-center text-muted-foreground">
+                        <Clock size={14} className="mr-1" />
+                        {format(parseISO(session.scheduled_time), 'h:mm a')} - 
+                        {format(parseISO(session.ending_time), 'h:mm a')}
+                      </span>
+                    )}
+                    
+                    <span className="flex items-center text-muted-foreground">
+                      <MessageCircle size={14} className="mr-1" />
+                      <button className="text-primary hover:underline">Open Chat</button>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Actions */}
+              <div className="flex items-center justify-end space-x-2">
+                {session.status === 'pending' && (
+                  <button 
+                    className="btn-primary text-sm py-1.5 px-3"
+                    onClick={() => handleApproveClick(session)}
+                  >
+                    Approve & Schedule
+                  </button>
+                )}
+                
+                {session.status === 'approved' && !session.is_upcoming && (
+                  <button className="btn-secondary text-sm py-1.5 px-3">
+                    Mark Complete
+                  </button>
+                )}
+                
+                {session.status === 'approved' && session.is_upcoming && (
+                  <div className="flex flex-col text-right">
+                    <span className="text-xs text-success mb-1">Scheduled</span>
+                    <button className="btn-outline text-sm py-1 px-3">
+                      Reschedule
+                    </button>
                   </div>
                 )}
-                <div>
-                  <h3 className="font-medium">{selectedChat.name}</h3>
-                  {activeTab === 'community' && (
-                    <p className="text-xs text-muted-foreground flex items-center">
-                      <Users size={12} className="mr-1" />
-                      {selectedChat.members} members
-                    </p>
-                  )}
-                </div>
-              </div>
-              <button className="p-2 rounded-full hover:bg-muted">
-                <MoreVertical size={20} />
-              </button>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map(msg => (
-                <div 
-                  key={msg.id} 
-                  className={`flex ${msg.isUser ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`max-w-[75%] ${msg.isUser ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'} rounded-2xl px-4 py-2`}>
-                    {!msg.isUser && (
-                      <div className="font-medium text-xs mb-1">{msg.sender}</div>
-                    )}
-                    <p>{msg.content}</p>
-                    <div className="text-xs opacity-70 text-right mt-1 flex items-center justify-end gap-1">
-                      {msg.time}
-                      {msg.isUser && <Check size={14} />}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div ref={messageEndRef} />
-            </div>
-
-            {/* Message input */}
-            <div className="p-4 border-t border-border">
-              <div className="relative flex items-center">
-                <button className="p-2 text-muted-foreground hover:text-foreground">
-                  <Paperclip size={20} />
-                </button>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  placeholder="Type a message..."
-                  className="flex-1 bg-muted rounded-md py-3 px-4 focus:outline-none focus:ring-1 focus:ring-accent resize-none h-12 max-h-32"
-                  rows={1}
-                />
-                <button className="p-2 text-muted-foreground hover:text-foreground ml-1">
-                  <Smile size={20} />
-                </button>
-                <button 
-                  onClick={handleSendMessage}
-                  disabled={message.trim() === ''}
-                  className={`ml-2 p-2 rounded-full ${message.trim() === '' ? 'bg-muted text-muted-foreground' : 'bg-accent text-accent-foreground'}`}
-                >
-                  <Send size={20} />
-                </button>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users size={32} className="text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-medium mb-2">Start chatting</h3>
-              <p className="text-muted-foreground mb-6">Select a conversation to start messaging</p>
-              <button 
-                className="btn-primary"
-                onClick={() => setActiveTab('personal')}
-              >
-                Browse messages
-              </button>
-            </div>
-          </div>
+          ))
         )}
       </div>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-2 mt-6">
+          <button 
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`btn-outline py-1 px-3 ${
+              currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            Previous
+          </button>
+          
+          <div className="flex items-center space-x-1">
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => handlePageChange(i + 1)}
+                className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                  currentPage === i + 1
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          
+          <button 
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`btn-outline py-1 px-3 ${
+              currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            Next
+          </button>
+        </div>
+      )}
+      
+      {/* Modal for scheduling */}
+      {isModalOpen && selectedSession && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div 
+            className="bg-card rounded-lg p-6 max-w-md w-full shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Schedule Session</h3>
+              <button 
+                onClick={handleCloseModal}
+                className="p-1 rounded-full hover:bg-secondary"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <div className="text-sm text-muted-foreground mb-2">Scheduling for Student ID: {selectedSession.student}</div>
+            </div>
+            
+            <form onSubmit={handleSubmitSchedule}>
+              <div className="space-y-4">
+                {/* Date */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Date</label>
+                  <div className="relative">
+                    <Calendar size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                    <input 
+                      type="date"
+                      required
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="pl-10 pr-4 py-2 w-full bg-secondary rounded-md border border-input"
+                      min={new Date().toISOString().split('T')[0]} // Prevent past dates
+                    />
+                  </div>
+                </div>
+                
+                {/* Time */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Time</label>
+                  <div className="relative">
+                    <Clock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                    <input 
+                      type="time"
+                      required
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="pl-10 pr-4 py-2 w-full bg-secondary rounded-md border border-input"
+                    />
+                  </div>
+                </div>
+                
+                {/* Duration */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Duration (minutes)</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {commonDurations.map((duration) => (
+                      <button
+                        key={duration}
+                        type="button"
+                        onClick={() => setDurationMinutes(duration)}
+                        className={`px-3 py-1 text-xs rounded-md ${
+                          durationMinutes === duration
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-secondary text-secondary-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {duration} min
+                      </button>
+                    ))}
+                  </div>
+                  <input 
+                    type="number"
+                    min="15"
+                    max="240"
+                    required
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(e.target.value)}
+                    className="px-4 py-2 w-full bg-secondary rounded-md border border-input"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Min: 15 minutes, Max: 240 minutes (4 hours)
+                  </p>
+                </div>
+                
+                {/* Actions */}
+                <div className="flex justify-end space-x-3 pt-2">
+                  <button 
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="btn-outline"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="btn-primary flex items-center"
+                  >
+                    <Check size={18} className="mr-1" />
+                    Approve & Schedule
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ChatPage;
+export default TutorSessionsPage;

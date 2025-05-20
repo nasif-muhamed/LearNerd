@@ -362,6 +362,7 @@ const CourseInfo = ({ course }) => {
 };
 
 // Main payment page component
+import handleError from '../../../../../utils/handleError';
 const PaymentPage = () => {
   const { id } = useParams();
   const [course, setCourse] = useState(null);
@@ -384,7 +385,7 @@ const PaymentPage = () => {
       setClientSecret(intentRes.data.clientSecret);
     } catch (err) {
       console.error("Error:", err);
-      toast.error("Failed to load payment details");
+      handleError(err, "Failed to load payment details")
     } finally {
       setLoading(false);
     }

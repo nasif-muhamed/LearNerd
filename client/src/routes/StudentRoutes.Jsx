@@ -50,7 +50,7 @@ const StudentRoutes = () => {
 
                 <Route path="/study-room">
                     <Route index element={<StudyRoomLanding />} />
-                    <Route path="my-course/:purchaseId" element={<StreamCourse/>} />
+                    <Route path="my-course/:courseId" element={<StreamCourse/>} />
                 </Route>
 
                 <Route path="/tutors">
