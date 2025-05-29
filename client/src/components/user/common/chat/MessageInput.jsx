@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Paperclip, Smile, Loader } from 'lucide-react';
-import api from '../../../../services/api/axiosInterceptor';
+import { Send, Paperclip, Loader } from 'lucide-react';
 import handleError from '../../../../utils/handleError';
 import { useChatWebSocket } from '../../../../context/WebSocketContext';
 
@@ -92,9 +91,9 @@ const MessageInput = ({ setActiveTyper, selectedItem }) => {
     return (
         <div className="p-4 border-t border-border">
             <div className="relative flex items-center">
-                <button className="p-2 text-muted-foreground hover:text-foreground">
+                {/* <button className="p-2 text-muted-foreground hover:text-foreground">
                     <Paperclip size={20} />
-                </button>
+                </button> */}
                 <textarea
                     value={message}
                     onChange={handleInputChange}

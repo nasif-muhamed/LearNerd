@@ -49,7 +49,8 @@ const StreamCourse = () => {
     const [adViewed, setAdViewed] = useState([])
     const contentRef = useRef(null);
     const videoSessions = myCourse ? myCourse.video_session : null
-
+    console.log('videoSessions:', videoSessions)
+    
     const fetchCourse = async () => {
         try {
             setLoading(true);
@@ -169,7 +170,6 @@ const StreamCourse = () => {
         setReport("");
     };
 
-
     const handleAnswerSelect = (questionId, answerId) => {
         setSelectedAnswers((prev) => ({
             ...prev,
@@ -277,8 +277,10 @@ const StreamCourse = () => {
             toast.success('Requested for a new session')
             setMyCourse(prev => ({
                 ...prev,
-                video_session_status: 'pending'
-            }))
+                video_session: prev.video_session
+                    ? [response.data, ...prev.video_session]
+                    : [response.data]
+            }));
         }catch(err){
             console.log('error requestion a session', err)
             handleError(err, 'error requesting a session')
@@ -607,7 +609,7 @@ const StreamCourse = () => {
                                                     {section.title}
                                                 </h3>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {section.items.length}{" "}
+                                                    {section.items?.length}{" "}
                                                     lessons • {section.duration}
                                                 </p>
                                             </div>
@@ -781,10 +783,10 @@ const StreamCourse = () => {
                                         <p className="text-muted-foreground">
                                             Video Sessions
                                         </p>
-                                        <p>{myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
+                                        <p>{myCourse?.course?.video_sessions ? myCourse?.course?.video_session - myCourse.video_session?.length : myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
                                     </div>
                                     <div>
-                                        <button onClick={handleRequestSession} className={`w-full mb-2 ${videoSessions && videoSessions[0].status == 'approved' ? 'btn-destructive' : videoSessions && videoSessions[0].status == 'pending' ? 'btn-secondary' : 'btn-primary'}`} disabled={videoSessions && videoSessions[0].status} >
+                                        <button onClick={handleRequestSession} className={`w-full mb-2 ${videoSessions && videoSessions[0].status == 'approved' ? 'btn-destructive' : videoSessions && videoSessions[0].status == 'pending' ? 'btn-secondary' : 'btn-primary'}`} disabled={videoSessions && videoSessions[0].status != 'completed'} >
                                             {
 
                                                 videoSessions && videoSessions[0].status == 'approved' ? 'Scheduled Session Exists' : videoSessions && videoSessions[0].status == 'pending' ? 'Request is Pending' : 'Request a Session'
@@ -1028,7 +1030,7 @@ const StreamCourse = () => {
                             </Link>
                         </div> */}
 
-                        {myCourse && <InstructorDetails course={myCourse.course} />}
+                        {myCourse && <InstructorDetails purchase_type={myCourse?.purchase_type} course={myCourse.course} />}
 
                         {videoSessions && <VideoSessionList videoSessions={videoSessions} />}
 

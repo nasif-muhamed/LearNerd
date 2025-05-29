@@ -19,80 +19,8 @@ import {
 import api from "../../../services/api/axiosInterceptor";
 import { toast } from "sonner";
 import handleError from "../../../utils/handleError";
-
-// Sample data - replace with your actual API call
-// const initialReports = [
-//   {
-//     id: 1,
-//     message: "Course content doesn't match the description. Most videos are outdated.",
-//     userId: "user123",
-//     userName: "John Smith",
-//     courseId: "course456",
-//     courseName: "Advanced React Patterns",
-//     courseAmount: 49.99,
-//     tutorId: "tutor789",
-//     tutorName: "Alex Johnson",
-//     status: "pending",
-//     createdAt: "2025-04-25T14:30:00",
-//     response: "",
-//   },
-//   {
-//     id: 2,
-//     message: "The tutor is not responding to my questions for the past 2 weeks. Need a refund.",
-//     userId: "user234",
-//     userName: "Emily Parker",
-//     courseId: "course789",
-//     courseName: "Complete Python Masterclass",
-//     courseAmount: 69.99,
-//     tutorId: "tutor456",
-//     tutorName: "Michael Davis",
-//     status: "resolved",
-//     createdAt: "2025-04-20T09:15:00",
-//     response: "We have contacted the tutor. They will respond within 24 hours. Please let us know if the issue persists.",
-//   },
-//   {
-//     id: 3,
-//     message: "Some course materials are missing. Unable to complete assignment of Module 5.",
-//     userId: "user345",
-//     userName: "Sarah Williams",
-//     courseId: "course123",
-//     courseName: "UI/UX Design Fundamentals",
-//     courseAmount: 59.99,
-//     tutorId: "tutor123",
-//     tutorName: "David Wilson",
-//     status: "rejected",
-//     createdAt: "2025-04-18T16:45:00",
-//     response: "We've verified all materials are available. The assignment files are in the resources section of Module 5.",
-//   },
-//   {
-//     id: 4,
-//     message: "The certificate generation is broken. I've completed the course but can't get my certificate.",
-//     userId: "user456",
-//     userName: "Robert Brown",
-//     courseId: "course234",
-//     courseName: "Data Science Bootcamp",
-//     courseAmount: 89.99,
-//     tutorId: "tutor345",
-//     tutorName: "Jennifer Taylor",
-//     status: "pending",
-//     createdAt: "2025-04-28T11:20:00",
-//     response: "",
-//   },
-//   {
-//     id: 5,
-//     message: "Course quality is extremely poor. Videos are blurry and audio has constant static noise.",
-//     userId: "user567",
-//     userName: "Lisa Anderson",
-//     courseId: "course345",
-//     courseName: "Digital Marketing Strategy",
-//     courseAmount: 39.99,
-//     tutorId: "tutor567",
-//     tutorName: "Richard Miller",
-//     status: "pending",
-//     createdAt: "2025-04-27T13:10:00",
-//     response: "",
-//   },
-// ];
+import adminUserApi from "../../../services/api/adminUserAxiosInterceptor";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminReportsPage() {
     const BASE_URL = import.meta.env.VITE_BASE_URL;
@@ -108,6 +36,7 @@ export default function AdminReportsPage() {
     const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
     const [refundAmount, setRefundAmount] = useState(0);
     const [refundReason, setRefundReason] = useState("");
+    const navigate = useNavigate()
     // pagination related
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
@@ -269,22 +198,21 @@ export default function AdminReportsPage() {
         }finally{
             setLoading(false)
         }
-        // Update report in state (replace with API call)
-        // const updatedReports = reports.map(report => 
-        // report.id === currentReport.id 
-        //     ? { 
-        //         ...report, 
-        //         status: "resolved", 
-        //         response: `Refund processed: $${refundAmount}. Reason: ${refundReason}` 
-        //     }
-        //     : report
-        // );
-        
-        // setReports(updatedReports);
-        // setIsRefundModalOpen(false);
         setIsModalOpen(false);
-        // Here you would make API calls to process the refund and update the report
     };
+
+    const handleChatClick = async (userId) => {
+        try {
+            const response = await adminUserApi.get(`chats/admin/one-one-room/${userId}/`)
+            console.log('chat with tutor res:', response)
+            navigate('/admin/chats', {
+                state: { roomId: response.data.room_id },
+            });
+        } catch (err) {
+            console.log('chat with tutor err:', err)
+            handleError(err, 'error fetching chat room')
+        } 
+    }
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
@@ -313,7 +241,7 @@ export default function AdminReportsPage() {
       </div>
 
       {/* Filters and Search */}
-      <div className="glass-effect p-4 rounded-lg mb-4">
+      {/* <div className="glass-effect p-4 rounded-lg mb-4">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
@@ -355,7 +283,7 @@ export default function AdminReportsPage() {
             </button>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Reports Table/Cards */}
       {loading ? (
@@ -379,33 +307,33 @@ export default function AdminReportsPage() {
           <div className="hidden lg:grid grid-cols-8 gap-4 px-4 mb-4 font-medium text-muted-foreground">
             <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSort("userName")}>
               Details
-              {sortField === "userName" && (
+              {/* {sortField === "userName" && (
                 sortDirection === "asc" ? <ArrowUp className="ml-1 w-4 h-4" /> : <ArrowDown className="ml-1 w-4 h-4" />
-              )}
+              )} */}
             </div>
             <div className="col-span-2 flex items-center cursor-pointer" onClick={() => handleSort("message")}>
               Report 
-              {sortField === "message" && (
+              {/* {sortField === "message" && (
                 sortDirection === "asc" ? <ArrowUp className="ml-1 w-4 h-4" /> : <ArrowDown className="ml-1 w-4 h-4" />
-              )}
+              )} */}
             </div>
             <div className="flex items-center cursor-pointer" onClick={() => handleSort("courseAmount")}>
               Amount
-              {sortField === "courseAmount" && (
+              {/* {sortField === "courseAmount" && (
                 sortDirection === "asc" ? <ArrowUp className="ml-1 w-4 h-4" /> : <ArrowDown className="ml-1 w-4 h-4" />
-              )}
+              )} */}
             </div>
             <div className="flex items-center cursor-pointer" onClick={() => handleSort("createdAt")}>
               Date
-              {sortField === "createdAt" && (
+              {/* {sortField === "createdAt" && (
                 sortDirection === "asc" ? <ArrowUp className="ml-1 w-4 h-4" /> : <ArrowDown className="ml-1 w-4 h-4" />
-              )}
+              )} */}
             </div>
             <div className="flex items-center cursor-pointer" onClick={() => handleSort("status")}>
               Status
-              {sortField === "status" && (
+              {/* {sortField === "status" && (
                 sortDirection === "asc" ? <ArrowUp className="ml-1 w-4 h-4" /> : <ArrowDown className="ml-1 w-4 h-4" />
-              )}
+              )} */}
             </div>
           </div>
 
@@ -566,7 +494,7 @@ export default function AdminReportsPage() {
                             <div className="w-5 h-5 mr-2 text-accent rounded-full overflow-hidden">
                                 {currentReport.instructor?.image ? 
                                     (
-                                        <img src={`${BASE_URL}${currentReport.user.image}`} alt="instructor" className="w-full h-full object-cover" />
+                                        <img src={`${BASE_URL}${currentReport.user.image}`} alt="student" className="w-full h-full object-cover" />
                                     ) : (
                                         <User className="w-full h-full " />
                                     )
@@ -577,7 +505,7 @@ export default function AdminReportsPage() {
                         <div>
                             <button 
                                 className="btn-primary flex items-center text-xs py-1"
-                                onClick={() => {}}
+                                onClick={() => {handleChatClick(currentReport.user?.id)}}
                             >
                                 <MessageSquare className="w-3 h-3 mr-1 inline" />
                                 message student
@@ -601,7 +529,7 @@ export default function AdminReportsPage() {
                         <div>
                             <button 
                                 className="btn-primary flex items-center text-xs py-1"
-                                onClick={() => {}}
+                                onClick={() => {handleChatClick(currentReport.instructor?.id)}}
                             >
                                 <MessageSquare className="w-3 h-3 mr-1 inline" />
                                 message tutor

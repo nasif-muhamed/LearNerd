@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
-import ChatHeader from './ChatHeader'
-import MessageInput from './MessageInput'
-import MessageList from './MessageList'
 import { Users } from 'lucide-react';
 import handleError from '../../../../utils/handleError';
 import api from '../../../../services/api/axiosInterceptor';
+import adminUserApi from '../../../../services/api/adminUserAxiosInterceptor';
+import ChatHeader from './ChatHeader'
+import MessageInput from './MessageInput'
+import MessageList from './MessageList'
 import ChatHandler from './ChatHandler';
 import ExpiredChatNotice from './ExpiredChatNotice'
+import useRole from '../../../../hooks/useRole';
+
 // const mockMessages = [
 //   { id: 1, sender: "Sarah Johnson", content: "Hey there! How's the course going?", time: "10:15 AM", isUser: false },
 //   { id: 2, sender: "You", content: "It's going well! I'm working on the final project now.", time: "10:20 AM", isUser: true },
@@ -16,12 +19,13 @@ import ExpiredChatNotice from './ExpiredChatNotice'
 // ];
 
 const ChatArea = ({ selectedChat, setSelectedChat, activeTab, setActiveTab, isMobileSidebarOpen, setEndpoint }) => {
+    const role = useRole()
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [activeTyper, setActiveTyper] = useState(null);
     const roomId = selectedChat ? selectedChat.id : null;
     const endpoint = roomId ? `/ws/chat/${roomId}/` : null;
-    const expiryDate = selectedChat ? selectedChat.expires_at : null;
+    // const expiryDate = selectedChat ? selectedChat.expires_at : null;
     // const [expired, setExpired] = useState(false)
     const isChatExpired = () => {
         if (!selectedChat || !selectedChat.expires_at) return false;
@@ -35,7 +39,11 @@ const ChatArea = ({ selectedChat, setSelectedChat, activeTab, setActiveTab, isMo
     const fetchMessages = async () => {
         try {
             setLoading(true);
-            const response = await api.get(`chats/rooms/${roomId}/messages/`);
+            const urlEnd = `chats/rooms/${roomId}/messages/`
+            let response;
+            if (role === 'admin') response = await adminUserApi.get(urlEnd);
+            else response = await api.get(urlEnd);
+
             console.log('fetch messages resp:', response);
             const result = response.data;
             // const readResults = result.map((message) => {
@@ -70,7 +78,7 @@ const ChatArea = ({ selectedChat, setSelectedChat, activeTab, setActiveTab, isMo
                     <ChatHeader selectedChat={selectedChat} activeTab={activeTab} />
                     <MessageList activeTyper={activeTyper} messages={messages} loading={loading} activeTab={activeTab} />
                     
-                    {expired ? (
+                    {expired && !selectedChat.temp_chat ? (
                         <ExpiredChatNotice expiryDate={selectedChat.expires_at} />
                     ) : (
                         

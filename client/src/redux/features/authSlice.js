@@ -95,8 +95,14 @@ const authSlice = createSlice({
         updateRefresh: (state, action) => {
             state.refreshToken = action.payload.refresh;
         },
+        updateAdminAcess: (state, action) => {
+            state.adminUserAccessToken = action.payload.access;
+        },
         switchRole: (state, action) => {
             state.role = action.payload.role
+        },
+        setUser: (state, action) => {
+            state.user = action.payload
         },
         changeNotificationCount: (state, action) => {
             if (!state.user || typeof state.user.unread_notifications !== 'number') return;
@@ -198,5 +204,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { login, logout, switchRole, updateAcess, updateRefresh, changeNotificationCount, changeMessageCount } = authSlice.actions;
+export const { login, logout, switchRole, updateAcess, updateRefresh, changeNotificationCount, changeMessageCount, updateAdminAcess, setUser } = authSlice.actions;
 export default authSlice.reducer;

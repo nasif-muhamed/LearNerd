@@ -28,7 +28,7 @@ const MessageList = ({ messages, loading, activeTyper, activeTab }) => {
                             key={msg.id} 
                             className={`flex ${msg.sender?.user_id == userId? 'justify-end' : 'justify-start'}`}
                         >
-                            {activeTab === 'community' && msg.sender?.user_id !== user.id &&
+                            {activeTab === 'community' && msg.sender?.user_id !== user?.id &&
                                 (
                                     <div className='mr-2'>
                                         <RoundedImage
@@ -57,16 +57,9 @@ const MessageList = ({ messages, loading, activeTyper, activeTab }) => {
                         </div>
                     ))}
 
-                    {activeTyper && activeTyper.is_typing && activeTyper.user.user_id !== user.id && (
-                        // <div className="flex justify-start">
-                        //     <div className="bg-secondary text-secondary-foreground rounded-2xl px-4 py-2">
-                        //         <p>
-                        //             {`${activeTyper.user.full_name} is typing...`}
-                        //         </p>
-                        //     </div>
-                        // </div>
+                    {activeTyper && activeTyper.is_typing && activeTyper.user.user_id !== user?.id && (
                         <div className='flex'>
-                            {activeTab === 'community' && activeTyper.user?.user_id !== user.id &&
+                            {activeTab === 'community' && activeTyper.user?.user_id !== user?.id &&
                                 (
                                     <div className='mr-2'>
                                         <RoundedImage

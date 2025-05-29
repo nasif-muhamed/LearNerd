@@ -3,81 +3,81 @@ import { ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, AlertCircle, 
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
 import handleError from '../../../utils/handleError';
 import api from '../../../services/api/axiosInterceptor';
-// Mock data - Replace with your API calls
-const mockWalletData = {
-  balance: 3450.75,
-  pendingBalance: 750.25,
-  transactions: [
-    {
-      id: 1,
-      type: 'course_sale',
-      amount: 495.00,
-      courseName: 'Advanced React Development',
-      status: 'pending',
-      date: new Date(2025, 3, 25),
-      buyer: 'John Doe',
-      description: 'Course purchase by John Doe',
-      maturityDate: new Date(2025, 4, 25),
-    },
-    {
-      id: 2,
-      type: 'course_purchase',
-      amount: -129.99,
-      courseName: 'Django for Beginners',
-      status: 'completed',
-      date: new Date(2025, 3, 22),
-      seller: 'Jane Smith',
-      description: 'Purchase of "Django for Beginners"',
-    },
-    {
-      id: 3,
-      type: 'admin_payout',
-      amount: 2340.50,
-      status: 'completed',
-      date: new Date(2025, 3, 15),
-      description: 'Monthly payout - March 2025',
-      details: 'Matured course sales + ad revenue share',
-    },
-    {
-      id: 4,
-      type: 'commission',
-      amount: -45.50,
-      status: 'completed',
-      date: new Date(2025, 3, 15),
-      description: 'Platform commission on sales',
-    },
-    {
-      id: 5,
-      type: 'refund',
-      amount: -199.99,
-      courseName: 'UX Design Masterclass',
-      status: 'completed',
-      date: new Date(2025, 3, 10),
-      buyer: 'Alice Johnson',
-      description: 'Refund issued for UX Design Masterclass',
-      reason: 'Course content did not match description',
-    },
-    {
-      id: 6,
-      type: 'withdrawal',
-      amount: -1000.00,
-      status: 'completed',
-      date: new Date(2025, 3, 5),
-      description: 'Withdrawal to bank account ****4567',
-      transferId: 'TRF-2025040501',
-    },
-    {
-      id: 7,
-      type: 'course_sale',
-      amount: 199.99,
-      courseName: 'Python Data Science',
-      status: 'completed',
-      date: new Date(2025, 2, 28),
-      buyer: 'Robert Wilson',
-      description: 'Course purchase by Robert Wilson',
-    }
-  ]
-};
+
+// const mockWalletData = {
+//   balance: 3450.75,
+//   pendingBalance: 750.25,
+//   transactions: [
+//     {
+//       id: 1,
+//       type: 'course_sale',
+//       amount: 495.00,
+//       courseName: 'Advanced React Development',
+//       status: 'pending',
+//       date: new Date(2025, 3, 25),
+//       buyer: 'John Doe',
+//       description: 'Course purchase by John Doe',
+//       maturityDate: new Date(2025, 4, 25),
+//     },
+//     {
+//       id: 2,
+//       type: 'course_purchase',
+//       amount: -129.99,
+//       courseName: 'Django for Beginners',
+//       status: 'completed',
+//       date: new Date(2025, 3, 22),
+//       seller: 'Jane Smith',
+//       description: 'Purchase of "Django for Beginners"',
+//     },
+//     {
+//       id: 3,
+//       type: 'admin_payout',
+//       amount: 2340.50,
+//       status: 'completed',
+//       date: new Date(2025, 3, 15),
+//       description: 'Monthly payout - March 2025',
+//       details: 'Matured course sales + ad revenue share',
+//     },
+//     {
+//       id: 4,
+//       type: 'commission',
+//       amount: -45.50,
+//       status: 'completed',
+//       date: new Date(2025, 3, 15),
+//       description: 'Platform commission on sales',
+//     },
+//     {
+//       id: 5,
+//       type: 'refund',
+//       amount: -199.99,
+//       courseName: 'UX Design Masterclass',
+//       status: 'completed',
+//       date: new Date(2025, 3, 10),
+//       buyer: 'Alice Johnson',
+//       description: 'Refund issued for UX Design Masterclass',
+//       reason: 'Course content did not match description',
+//     },
+//     {
+//       id: 6,
+//       type: 'withdrawal',
+//       amount: -1000.00,
+//       status: 'completed',
+//       date: new Date(2025, 3, 5),
+//       description: 'Withdrawal to bank account ****4567',
+//       transferId: 'TRF-2025040501',
+//     },
+//     {
+//       id: 7,
+//       type: 'course_sale',
+//       amount: 199.99,
+//       courseName: 'Python Data Science',
+//       status: 'completed',
+//       date: new Date(2025, 2, 28),
+//       buyer: 'Robert Wilson',
+//       description: 'Course purchase by Robert Wilson',
+//     }
+//   ]
+// };
 
 // Transaction status badge component
 const StatusBadge = ({ status }) => {
@@ -320,7 +320,6 @@ const WalletPage = () => {
   }
 
   useEffect(() => {
-    // In real implementation, fetch data from your API
     fetchTransactions()
   }, []);
 

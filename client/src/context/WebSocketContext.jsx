@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import useAccessToken from '../hooks/useAccessToken';
+import useRole from '../hooks/useRole';
 
 const WebSocketContext = createContext();
 
 export const WebSocketProvider = ({ children, endpoint }) => {
+    const role = useRole()
     const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8004'; // WebSocket base URL
-    const token = useAccessToken();
+    const token = useAccessToken(role);
     const [ws, setWs] = useState(null);
 
     useEffect(() => {

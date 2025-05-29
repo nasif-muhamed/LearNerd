@@ -13,6 +13,7 @@ const AdminUserDetails = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [userCourses, setUserCourses] = useState(null);
+    
     const fetchCourses = async () => {
         try {
             setLoading(true);

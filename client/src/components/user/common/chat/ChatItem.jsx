@@ -2,10 +2,14 @@ import { Users } from 'lucide-react';
 import formatTimeAgo from '../../../../utils/formatTimeAgo';
 import RoundedImage from '../../../ui/RoundedImage';
 
-const ChatItem = ({ chat, unReadMessages, isSelected, onSelect, isCommunity }) => {
+const ChatItem = ({ selectedDefault, chat, unReadMessages, isSelected, onSelect, isCommunity }) => {
     const BASE_URL = import.meta.env.VITE_BASE_URL;
     // const isOnline = chat.online_user_ids && chat.online_user_ids.length > 0;
     // const onlineUsersCount = chat.online_user_ids ? chat.online_user_ids.length : 0;
+    console.log('selectedDefault:', selectedDefault)
+    if (selectedDefault){
+        onSelect()
+    }
 
     return (
         <div 
@@ -37,7 +41,7 @@ const ChatItem = ({ chat, unReadMessages, isSelected, onSelect, isCommunity }) =
             <div className='relative'>
                 <RoundedImage
                     style={`w-10 h-10 bg-primary/20`}
-                    source={`${chat.room_type === "group" ? '' : BASE_URL}${chat.room_type === "group" ? chat.image : chat.participants.image}`} 
+                    source={chat.image || chat.participants?.image ? `${chat.room_type === "group" ? '' : BASE_URL}${chat.room_type === "group" ? chat.image : chat.participants.image}`: null} 
                     alternative={chat.room_type === "group" ? chat.name : chat.participants.full_name}
                     userName={chat.room_type === "group" ? chat.name : chat.participants.full_name}
                 />

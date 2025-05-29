@@ -36,7 +36,7 @@ const Sidebar = ({ activeTab, setActiveTab, selectedChat, setSelectedChat, isMob
                 </button>
             </div>
 
-            <div className="p-4">
+            {/* <div className="p-4">
                 <div className="relative">
                 <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 <input 
@@ -45,7 +45,7 @@ const Sidebar = ({ activeTab, setActiveTab, selectedChat, setSelectedChat, isMob
                     className="w-full bg-muted rounded-md py-2 pl-10 pr-4 focus:outline-none focus:ring-1 focus:ring-accent"
                 />
                 </div>
-            </div>
+            </div> */}
 
             <ChatList
                 activeTab={activeTab} 

@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 const BASE_URL = import.meta.env.VITE_BASE_URL + 'api/v1/'; // Base URL for the APIGateway
 // axios instance with the base URL
-const adminUserapi = axios.create({
+const adminUserApi = axios.create({
     baseURL: BASE_URL,
     withCredentials: true,
 });
@@ -14,7 +14,7 @@ const getAdminAccessToken = () => store.getState().auth.adminUserAccessToken;
 const getAdminRefreshToken = () => store.getState().auth.adminUserRefreshToken;
 
 // Request interceptor
-adminUserapi.interceptors.request.use(
+adminUserApi.interceptors.request.use(
     (config) => {
         const accessToken = getAdminAccessToken();
         if (accessToken) {
@@ -28,7 +28,7 @@ adminUserapi.interceptors.request.use(
 );
 
 // Response interceptor
-adminUserapi.interceptors.response.use(
+adminUserApi.interceptors.response.use(
     (response) => {
         return response;
     },
@@ -54,7 +54,7 @@ adminUserapi.interceptors.response.use(
                         // console.log('new access:', response.data.access)
                         // Dispatch updated tokens to Redux store
                         store.dispatch({
-                            type: 'auth/updateAcess',
+                            type: 'auth/updateAdminAcess',
                             payload: {
                                 access: response.data.access,
                             },
@@ -62,7 +62,7 @@ adminUserapi.interceptors.response.use(
         
                         // Retry the original request with the new token
                         originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
-                        return adminUserapi(originalRequest);
+                        return adminUserApi(originalRequest);
                     } catch (refreshError) {
                         // If token refresh fails, dispatch logout and redirect
                         store.dispatch({ type: 'auth/logout' });
@@ -81,4 +81,4 @@ adminUserapi.interceptors.response.use(
     }
 );
 
-export default adminUserapi;
+export default adminUserApi;

@@ -19,7 +19,7 @@ const StudentCourses = () => {
     console.log('location.state', location.state)
     // const queryParams = new URLSearchParams(search);
     // const tutorId = queryParams.get('tutor');
-    const pageSize = 3; // Matches your backend response (9 items per page)
+    const pageSize = 3;
 
     console.log('search query course list:', searchQuery)
     useEffect(() => {

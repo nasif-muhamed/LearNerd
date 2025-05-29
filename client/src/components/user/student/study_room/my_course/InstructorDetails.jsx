@@ -1,6 +1,30 @@
-import { Link } from "react-router-dom"
+import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import handleError from "../../../../../utils/handleError"
+import api from "../../../../../services/api/axiosInterceptor"
+import { Loader } from 'lucide-react';
 
-const InstructorDetails = ({course}) => {
+const InstructorDetails = ({course, purchase_type}) => {
+    const [chatButtonLoading, setChatButtonLoading] = useState(false);
+    const navigate = useNavigate();
+
+    const handleChatClick = async () => {
+        try {
+            setChatButtonLoading(true)
+            const response = await api.get(`chats/one-one-room/${course?.instructor_details?.id}/`)
+            console.log('chat with tutor res:', response)
+            navigate('/chats', {
+                state: { roomId: response.data.room_id },
+            });
+
+
+        } catch (err) {
+            console.log('chat with tutor err:', err)
+            handleError(err, 'error fetching chat room')
+        } finally {
+            setChatButtonLoading(false)
+        }
+    }
 
     return (
         <div className="bg-card rounded-lg p-6 mb-6">
@@ -27,9 +51,24 @@ const InstructorDetails = ({course}) => {
             <p className="text-sm mb-4">
                 {course?.instructor_details?.biography}                         
             </p>
-            <Link to={`/student/tutors/${course?.instructor}`} className="btn-outline w-full">
-                View Profile
-            </Link>
+            <div className="flex gap-2">
+                <Link to={`/student/tutors/${course?.instructor}`} className="btn-outline w-full text-center">
+                    View Profile
+                </Link>
+
+                {purchase_type === 'subscription' &&
+                   ( chatButtonLoading ? (
+                        <button className="btn-primary w-full text-center flex gap-2 items-center justify-center">
+                            <Loader className="animate-spin"/> Chat
+                        </button>
+                    ) : (
+
+                        <button onClick={handleChatClick} className="btn-primary w-full text-center">
+                            Chat
+                        </button>
+                    ))
+                }
+            </div>
         </div>
     )
 }

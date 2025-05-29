@@ -1,7 +1,12 @@
-import { useCallback, useEffect } from "react";
-import { MessageSquareText, UserRound, ShieldMinus, ShieldCheck } from "lucide-react";
-
+import { useCallback, useEffect, useState } from "react";
+import { MessageSquareText, UserRound, ShieldMinus, ShieldCheck, Loader } from "lucide-react";
+import handleError from "../../../utils/handleError";
+import { useNavigate } from "react-router-dom";
+import adminUserApi from '../../../services/api/adminUserAxiosInterceptor'
 const UserProfile = ( {id, user, setUser, api, toast, BASE_URL } ) => {
+    const [chatButtonLoading, setChatButtonLoading] = useState(false);
+    const navigate = useNavigate();
+
     const fetchUser = useCallback(async () => {
         try {
             console.log("userId:", id);
@@ -30,6 +35,22 @@ const UserProfile = ( {id, user, setUser, api, toast, BASE_URL } ) => {
     useEffect(() => {
         fetchUser();
     }, [fetchUser]);
+
+    const handleChatClick = async () => {
+        try {
+            setChatButtonLoading(true)
+            const response = await adminUserApi.get(`chats/admin/one-one-room/${user?.id}/`)
+            console.log('chat with tutor res:', response)
+            navigate('/admin/chats', {
+                state: { roomId: response.data.room_id },
+            });
+        } catch (err) {
+            console.log('chat with tutor err:', err)
+            handleError(err, 'error fetching chat room')
+        } finally {
+            setChatButtonLoading(false)
+        }
+    }
 
     return (
         <div className="bg-gray-900 text-white flex flex-col md:flex-row md:gap-4 items-stretch md:items-start mb-4 md:mb-0 md:p-6 lg:p-12">
@@ -68,8 +89,8 @@ const UserProfile = ( {id, user, setUser, api, toast, BASE_URL } ) => {
                         <span className="lg:hidden">{user?.is_active ? "Block" : "Activate"}</span> <span className="hidden lg:block">{user?.is_active ? "Deactivate User" : "Activate User"}</span> 
                     </button>
 
-                    <button className="flex justify-center items-center bg-blue-600 text-white text-xs px-2 py-1 md:text-base md:px-5 md:py-1 rounded-lg hover:bg-blue-600 ">
-                        <MessageSquareText className="mr-2"/> <span className="lg:hidden">Chat</span> <span className="hidden lg:block">Chat with user</span> 
+                    <button onClick={handleChatClick} className={`flex justify-center items-center bg-blue-600 text-white text-xs px-2 py-1 md:text-base md:px-5 md:py-1 rounded-lg hover:bg-blue-600 ${chatButtonLoading && 'cursor-not-allowed opacity-50'}`} disabled={chatButtonLoading}>
+                        {chatButtonLoading ? <Loader className="animate-spin"/> : <MessageSquareText className="mr-2"/>} <span className="lg:hidden">Chat</span> <span className="hidden lg:block">Chat with user</span> 
                     </button>
                 </div>
             </div>

@@ -63,7 +63,7 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
 
             {selectedChat.room_type === "one-to-one" && (<div>
                 <p className="text-xs text-destrutive">
-                    {formatExpiryMessage(selectedChat.expires_at)}
+                    {selectedChat.temp_chat ? 'Temporary chat on' : formatExpiryMessage(selectedChat.expires_at) }
                 </p>
             </div>)}
         </div>

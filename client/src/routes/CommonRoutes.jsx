@@ -14,6 +14,7 @@ import NotificationsPage from "../pages/common/Notifications";
 import LandingPage from "../pages/user/common/LandingPage";
 import Wallet from "../pages/user/common/Wallet";
 import ChatPage from "../pages/common/ChatPage";
+import OneToOneVideoSession from "../pages/user/common/OneToOneVideoSession";
 
 const CommonRoutes = () => {
     return (
@@ -29,6 +30,7 @@ const CommonRoutes = () => {
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/wallet" element={<Wallet />} />
                 <Route path="/chats" element={<ChatPage />} />
+                <Route path="/video-call" element={<OneToOneVideoSession />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>

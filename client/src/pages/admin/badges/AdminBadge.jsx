@@ -15,7 +15,7 @@ const AdminBadge = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const pageSize = 9; // Specify how many item needed in a single fetch 9 items per page
+    const pageSize = 9;
 
     const fetchBadges = useCallback(async () => {
         setLoading(true);

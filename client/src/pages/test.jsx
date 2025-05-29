@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Check, X, ArrowRight, User, MessageCircle } from 'lucide-react';
-import axios from 'axios';
 import { format, parseISO, addMinutes } from 'date-fns';
+import api from '../services/api/axiosInterceptor';
+import handleError from '../utils/handleError'
+import RoundedImage from '../components/ui/RoundedImage'
 
 const TutorSessionsPage = () => {
+  const BASE_URL = import.meta.env.VITE_BASE_URL;
   // State management
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [loadingScheduleButton, setLoadingScheduleButton] = useState(false);
+  const [loadingMarkCompletedButton, setLoadingMarkCompletedButton] = useState(false);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedSession, setSelectedSession] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,34 +21,76 @@ const TutorSessionsPage = () => {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(60);
+  
+  // Paginat    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [currentPage, setCurrentPage] = useState(1);
+    // const [totalCount, setTotalCount] = useState(0);
+    const [nextPage, setNextPage] = useState(null);
+    const [prevPage, setPrevPage] = useState(null);
+    const pageSize = 3;
 
   // Common durations
   const commonDurations = [30, 45, 60, 90, 120];
   
+    console.log('sessions:', sessions)
+
+  // Format date for display with timezone awareness
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    try {
+      return format(parseISO(dateString), 'MMM dd, yyyy');
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'Invalid date';
+    }
+  };
+  
+  // Format time for display with timezone awareness
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    try {
+      return format(parseISO(dateString), 'h:mm a');
+    } catch (e) {
+      console.error('Error formatting time:', e);
+      return 'Invalid time';
+    }
+  };
+  
   // Fetch sessions with pagination and filtering
-  useEffect(() => {
     const fetchSessions = async () => {
-      try {
-        setLoading(true);
-        const params = new URLSearchParams({
-          page: currentPage,
-        });
-        
-        if (statusFilter !== 'all') {
-          params.append('status', statusFilter);
+        try {
+            
+            setLoading(true);
+            //   const params = new URLSearchParams({ currentPage });
+            const params = {
+                page: currentPage,
+                page_size: pageSize,
+                // search: searchQuery,
+            }
+
+            if (statusFilter !== 'all') {
+                params.append('status', statusFilter);
+            }
+            
+            // const response = await api.get(`courses/tutor/video-sessions/?${params.toString()}`);
+            const response = await api.get(`courses/tutor/video-sessions/`, {
+                params: params
+            });
+            console.log('response fetch sessions:', response);
+            setSessions(response.data.results);
+            setNextPage(response.data?.next);
+            setPrevPage(response.data?.previous);
+            setTotalPages(Math.ceil(response.data.count / pageSize));
+
+        } catch (err) {
+            handleError(err, 'Failed to load sessions');
+        } finally {
+            setLoading(false);
         }
-        
-        const response = await axios.get(`/api/tutor/sessions/?${params.toString()}`);
-        setSessions(response.data.results);
-        setTotalPages(Math.ceil(response.data.count / 10)); // Assuming 10 items per page
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load sessions');
-        setLoading(false);
-        console.error('Error fetching sessions:', err);
-      }
     };
-    
+  
+  useEffect(() => {
     fetchSessions();
   }, [currentPage, statusFilter]);
 
@@ -85,29 +130,71 @@ const TutorSessionsPage = () => {
     }
     
     try {
-      const scheduledDateTime = `${scheduledDate}T${scheduledTime}`;
+      setLoadingScheduleButton(true)
+      // Combine date and time into ISO string
+      // const scheduledDateTime = `${scheduledDate}T${scheduledTime}:00`;
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+      console.log('scheduledDateTime:', scheduledDateTime);
       
-      // Calculate ending time based on duration
-      const startDate = new Date(`${scheduledDate}T${scheduledTime}`);
-      const endDate = addMinutes(startDate, parseInt(durationMinutes));
-      
-      const response = await axios.patch(`/api/tutor/sessions/${selectedSession.id}/`, {
+    //   const localDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+    //   console.log('localDateTime:', localDateTime)
+    //   const isoDateTime = localDateTime.toISOString();
+    //   console.log('isoDateTime:', isoDateTime)
+
+      const now = new Date();
+
+      // Add 1 hour (in milliseconds) to the current time
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+      if (scheduledDateTime < oneHourFromNow) {
+          handleError(null, 'You must schedule a session at least one hour in advance');
+          return;
+      }
+
+      const response = await api.patch(`courses/video-sessions/${selectedSession.id}/`, {
         status: 'approved',
-        scheduled_time: scheduledDateTime,
-        ending_time: endDate.toISOString()
+        scheduled_time: scheduledDateTime.toISOString(),
+        duration_minutes: parseInt(durationMinutes)
       });
-      
+      const sessionId = response.data.id
+      console.log('response from video-sessions:', response)
+
       // Update the sessions list with the new data
-      setSessions(sessions.map(session => 
-        session.id === selectedSession.id ? response.data : session
-      ));
+      setSessions(prev => 
+        prev.map(session => 
+            session.id === sessionId ? {...response.data, student: session.student} : session
+        )
+      );
       
       // Close modal
       setIsModalOpen(false);
       setSelectedSession(null);
     } catch (err) {
-      setError('Failed to schedule session');
-      console.error('Error scheduling session:', err);
+      console.log('schedule session error', err)
+      handleError(err, 'Failed to schedule session');
+    } finally {
+      setLoadingScheduleButton(false)
+    }
+  };
+  
+  // Handle marking a session as completed
+  const handleMarkComplete = async (sessionId) => {
+    try {
+      setLoadingMarkCompletedButton(true)
+      const response = await api.patch(`courses/video-sessions/${sessionId}/`, {
+        status: 'completed',
+      });
+      // Update the sessions list with the new status
+      setSessions(prev => 
+        prev.map(session => 
+            session.id === sessionId ? {...response.data, student: session.student} : session
+        )
+      );
+    } catch (err) {
+      console.log('complete session error', err)
+      handleError(err, 'Failed to mark session as completed');
+    } finally {
+      setLoadingMarkCompletedButton(false)
     }
   };
 
@@ -128,12 +215,12 @@ const TutorSessionsPage = () => {
   // Render loading state
   if (loading && sessions.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center max-h-[100vh] min-h-[60vh] py-5">
         <div className="animate-pulse flex flex-col space-y-4 w-full max-w-4xl">
           <div className="h-12 bg-secondary rounded-md w-1/4"></div>
           <div className="h-10 bg-secondary rounded-md w-1/3"></div>
           <div className="space-y-3">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(4)].map((_, i) => (
               <div key={i} className="h-24 bg-card rounded-lg border border-border"></div>
             ))}
           </div>
@@ -147,10 +234,13 @@ const TutorSessionsPage = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <div className="text-destructive text-lg font-semibold mb-2">Failed to load sessions</div>
-        <p className="text-muted-foreground mb-4">Please try again later</p>
+        <p className="text-muted-foreground mb-4">{error}</p>
         <button 
           className="btn-primary"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            setError(null);
+            window.location.reload();
+          }}
         >
           Retry
         </button>
@@ -197,12 +287,26 @@ const TutorSessionsPage = () => {
               <div className="flex-1">
                 {/* Student Info */}
                 <div className="flex items-center mb-2">
-                  <div className="transaction-icon transaction-icon-credit mr-3">
-                    <User size={18} className="text-success" />
-                  </div>
+                  <RoundedImage 
+                    style="w-10 h-10 transaction-icon transaction-icon-credit mr-2"
+                    source={session.student?.image ? `${BASE_URL}${session.student.image}` : null}
+                    alternative={session.student?.first_name && session.student?.last_name 
+                      ? `${session.student.first_name} ${session.student.last_name}` 
+                      : session.student?.email}
+                    userName={session.student?.first_name && session.student?.last_name 
+                      ? session.student.first_name 
+                      : session.student?.email}
+                  />
                   <div>
-                    <span className="font-medium">Student ID: {session.student}</span>
+                    <span className="font-medium">
+                      Student: {session.student?.first_name && session.student?.last_name 
+                        ? `${session.student.first_name} ${session.student.last_name}` 
+                        : session.student?.email || session.student_name || `Student ID: ${session.student}`}
+                    </span>
                     <span className="text-xs text-muted-foreground ml-2">
+                      {session.course && (
+                        <span className="mr-2">{session.course}</span>
+                      )}
                       Room: {session.room_id.slice(0, 8)}...
                     </span>
                   </div>
@@ -218,22 +322,25 @@ const TutorSessionsPage = () => {
                     {session.scheduled_time && (
                       <span className="flex items-center text-muted-foreground">
                         <Calendar size={14} className="mr-1" />
-                        {format(parseISO(session.scheduled_time), 'MMM dd, yyyy')}
+                        {formatDate(session.scheduled_time)}
                       </span>
                     )}
                     
                     {session.scheduled_time && session.ending_time && (
                       <span className="flex items-center text-muted-foreground">
                         <Clock size={14} className="mr-1" />
-                        {format(parseISO(session.scheduled_time), 'h:mm a')} - 
-                        {format(parseISO(session.ending_time), 'h:mm a')}
+                        {formatTime(session.scheduled_time)} - 
+                        {formatTime(session.ending_time)}
                       </span>
                     )}
                     
-                    <span className="flex items-center text-muted-foreground">
-                      <MessageCircle size={14} className="mr-1" />
-                      <button className="text-primary hover:underline">Open Chat</button>
-                    </span>
+                    {session.status === 'pending' && (
+                        <span className="flex items-center text-muted-foreground">
+                        <MessageCircle size={14} className="mr-1" />
+                        <button className="text-primary hover:underline">Open Chat</button>
+                        </span>
+                    )}
+
                   </div>
                 </div>
               </div>
@@ -250,7 +357,10 @@ const TutorSessionsPage = () => {
                 )}
                 
                 {session.status === 'approved' && !session.is_upcoming && (
-                  <button className="btn-secondary text-sm py-1.5 px-3">
+                  <button 
+                    className="btn-secondary text-sm py-1.5 px-3"
+                    onClick={() => handleMarkComplete(session.id)}
+                  >
                     Mark Complete
                   </button>
                 )}
@@ -258,7 +368,10 @@ const TutorSessionsPage = () => {
                 {session.status === 'approved' && session.is_upcoming && (
                   <div className="flex flex-col text-right">
                     <span className="text-xs text-success mb-1">Scheduled</span>
-                    <button className="btn-outline text-sm py-1 px-3">
+                    <button 
+                      className="btn-outline text-sm py-1 px-3"
+                      onClick={() => handleApproveClick(session)}
+                    >
                       Reschedule
                     </button>
                   </div>
@@ -269,46 +382,107 @@ const TutorSessionsPage = () => {
         )}
       </div>
       
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-6">
-          <button 
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`btn-outline py-1 px-3 ${
-              currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            Previous
-          </button>
-          
-          <div className="flex items-center space-x-1">
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i}
-                onClick={() => handlePageChange(i + 1)}
-                className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                  currentPage === i + 1
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-secondary-foreground hover:bg-muted'
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
-          
-          <button 
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={`btn-outline py-1 px-3 ${
-              currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      )}
+        {/* Pagination */}
+        {totalPages > 1 && (
+            <div className="flex justify-center mt-8">
+                <div className="flex items-center gap-2 transition-all duration-300 ease-in-out">
+                    {totalPages > 3 && (
+                        <button
+                            className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 disabled:opacity-50"
+                            onClick={() =>
+                                handlePageChange(currentPage - 1)
+                            }
+                            disabled={!prevPage}
+                        >
+                            <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M15 19l-7-7 7-7"
+                                ></path>
+                            </svg>
+                        </button>
+                    )}
+
+                    <div className="flex gap-2">
+                        {(() => {
+                            const getPageNumbers = () => {
+                                if (totalPages <= 3) {
+                                    return Array.from(
+                                        { length: totalPages },
+                                        (_, i) => i + 1
+                                    );
+                                }
+                                let startPage = Math.max(
+                                    1,
+                                    currentPage - 1
+                                );
+                                let endPage = Math.min(
+                                    totalPages,
+                                    currentPage + 1
+                                );
+                                if (currentPage === 1) {
+                                    endPage = 3;
+                                } else if (currentPage === totalPages) {
+                                    startPage = totalPages - 2;
+                                }
+                                return Array.from(
+                                    { length: endPage - startPage + 1 },
+                                    (_, i) => startPage + i
+                                );
+                            };
+                            return getPageNumbers().map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() =>
+                                        handlePageChange(page)
+                                    }
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out ${
+                                        currentPage === page
+                                            ? "bg-blue-600 text-white scale-110"
+                                            : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:scale-105"
+                                    }`}
+                                >
+                                    {page}
+                                </button>
+                            ));
+                        })()}
+                    </div>
+
+                    {totalPages > 3 && (
+                        <button
+                            className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-800 text-gray-400 hover:bg-gray-700 disabled:opacity-50"
+                            onClick={() =>
+                                handlePageChange(currentPage + 1)
+                            }
+                            disabled={!nextPage}
+                        >
+                            <svg
+                                className="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M9 5l7 7-7 7"
+                                ></path>
+                            </svg>
+                        </button>
+                    )}
+                </div>
+            </div>
+        )}
       
       {/* Modal for scheduling */}
       {isModalOpen && selectedSession && (
@@ -328,7 +502,14 @@ const TutorSessionsPage = () => {
             </div>
             
             <div className="mb-4">
-              <div className="text-sm text-muted-foreground mb-2">Scheduling for Student ID: {selectedSession.student}</div>
+              <div className="text-sm text-muted-foreground mb-2">
+                Scheduling for Student: {selectedSession.student?.first_name && selectedSession.student?.last_name 
+                  ? `${selectedSession.student.first_name} ${selectedSession.student.last_name}` 
+                  : selectedSession.student?.email || selectedSession.student_name || `Student ID: ${selectedSession.student}`}
+                {selectedSession.course && (
+                  <span className="block mt-1">Course: {selectedSession.course}</span>
+                )}
+              </div>
             </div>
             
             <form onSubmit={handleSubmitSchedule}>
@@ -351,7 +532,7 @@ const TutorSessionsPage = () => {
                 
                 {/* Time */}
                 <div>
-                  <label className="block text-sm font-medium mb-1">Time</label>
+                  <label className="block text-sm font-medium mb-1">Time (Your Local Time)</label>
                   <div className="relative">
                     <Clock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                     <input 

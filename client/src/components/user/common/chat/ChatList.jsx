@@ -2,37 +2,44 @@ import { useEffect, useState } from 'react';
 import handleError from '../../../../utils/handleError'
 import ChatItem from './ChatItem'
 import api from '../../../../services/api/axiosInterceptor';
+import adminUserApi from '../../../../services/api/adminUserAxiosInterceptor';
 import { Loader } from 'lucide-react';
 import { useDispatch, useSelector } from "react-redux";
 import { changeMessageCount } from '../../../../redux/features/authSlice';
+import { useLocation, useNavigate } from 'react-router-dom';
+import useRole from '../../../../hooks/useRole';
 
-// const mockPersonalChats = [
-//     { id: 1, name: "Sarah Johnson", avatar: null, lastMessage: "Thanks for the help with the project!", time: "10:30 AM", unread: 2 },
-//     { id: 2, name: "Michael Chen", avatar: null, lastMessage: "When is the next live session?", time: "Yesterday", unread: 0 },
-//     { id: 3, name: "Alex Rodriguez", avatar: null, lastMessage: "I've submitted my assignment", time: "Yesterday", unread: 0 },
-//     { id: 4, name: "Emily Williams", avatar: null, lastMessage: "Can you explain the concept again?", time: "Monday", unread: 1 },
-// ];
-  
-// const mockCommunityChats = [
-//     { id: 101, name: "Frontend Development", avatar: null, lastMessage: "Any tips for optimizing React performance?", time: "11:45 AM", unread: 5, members: 28 },
-//     { id: 102, name: "Python Study Group", avatar: null, lastMessage: "Check out this new Django tutorial", time: "Yesterday", unread: 0, members: 42 },
-//     { id: 103, name: "UI/UX Design", avatar: null, lastMessage: "What design tools do you recommend?", time: "Sunday", unread: 3, members: 19 },
-// ];
-    
+
 
 const ChatList = ({ activeTab, selectedChat, setSelectedChat, setIsMobileSidebarOpen }) => {
-    // const chats = activeTab === 'personal' ? mockPersonalChats : mockCommunityChats;
+    const role = useRole()
     const [personalChats, setPersonalChats] = useState([]);
     const [communityChats, setCommunityChats] = useState([]);
     const [chats, setChats] = useState([]);
     const [loading, setLoading] = useState(false);
     const unReadMessages = useSelector(state => state.auth.unReadMessages);
     const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const [currentRoomId, setCurrentRoomId] = useState(null);
+    console.log('location.state:', location.state)
+
+    useEffect(() => {
+        if (location.state?.roomId) {
+            setCurrentRoomId(location.state.roomId);
+            // Clear the state after assigning
+            navigate(location.pathname, { replace: true });
+        }
+    }, [location.state, navigate, location.pathname]);
 
     const fetchChats = async () => {
         try{
             setLoading(true)
-            const response = await api.get(`chats/rooms/`);
+            const urlEnd = `chats/rooms/`
+
+            let response;
+            if (role === 'admin') response = await adminUserApi.get(urlEnd);
+            else response = await api.get(urlEnd);
             const result = response.data;
 
             // dispatch redux slice for updating unreaded message count
@@ -88,6 +95,7 @@ const ChatList = ({ activeTab, selectedChat, setSelectedChat, setIsMobileSidebar
                         {chats.map(chat => (
                             <ChatItem 
                                 key={chat.id}
+                                selectedDefault={(currentRoomId && chat.id === currentRoomId)}
                                 unReadMessages = {unReadMessages[chat.id] || undefined}
                                 chat={chat}
                                 isSelected={selectedChat && selectedChat.id === chat.id}

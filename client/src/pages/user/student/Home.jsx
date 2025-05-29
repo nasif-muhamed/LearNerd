@@ -110,17 +110,13 @@ const Home = () => {
             {/* Hero Carousel */}
             <div className="relative w-full p-4 mt-6">
                 <div className="flex items-center justify-between">
-                    <button className="absolute left-4 z-10 bg-white bg-opacity-20 rounded-full p-2">
-                        &lt;
-                    </button>
-
                     <div className="mx-auto max-w-5xl w-full flex bg-gray-200 rounded-lg overflow-hidden">
                         <div className="w-2/5 p-8 text-gray-800">
                             <h2 className="text-3xl font-bold mb-4">Learning that gets you</h2>
                             <p className="mb-4">Skills for your present (and your future). Get started with us.</p>
-                            <button className="bg-gray-600 text-white py-2 px-6 rounded-md">
+                            <Link to={'/student/courses'} className="bg-gray-600 text-white py-2 px-6 rounded-md">
                                 Explore Courses
-                            </button>
+                            </Link>
                         </div>
                         <div className="w-3/5">
                             <img
@@ -130,10 +126,6 @@ const Home = () => {
                             />
                         </div>
                     </div>
-
-                    <button className="absolute right-4 z-10 bg-white bg-opacity-20 rounded-full p-2">
-                        &gt;
-                    </button>
                 </div>
             </div>
 
