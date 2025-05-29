@@ -290,6 +290,40 @@ class CallUserService:
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
 
+    def get_dashboard_data(self, admin, query_params=None):
+        try:
+            token_obj = UserServiceToken.objects.get(admin=admin)
+        except UserServiceToken.DoesNotExist:
+            raise UserServiceException("Token not found for admin")
+
+        headers = {"Authorization": f"Bearer {token_obj.access_token}"}
+
+        path = f"api/v1/users/dashboard/admin-dashboard/"
+        print('path get_dashboard_data: ', path)
+        if query_params:
+            path = f"{path}?{query_params}" # f"{url}?{requests.utils.urlencode(query_params)}"
+        try:
+            response = self._make_request("GET", headers, path)
+            if response.status_code == 401:
+                new_token = self._refresh_token(token_obj)
+                token_obj.access_token = new_token["access"]
+                token_obj.save()
+                headers["Authorization"] = f"Bearer {new_token['access']}"
+                response = self._make_request('GET', headers, path)
+
+            if response.status_code != 200:
+                raise UserServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error: {str(e)}")
+
 
 class CourseServiceException(APIException):
     """Custom exception for course service related errors"""
@@ -365,3 +399,77 @@ class CallCourseService:
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
         
+    def get_dashboard_data(self, request, query_params=None):
+        path = f"api/v1/courses/dashboard/admin-dashboard/"
+        headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
+        if query_params:
+            path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
+        print('path:', path)
+        print('headers:', headers)
+        try:
+            response = self._make_request("GET", headers, path)
+            
+            print('response:', response.json())
+            print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise CourseServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except CourseServiceException as e:
+            raise
+
+        except Exception as e:
+            raise CourseServiceException(f"Unexpected error: {str(e)}")
+
+    def get_dashboard_chart_data(self, request, query_params=None):
+        path = f"api/v1/courses/dashboard/admin-dashboard-chart/"
+        headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
+        if query_params:
+            path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
+        print('path:', path)
+        print('headers:', headers)
+        try:
+            response = self._make_request("GET", headers, path)
+            
+            print('response:', response.json())
+            print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise CourseServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except CourseServiceException as e:
+            raise
+
+        except Exception as e:
+            raise CourseServiceException(f"Unexpected error: {str(e)}")
+
+    def get_admin_transactions(self, request, query_params=None):
+        path = f"api/v1/transactions/admin/"
+        headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
+        if query_params:
+            path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
+        print('path:', path)
+        print('headers:', headers)
+        try:
+            response = self._make_request("GET", headers, path)
+            
+            print('response:', response.json())
+            print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise CourseServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except CourseServiceException as e:
+            raise
+
+        except Exception as e:
+            raise CourseServiceException(f"Unexpected error: {str(e)}")

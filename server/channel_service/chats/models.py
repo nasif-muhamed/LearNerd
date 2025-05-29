@@ -1,4 +1,4 @@
-from mongoengine import Document, StringField, ListField, ReferenceField, DateTimeField, IntField
+from mongoengine import Document, StringField, ListField, ReferenceField, DateTimeField, IntField, BooleanField
 from datetime import datetime
 
 class User(Document):
@@ -23,7 +23,8 @@ class Room(Document):
     expires_at = DateTimeField(tz_aware=True)
     created_at = DateTimeField(default=datetime.utcnow, tz_aware=True)
     updated_at = DateTimeField(default=datetime.utcnow, tz_aware=True)
-
+    temp_chat = BooleanField(default=False) 
+    
     meta = {
         'collection': 'rooms',
         'indexes': ['participants', 'room_type', 'updated_at']

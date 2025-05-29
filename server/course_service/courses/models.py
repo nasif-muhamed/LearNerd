@@ -35,6 +35,7 @@ class Course(models.Model):
     subscription = models.BooleanField(default=True)
     subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, default=None, null=True, blank=True, validators=[MinValueValidator(0.00)])
     is_available = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
     is_complete = models.BooleanField(default=False)
     step = models.PositiveIntegerField(default=1)
     video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)
@@ -295,8 +296,8 @@ class NoteSectionItem(models.Model):
 class VideoSession(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
-        ('approved', 'approved'),
-        ('completed', 'completed'),
+        ('approved', 'Approved'),
+        ('completed', 'Completed'),
     )
 
     tutor = models.BigIntegerField(db_index=True)
@@ -306,7 +307,7 @@ class VideoSession(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     scheduled_time = models.DateTimeField(null=True, blank=True)
     ending_time = models.DateTimeField(null=True, blank=True)
-    # duration_minutes = models.PositiveIntegerField(default=60)
+    duration_minutes = models.PositiveIntegerField(default=30, null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

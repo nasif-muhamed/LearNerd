@@ -381,6 +381,38 @@ def proxy_to_course_service(request):
     if response.status_code == 204:
         return Response(status=response.status_code)
 
+    # Get Content-Type from response - because in course service, we have a view that returns a file response.
+    content_type = response.headers.get('Content-Type', 'application/json')
+    print(f"Response Content-Type: {content_type}")
+
+    # Handle binary content (e.g., PDF)
+    if 'application/pdf' in content_type:
+        django_response = HttpResponse(
+            content=response.content,
+            status=response.status_code,
+            content_type=content_type,
+        )
+        # Preserve Content-Disposition header if present
+        if 'Content-Disposition' in response.headers:
+            django_response['Content-Disposition'] = response.headers['Content-Disposition']
+        return django_response
+
+    # IMP: it would be better to manage it like below in all the proxy views. in this view keep the above if /pdf as well.
+    # # Handle JSON content
+    # if 'application/json' in content_type:
+    #     return Response(
+    #         data=response.json(),
+    #         status=response.status_code,
+    #         content_type=content_type,
+    #     )
+
+    # # Fallback for other content types
+    # return HttpResponse(
+    #     content=response.content,
+    #     content_type=content_type,
+    #     status=response.status_code
+    # )
+
     print("Response from course service:", response.json() if 'application/json' in response.headers.get('Content-Type', '') else response.content)
     print(response)
     return Response(

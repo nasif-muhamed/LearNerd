@@ -85,6 +85,7 @@ def record_transaction_reported(purchase):
     seller_transaction.status = 'reported'
     seller_transaction.save()
 
+@db_transaction.atomic
 def change_transaction_status_back_to_pending(purchase):
     print('inside change_transaction_status_back_to_pending')
     # 1. Change the transaction status back to 'pending'

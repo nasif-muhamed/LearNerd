@@ -8,6 +8,8 @@ from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+from datetime import timedelta
 
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
@@ -29,7 +31,7 @@ from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObta
 from .tasks import send_otp_email
 from .services import CallCourseService, CourseServiceException
 from .message_broker.rabbitmq_publisher import publish_chat_event
-
+from .utils import is_admin
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
 call_course_service = CallCourseService()
@@ -385,8 +387,8 @@ class SingleTutorDetailsView(APIView):
         except Profile.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-def is_admin(user):
-    return AdminUser.objects.filter(profile=user).exists()
+# def is_admin(user):
+#     return AdminUser.objects.filter(profile=user).exists()
 
 # class CheckIsAdmin(APIView):
 #     permission_classes = [IsAuthenticated]
@@ -710,3 +712,36 @@ class WalletBalanceView(APIView):
         
 #         except Exception as e:
 #             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+class AdminDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not is_admin(user):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        filter_type = request.query_params.get('filter', 'all').lower()
+        
+        now = timezone.now()
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today - timedelta(days=today.weekday())
+        month_start = today.replace(day=1)
+
+        time_filters = {
+            'today': {'created_at__gte': today},
+            'week': {'created_at__gte': week_start},
+            'month': {'created_at__gte': month_start},
+            'all': {}
+        }
+
+        filter_params = time_filters.get(filter_type, time_filters['all'])
+        try:
+            users = Profile.objects.filter()
+            if filter_params:
+                users = users.filter(**filter_params)
+            active_users = users.filter(is_active=True).count()
+            blocked_users = users.filter(is_active=False).count()
+
+            return Response({'active_users': active_users, 'blocked_users': blocked_users}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=500)

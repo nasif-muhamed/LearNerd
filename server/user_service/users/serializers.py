@@ -6,7 +6,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import exceptions
 
 from .models import BadgesAquired, Notification, Wallet
-
+from .utils import is_admin
 Profile = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -98,6 +98,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # token['is_active'] = user.is_active
         token['is_tutor'] = user.is_tutor
         token['is_profile_completed'] = user.is_profile_completed
+        token['is_admin'] = is_admin(user)
 
         return token
     

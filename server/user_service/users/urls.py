@@ -2,7 +2,7 @@ from django.urls import path
 from . views import RegisterView, VerifyOTPView, ResendOTPView, LoginView,\
     UserView, UsersView, UserDetailsView, UserActionView, MyBadgesView, SubmitQuizView, ForgotPasswordView,\
     ForgotPasswordOTPVerifyView, ForgotPasswordResetView, GoogleLoginView, MultipleTutorDetailsView,\
-    SingleTutorDetailsView, NotificationListView, WalletBalanceView, AdminUserView
+    SingleTutorDetailsView, NotificationListView, WalletBalanceView, AdminUserView, AdminDashboardView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -36,5 +36,5 @@ urlpatterns = [
     # fetch all reports list.
     # path('admin/all-reports/', AdminListAllReportsView.as_view(), name='list-reports-admin'),
     path('admin-details/', AdminUserView.as_view(), name='admin-details'),
-
+    path('dashboard/admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard-data'),
 ]

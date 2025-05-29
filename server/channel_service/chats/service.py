@@ -81,13 +81,13 @@ def get_or_create_user(user_id):
         except Exception as e:
             raise UserServiceException(f"Unexpected error while creating user: {str(e)}")
                 
-def create_or_update_chat_room(student_id, tutor_id, expiry_date):
+def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None):
     try:
         student_id = int(student_id)
         tutor_id = int(tutor_id)
-        expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00'))
-        print('create_or_update_chat_room:', student_id, tutor_id, expiry_dt)
-        if expiry_dt <= datetime.now(timezone.utc):
+        expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00')) if expiry_date is not None else None
+        print('create_or_update_chat_room:', student_id, tutor_id, expiry_dt, temporary)
+        if expiry_dt is not None and expiry_dt <= datetime.now(timezone.utc):
             raise UserServiceException("Expiry date must be in the future")
 
         student, _ = get_or_create_user(student_id)
@@ -97,14 +97,21 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date):
                 room_type="one-to-one",
                 participants__all=[student, tutor]
             ).get()
-            print('Chat room found:', room.to_json())
+            print('Chat room found:')
+
             created = False
-            if room.expires_at:
+            if expiry_date is not None and room.expires_at:
                 expires_at_aware = room.expires_at.replace(tzinfo=timezone.utc) if room.expires_at.tzinfo is None else room.expires_at
 
                 if expiry_dt > expires_at_aware:
                     room.expires_at = expiry_dt
                     room.save()
+
+            if temporary is not None:
+                room.temp_chat = temporary
+                room.save()
+            print('Chat room found:', room.to_json())
+                
 
         except DoesNotExist:
             # Create a new channel
@@ -114,6 +121,8 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date):
                 participants=[student, tutor],
                 expires_at=expiry_dt,
             )
+            if temporary is not None:
+                room.temp_chat = temporary
             room.save()
             created = True
             print(f"Chat room created: {room.to_json()}")

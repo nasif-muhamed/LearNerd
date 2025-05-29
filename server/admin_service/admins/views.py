@@ -79,7 +79,6 @@ class LoginView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
     
@@ -167,7 +166,6 @@ class VerifyOTPView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class AdminView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -179,7 +177,6 @@ class AdminView(APIView):
         
         except AdminUser.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        
 
 class AdminUserActionView(APIView):
     permission_classes = [IsAdminUser]
@@ -234,7 +231,6 @@ class AdminUserActionView(APIView):
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )        
-
 
 class UserListView(APIView):
     permission_classes = [IsAdminUser]
@@ -298,7 +294,6 @@ class AdminNotificationView(APIView):
                 {"error": "An unexpected error occurred while fetching users"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
 
 class AdminListReportsAPIView(APIView):
     permission_classes = [IsAdminUser]
@@ -394,3 +389,105 @@ class AdminAuthView(APIView):
 
     def get(self, request):
         return Response({'message':'Permission accessed', 'is_admin': True}, status=status.HTTP_200_OK)
+
+class AdminDashboardView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        try:
+            query_params = request.GET.urlencode()
+            users_response = call_user_service.get_dashboard_data(
+                admin=request.user,
+                query_params=query_params if query_params else None
+            )
+            users_data = users_response.json()
+            print('users_sata;', users_data)
+            courses_response = call_course_service.get_dashboard_data(
+                request=request,
+                query_params=query_params if query_params else None
+            )
+            courses_data = courses_response.json()
+
+            return Response({**users_data, **courses_data}, status=status.HTTP_200_OK )
+
+        except CourseServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        
+        except UserServiceException as e:
+            return Response(
+                {'error': f'User service error: {str(e)}'},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class AdminDashboardChartView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        try:
+            query_params = request.GET.urlencode()
+            courses_response = call_course_service.get_dashboard_chart_data(
+                request=request,
+                query_params=query_params if query_params else None
+            )
+            courses_data = courses_response.json()
+
+            return Response(courses_data, status=status.HTTP_200_OK )
+
+        except CourseServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        
+        except UserServiceException as e:
+            return Response(
+                {'error': f'User service error: {str(e)}'},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class AdminTransactionsView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        try:
+            query_params = request.GET.urlencode()
+            transactions_response = call_course_service.get_admin_transactions(
+                request=request,
+                query_params=query_params if query_params else None
+            )
+            transactions_data = transactions_response.json()
+
+            return Response(transactions_data, status=status.HTTP_200_OK)
+
+        except CourseServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        
+        except UserServiceException as e:
+            return Response(
+                {'error': f'User service error: {str(e)}'},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

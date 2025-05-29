@@ -61,6 +61,19 @@ def chat_callback(ch, method, properties, body):
             room, _ = create_or_update_chat_room(student_id, tutor_id, expiry_date)
             if room is None:
                 raise Exception("Failed to create or update user")
+            
+        elif event_type == 'update_temp_chat':
+            print('inside update_temp_chat', body)
+            student_id = body['student_id']
+            print('student_id:', student_id)
+            tutor_id = body['tutor_id']
+            print('tutor_id:', tutor_id)
+            temporary = body['temporary']
+            print('temporary:', temporary)
+            print('update_temp_chat:', student_id, tutor_id, temporary)
+            room, _ = create_or_update_chat_room(student_id, tutor_id, None, temporary)
+            if room is None:
+                raise Exception("Failed to create or update user")
 
         elif event_type == 'create_group_chat_room':
             name = body['name']

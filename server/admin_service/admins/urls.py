@@ -1,5 +1,7 @@
 from django.urls import path
-from . views import LoginView, VerifyOTPView, AdminView, AdminUserActionView, UserListView, AdminNotificationView, AdminListReportsAPIView, AdminAuthView, AdminReportActionAPIView
+from . views import LoginView, VerifyOTPView, AdminView, AdminUserActionView, UserListView, AdminNotificationView,\
+      AdminListReportsAPIView, AdminAuthView, AdminReportActionAPIView, AdminDashboardView, AdminDashboardChartView,\
+      AdminTransactionsView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
@@ -16,4 +18,8 @@ urlpatterns = [
     path('notifications/', AdminNotificationView.as_view(), name='list-admin-notifications'),
     path('all-reports/', AdminListReportsAPIView.as_view(), name='admin-list-reports'), # to list all reports for the admin
     path('report/<int:pk>/', AdminReportActionAPIView.as_view(), name='admin-report-action'), # to list all reports for the admin
+    path('dashboard/', AdminDashboardView.as_view(), name='admin-report-action'), # to get dashboard datas
+    path('dashboard-charts/', AdminDashboardChartView.as_view(), name='admin-report-action'), # to get dashboard chart datas
+
+    path('transactions/', AdminTransactionsView.as_view(), name='admin-report-action'), # to get all users transactions
 ]

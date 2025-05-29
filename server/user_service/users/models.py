@@ -95,6 +95,8 @@ class Notification(models.Model):
         REPORT_REJECTED = 'REPORT_REJECTED', 'Report Rejected'
         REPORT_RESOLVED = 'REPORT_RESOLVED', 'Report Resolved'
         CHAT_MESSAGE = 'CHAT_MESSAGE', 'Chat Message'
+        VID_SESSION_REQUESTED = 'VID_SESSION_REQUESTED', 'Video Session Requested'
+        VID_SESSION_APPROVED = 'VID_SESSION_APPROVED', 'Video Session Approved'
 
     user = models.ForeignKey(
         Profile,

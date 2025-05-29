@@ -2,8 +2,8 @@ from datetime import timedelta
 from django.utils import timezone
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
-from .models import Purchase
-from . rabbitmq_publisher import publish_chat_event
+from .models import Purchase, VideoSession
+from . rabbitmq_publisher import publish_chat_event, publish_notification_event
 
 def chat_expiry_date(days):
     # Calculate the expiry date based on the number of days
@@ -57,3 +57,50 @@ def handle_purchase_update(sender, instance, **kwargs):
                 'expiry_date': expiry_date,
             }
         )
+
+@receiver(pre_save, sender=VideoSession)
+def handle_video_session_update(sender, instance, **kwargs):
+    print('inside pre_save VideoSession update')
+    if not instance.pk:
+        if instance.status == 'pending':
+            publish_chat_event(
+                event_type='update_temp_chat',
+                data={
+                    'student_id': instance.student,
+                    'tutor_id': instance.tutor,
+                    'temporary': True
+                }
+            )
+
+            publish_notification_event(
+                event_type='course.video_sesssion.request',
+                data={
+                    'student_id': instance.student,
+                    'tutor_id': instance.tutor,
+                    'course_title': instance.purchase.course.title,
+                }
+            )
+
+    else:
+        if instance.status == 'approved':
+            publish_notification_event(
+                event_type='course.video_sesssion.approved',
+                data={
+                    'student_id': instance.student,
+                    'tutor_id': instance.tutor,
+                    'course_title': instance.purchase.course.title,
+                    'scheduled_time': instance.scheduled_time.isoformat()
+                }
+            )
+
+        elif instance.status == 'completed':
+            publish_chat_event(
+                event_type='update_temp_chat',
+                data={
+                    'student_id': instance.student,
+                    'tutor_id': instance.tutor,
+                    'temporary': False
+                }
+            )
+
+

@@ -1,6 +1,8 @@
 import logging
 import cloudinary.uploader
-import jwt
+import json
+# import jwt
+# import pytz
 import stripe
 from django.http import Http404
 from django.shortcuts import get_object_or_404
@@ -8,8 +10,10 @@ from django.db.models import Q, Count
 from django.db import DatabaseError
 from django.conf import settings
 from django.db import connection, IntegrityError
+# from dateutil import parser
+# from datetime import datetime, timedelta
 
-from rest_framework import viewsets, generics, status
+from rest_framework import viewsets, generics, status # filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
@@ -17,10 +21,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import PermissionDenied
+# from rest_framework.decorators import action
+from django.utils import timezone
 
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
-    SectionItemCompletion, Assessment, Review, Report, NoteSectionItem
+    SectionItemCompletion, Assessment, Review, Report, NoteSectionItem, VideoSession
 )
 
 from .serializers import (
@@ -29,12 +35,15 @@ from .serializers import (
     SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
     ReviewCreateSerializer, ReviewSerializer, ReportCreateSerializer, ReportSerializer, VideoSessionSerializer,
+    TutorVideoSessionSerializer,
 )
-from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor
+from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor, IsUserAdmin
 from .services import CallUserService, UserServiceException
 from .rabbitmq_publisher import publish_notification_event
 from banners.utils import get_home_banner
 from transactions.utils import record_course_purchase, record_course_refund, record_transaction_reported, change_transaction_status_back_to_pending
+from course_service.zego_cloud.token04 import generate_token04
+from .utils import mark_purchase_completed
 
 logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
@@ -1017,6 +1026,9 @@ class StudentAssessmentSubmitView(APIView):
                         correct_answers += 1
 
             # Update the purchase record to indicate the assessment was passed
+                
+            if correct_answers:
+                mark_purchase_completed(purchase)
             if correct_answers >= (questions.count() * passing_score / 100):
                 section_item_completion, created = SectionItemCompletion.objects.get_or_create(
                     purchase=purchase, section_item=assement.section_item
@@ -1046,6 +1058,7 @@ class StudentLectureSubmitView(APIView):
             section_item_completion, created = SectionItemCompletion.objects.get_or_create(
                 purchase=purchase, section_item=section_item
             )
+            mark_purchase_completed(purchase)
             if created or not section_item_completion.completed:
                 section_item_completion.completed = True
                 section_item_completion.save()
@@ -1542,7 +1555,7 @@ class AdminUserCoursesDetailsView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-# Schedule a video session.
+# request a video session by the student.
 class ScheduleSessionView(APIView):
     permission_classes = [IsUser]
 
@@ -1553,16 +1566,16 @@ class ScheduleSessionView(APIView):
         student = purchase.user
 
         # checking if not the requested user is either tutor or student.
-        if tutor != user_id and student != user_id:
+        if student != user_id: # tutor != user_id and
             return Response({'detail': 'you should be a member of the purchase to schedule a session'}, status=status.HTTP_403_FORBIDDEN)
 
         # checking if the tutor trying to request a session.
-        if request.data.get('status') == 'pending' and student != user_id:
-            return Response({'detail': 'only student can request a session'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.data.get('status') != 'pending': # and student != user_id:
+            return Response({'detail': 'a request status can only be pending'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # checking if the student trying to change the status of the schedule.
-        if request.data.get('status') == 'approved' and tutor != user_id:
-            return Response({'detail': 'only tutor have the authority to approve a session'}, status=status.HTTP_400_BAD_REQUEST)
+        # # checking if the student trying to change the status of the schedule.
+        # if request.data.get('status') == 'approved' and tutor != user_id:
+        #     return Response({'detail': 'only tutor have the authority to approve a session'}, status=status.HTTP_400_BAD_REQUEST)
         
         # checking if freemium user trying for a video session.
         if purchase.purchase_type != 'subscription' and not purchase.video_session:
@@ -1589,3 +1602,239 @@ class ScheduleSessionView(APIView):
         
         print('errors:', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # def patch(self, request, pk):
+    #     try:
+    #         user_id = request.user_payload['user_id']
+    #         session = VideoSession.objects.get(pk=pk)
+    #         print('user:', user_id, 'session:', session)
+    #         print('request data:', request.data)
+    #         return Response({'working':'well'})
+    #     except VideoSession.DoesNotExist:
+    #         return Response({"error": "Video Session not found"}, status=status.HTTP_404_NOT_FOUND)
+    #     except Exception as e:
+    #         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# list video sessions of a tutor
+class TutorVideoSessionsView(APIView):
+    permission_classes = [IsUser]
+    pagination_class = CustomPagination
+
+    def get(self, request):
+        try:
+            user_id = request.user_payload['user_id']
+            sessions = VideoSession.objects.filter(tutor=user_id)
+            status_param = request.query_params.get('status', None)
+            print('status_param:', status_param)
+            if status_param:
+                sessions = sessions.filter(status=status_param)
+
+            paginator = self.pagination_class()
+            page = paginator.paginate_queryset(sessions, request)
+            print('page:', page)
+            user_ids = {session.student for session in page}
+            print('user ids Videos session:', user_ids)
+            users_dict={}
+            if user_ids:
+                response_user_service = call_user_service.get_users_details(list(user_ids))
+                users_data = response_user_service.json()
+                users_dict = {user['id']: user for user in users_data}
+                print('users_data:', users_data)
+            serializer = TutorVideoSessionSerializer(page, many=True, context={"users_dict": users_dict})
+            return paginator.get_paginated_response(serializer.data)
+
+        except UserServiceException as e:
+            return Response({"error": str(e)}, status=503)
+        
+        except Exception as e:
+            return Response({'detail': f'Error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# from .models import VideoSession
+# from .serializers import VideoSessionSerializer, VideoSessionScheduleSerializer
+# from dateutil import parser
+
+# class TutorSessionViewSet(viewsets.ModelViewSet):
+#     """
+#     ViewSet for tutors to manage their teaching sessions.
+#     Includes filtering by status, pagination, and scheduling functionality.
+#     """
+#     serializer_class = VideoSessionSerializer
+#     permission_classes = [IsUser]
+#     filter_backends = [filters.OrderingFilter]
+#     ordering_fields = ['created_at', 'scheduled_time', 'status']
+#     ordering = ['-created_at']
+    
+#     def get_queryset(self):
+#         """
+#         Return sessions where the current user is the tutor.
+#         Filter by status if provided in query params.
+#         """
+#         user_id = self.request.user_payload['user_id']
+#         queryset = VideoSession.objects.filter(tutor=user_id)
+        
+#         # Filter by status if provided
+#         status_filter = self.request.query_params.get('status', None)
+#         if status_filter and status_filter != 'all':
+#             queryset = queryset.filter(status=status_filter)
+            
+#         return queryset
+    
+#     def update(self, request, *args, **kwargs):
+#         """
+#         Override update to handle scheduling logic when approving sessions.
+#         """
+#         try:
+#             instance = self.get_object()
+#             print(f"Retrieved instance: {instance}")
+#             # Check if the user is the tutor for this session
+#             if instance.tutor != request.user_payload['user_id']:
+#                 return Response(
+#                     {"detail": "You don't have permission to update this session."},
+#                     status=status.HTTP_403_FORBIDDEN
+#                 )
+            
+#             print('request data:', request.data)
+#             status = request.data['status']
+#             scheduled_time = request.data['scheduled_time']
+#             duration_minutes = request.data['duration_minutes']
+#             formated_time = parser.parse(scheduled_time)
+#             end_time = formated_time + timedelta(minutes=int(duration_minutes))
+
+#             print('formated_time:', formated_time, end_time)
+
+#             # If we're updating status to approved and there's scheduling data
+#             # if 'scheduled_time' in request.data and request.data.get('status') == 'approved':
+#             #     # Use a separate serializer for scheduling validation
+#             #     schedule_serializer = VideoSessionScheduleSerializer(instance, data=request.data, context={'request': request})
+#             #     schedule_serializer.is_valid(raise_exception=True)
+                
+#             #     # Parse scheduled time from frontend (assuming ISO format)
+#             #     try:
+#             #         # Convert the string to datetime object
+#             #         scheduled_time_str = request.data.get('scheduled_time')
+#             #         duration_minutes = int(request.data.get('duration_minutes', 60))
+                    
+#             #         # Parse the datetime string
+#             #         scheduled_time = parser.parse(scheduled_time_str)
+                    
+#             #         # If the datetime is naive (no timezone info), assume it's in the user's timezone
+#             #         if scheduled_time.tzinfo is None:
+#             #             # Get the timezone from settings
+#             #             asia_kolkata = pytz.timezone('Asia/Kolkata')
+#             #             scheduled_time = asia_kolkata.localize(scheduled_time)
+                    
+#             #         # Convert to UTC for storage
+#             #         scheduled_time_utc = scheduled_time.astimezone(pytz.UTC)
+                    
+#             #         # Calculate ending time
+#             #         ending_time_utc = scheduled_time_utc + timedelta(minutes=duration_minutes)
+                    
+#             #         # Update the request data
+#             #         request.data['scheduled_time'] = scheduled_time_utc
+#             #         request.data['ending_time'] = ending_time_utc
+                    
+#         except (ValueError, TypeError) as e:
+#             return Response(
+#                 {"detail": f"Invalid date format: {str(e)}"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+                
+#         return super().update(request, *args, **kwargs)
+    
+#     @action(detail=True, methods=['post'])
+#     def mark_completed(self, request, pk=None):
+#         """
+#         Custom action to mark a session as completed.
+#         """
+#         session = self.get_object()
+        
+#         # Check if the user is the tutor for this session
+#         if session.tutor != request.user_payload['user_id']:
+#             return Response(
+#                 {"detail": "You don't have permission to update this session."},
+#                 status=status.HTTP_403_FORBIDDEN
+#             )
+            
+#         # Check if the session is eligible to be marked as completed
+#         if session.status != 'approved':
+#             return Response(
+#                 {"detail": "Only approved sessions can be marked as completed."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+            
+#         # Update the session status
+#         session.status = 'completed'
+#         session.save()
+        
+#         serializer = self.get_serializer(session)
+#         return Response(serializer.data)
+    
+class VideoSessionUpdateView(APIView):
+    def get_object(self, pk):
+        try:
+            return VideoSession.objects.get(pk=pk)
+        except VideoSession.DoesNotExist:
+            raise Http404
+
+    def patch(self, request, pk, format=None):
+        user_id = request.user_payload['user_id']
+        session_status = request.data.get('status')
+        session = self.get_object(pk)
+        if not user_id == session.purchase.course.instructor:
+            return Response({'error': 'only tutor has the access to this course'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if session_status == 'completed':
+            request.data['is_active'] = False
+        serializer = VideoSessionSerializer(session, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class GetSessionTokenView(APIView):
+    permission_classes = [IsUser]
+
+    def post(self, request):
+        session_id = request.data.get("session_id")
+        print('session_id', session_id)
+        try:
+            user_id = request.user_payload['user_id']
+            session = VideoSession.objects.get(id=session_id, is_active=True)
+
+            # Verify user is either tutor or student
+            if user_id not in [session.tutor, session.student]:
+                return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+            # Check if session is within a valid time window (e.g., 1 minutes before to end of session)
+            now = timezone.now()
+            session_end = session.scheduled_time + timezone.timedelta(minutes=session.duration_minutes)
+            print('before if')
+            if now < session.scheduled_time - timezone.timedelta(minutes=5) or now > session_end:
+                return Response({"error": "Session not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+            print('before generate_zego_token')
+            payload = {
+                "room_id": session.room_id, # Room ID
+                "privilege": {
+                    1 : 1, # key 1 represents room permission, value 1 represents allowed, so here means allowing room login; if the value is 0, it means not allowed
+                    2 : 1  # key 2 represents push permission, value 1 represents allowed, so here means allowing push; if the value is 0, it means not allowed
+                }, 
+                "stream_id_list": None # Passing None means that all streams can be pushed. If a streamID list is passed in, only the streamIDs in the list can be pushed
+            }
+            effective_time_in_seconds = session.duration_minutes * 60
+            token_info = generate_token04(app_id=int(settings.ZEGO_APP_ID), user_id=str(user_id), secret=settings.ZEGO_SERVER_SECRET, 
+                                     effective_time_in_seconds=effective_time_in_seconds, payload=json.dumps(payload))
+            
+            print([token_info.token, token_info.error_code, token_info.error_message])
+            return Response({
+                "token": token_info.token,
+                "app_id": int(settings.ZEGO_APP_ID),
+                "room_id": session.room_id,
+                "user_id": str(user_id),
+            })
+        except VideoSession.DoesNotExist:
+            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+        

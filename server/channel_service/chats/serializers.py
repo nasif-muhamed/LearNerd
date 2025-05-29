@@ -36,6 +36,7 @@ class RoomSerializer(serializers.Serializer):
     last_message = MessageSerializer(allow_null=True)
     un_read_messages = serializers.SerializerMethodField()
     online_user_count = serializers.SerializerMethodField()
+    temp_chat = serializers.BooleanField()
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
     expires_at = serializers.DateTimeField(allow_null=True)

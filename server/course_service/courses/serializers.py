@@ -11,6 +11,10 @@ from .models import (
 from .services import CallUserService, UserServiceException
 from banners.utils import get_ad_content
 
+from django.utils import timezone
+from dateutil import parser
+import pytz
+
 
 call_user_service = CallUserService()
 
@@ -738,9 +742,140 @@ class ReportSerializer(serializers.ModelSerializer):
         return purchase_details
 
 class VideoSessionSerializer(serializers.ModelSerializer):
+    course = serializers.SerializerMethodField()
     class Meta:
         model = VideoSession
-        fields = ["id", "tutor", "student", "purchase", "room_id", "status", "scheduled_time", "is_active", "created_at"]
-        read_only_fields = ["id", "purchase", "room_id", "created_at"]
+        fields = ["id", "tutor", "student", "purchase", "course", "room_id", "status", "scheduled_time", "duration_minutes", "ending_time", "is_active", "created_at"]
+        read_only_fields = ["id", "purchase", "room_id", "ending_time", "created_at"]
 
+    def validate(self, data):
+        # Ensure only valid status transitions are allowed
+        now = timezone.now()
+        if 'status' in data:
+            current_status = self.instance.status if self.instance else 'pending'
+            new_status = data['status']
+            
+            # Define allowed status transitions
+            allowed_transitions = {
+                'pending': ['approved'],
+                'approved': ['completed'],
+                'completed': []  # No transitions allowed from completed
+            }
+            
+            if new_status != current_status and new_status not in allowed_transitions.get(current_status, []):
+                raise serializers.ValidationError({
+                    'status': f"Cannot transition from '{current_status}' to '{new_status}'."
+                })
+
+
+            # If approving, scheduled_time and duration is required
+            if new_status == 'approved':
+                if not data.get('scheduled_time') and not self.instance.scheduled_time:
+                    raise serializers.ValidationError({
+                        'scheduled_time': "Scheduled time is required when approving a session."
+                    })
+                if not data.get('duration_minutes') and not self.instance.duration_minutes:
+                    raise serializers.ValidationError({
+                        'duration_minutes': "Duration minutes is required when approving a session."
+                    })
+                if data.get('scheduled_time') <= now:
+                    raise serializers.ValidationError({
+                        'scheduled_time': "Scheduled time must be in the future."
+                    })
+                # if int(data.get('scheduled_time')) <= 15:
+                #     raise serializers.ValidationError({
+                #         'scheduled_time': "session should be atleast 15 minutes."
+                #     })
+
+                
+            if new_status == 'completed':
+                if now < self.instance.ending_time:
+                    raise serializers.ValidationError({
+                        'status': "cannot change status to completed before the session end time."
+                    })
+
+        # Check for overlapping sessions if scheduled_time or duration_minutes is provided
+        print('data::', data)
+        if data.get('status') == 'approved' and data.get('scheduled_time') and data.get('duration_minutes'):
+            tutor = data.get('tutor', self.instance.tutor if self.instance else None)
+            scheduled_time = data['scheduled_time']
+            duration_minutes = data['duration_minutes']
+            print('scheduled_time:', type(scheduled_time), scheduled_time, duration_minutes)
+            ending_time = scheduled_time + timezone.timedelta(minutes=duration_minutes)
+
+            # Query for existing sessions for the same tutor
+            conflicting_sessions = VideoSession.objects.filter(
+                tutor=tutor,
+                status='approved',  # Only check approved sessions
+                scheduled_time__lt=ending_time,  # Existing session starts before new session ends
+                ending_time__gt=scheduled_time  # Existing session ends after new session starts
+            )
+
+            # Exclude the current session if updating
+            if self.instance:
+                conflicting_sessions = conflicting_sessions.exclude(id=self.instance.id)
+
+            if conflicting_sessions.exists():
+                raise serializers.ValidationError({
+                    'scheduled_time': "already has a session scheduled during this time."
+                })
+        return data
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         
+        if instance.scheduled_time and instance.duration_minutes:
+            instance.ending_time = instance.scheduled_time + timezone.timedelta(minutes=instance.duration_minutes)
+        
+        instance.save()
+        return instance
+    
+    def get_course(self, obj):
+        return obj.purchase.course.title
+
+class TutorVideoSessionSerializer(VideoSessionSerializer):
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        users_dict = self.context.get("users_dict", {})
+        student_id = instance.student
+        student_details = users_dict.get(student_id)
+
+        if student_details:
+            data["student"] = student_details
+
+        return data
+
+# class VideoSessionScheduleSerializer(serializers.ModelSerializer):
+#     duration_minutes = serializers.IntegerField(min_value=15, max_value=240, required=True)
+    
+#     class Meta:
+#         model = VideoSession
+#         fields = ['scheduled_time', 'status', 'duration_minutes']
+    
+#     def validate_scheduled_time(self, value):
+#         """
+#         Validate that scheduled time is in the future.
+#         """
+#         now = timezone.now()
+        
+#         # If the datetime passed is naive (no timezone), assume it's in UTC
+#         if value.tzinfo is None:
+#             value = pytz.utc.localize(value)
+        
+#         if value <= now:
+#             raise serializers.ValidationError("Scheduled time must be in the future.")
+        
+#         return value
+    
+#     def validate(self, data):
+#         """
+#         Custom validation for scheduling.
+#         """
+#         # Check if status is being set to approved
+#         if data.get('status') != 'approved':
+#             raise serializers.ValidationError({
+#                 'status': "Status must be set to 'approved' when scheduling a session."
+#             })
+        
+#         return data

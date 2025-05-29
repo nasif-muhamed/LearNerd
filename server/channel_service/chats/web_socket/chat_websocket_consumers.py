@@ -234,8 +234,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def save_message(self, message):
         user = User.objects.get(user_id=self.user_id)
         room = Room.objects.get(id=self.room_id)
-        print('now > expiry:', room.room_type, room.room_type == 'one-to-one' and datetime.utcnow() > room.expires_at, datetime.utcnow(), room.expires_at)
-        if room.room_type == 'one-to-one' and datetime.utcnow() > room.expires_at:
+        print('now > expiry:', room.room_type, room.room_type == 'one-to-one' and not room.temp_chat and datetime.utcnow() > room.expires_at, datetime.utcnow(), room.expires_at)
+        if room.room_type == 'one-to-one' and not room.temp_chat and datetime.utcnow() > room.expires_at:
             return
         msg = Message(
             room=room,

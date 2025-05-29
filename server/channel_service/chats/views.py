@@ -6,8 +6,9 @@ from mongoengine.errors import DoesNotExist
 from mongoengine.queryset.visitor import Q
 from .models import Room, Message, User
 from .serializers import MessageSerializer, UserRoomsSerializer
-from .service import get_or_create_user
+from .service import get_or_create_user, create_or_update_chat_room
 from channel_service.service_calls import UserServiceException
+from channel_service.permissions.permissions import IsUserAdmin
 
 class UserRoomsView(APIView):
     def get(self, request):
@@ -195,3 +196,58 @@ class UnreadMeassageCountView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class FetchRoomIdView(APIView):
+    def get(self, request, participant_id):
+        try:
+            user_id = request.user_payload.get('user_id')
+            if not user_id:
+                return Response({'error': 'Unauthorized Request'}, status=status.HTTP_401_UNAUTHORIZED)
+            user, _ = get_or_create_user(int(user_id))
+            participant, _ = get_or_create_user(int(participant_id))
+            room = Room.objects(
+                room_type='one-to-one',
+                participants__all=[user, participant],
+            ).first()
+
+            if room is None:
+                return Response({'error': 'No room exist'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'room_id': str(room.id)})
+
+        except ValueError:
+            return Response({"error": "Invalid user_id format"}, status=status.HTTP_400_BAD_REQUEST)
+        except UserServiceException as e:
+            return Response({"error": str(e)}, status=503)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AdminFetchRoomIdView(APIView):
+    permission_classes = [IsUserAdmin]
+
+    def get(self, request, participant_id):
+        try:
+            user_id = request.user_payload.get('user_id')
+            if not user_id:
+                return Response({'error': 'Unauthorized Request'}, status=status.HTTP_401_UNAUTHORIZED)
+            user, _ = get_or_create_user(int(user_id))
+            participant, _ = get_or_create_user(int(participant_id))
+            room = Room.objects(
+                room_type='one-to-one',
+                participants__all=[user, participant],
+            ).first()
+            print('room:', room)
+            if room is None:
+                new_room = Room(
+                    room_type="one-to-one",
+                    participants=[user, participant],
+                    temp_chat=True,
+                )
+                new_room.save()
+                return Response({'room_id': str(new_room.id)})
+            return Response({'room_id': str(room.id)})
+
+        except ValueError:
+            return Response({"error": "Invalid user_id format"}, status=status.HTTP_400_BAD_REQUEST)
+        except UserServiceException as e:
+            return Response({"error": str(e)}, status=503)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -63,20 +63,27 @@ def notification_callback(ch, method, properties, body):
                 'message': f"Your report for course '{message.get('course_title')}' has been {event_type.split('.')[-1]} by admin."
             }
 
+        elif event_type == 'video_sesssion.request' or event_type == 'video_sesssion.approved':
+            config = {
+                'type': Notification.NotificationType.VID_SESSION_REQUESTED if event_type == 'video_sesssion.request' else Notification.NotificationType.VID_SESSION_APPROVED,
+                'message': f"{student.full_name_or_email + ' requested a video session for' if event_type == 'video_sesssion.request' else tutor.full_name_or_email + ' have approved a video session'} for the course: '{message.get('course_title')}'."
+            }
+
+
         if config is None:
             print(f" [x] Unknown event type: {event_type}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
         # Create notification
-        if event_type == 'purchase' or event_type == 'review' or event_type == 'upgraded':
+        if event_type == 'purchase' or event_type == 'review' or event_type == 'upgraded' or event_type == 'video_sesssion.request':
             Notification.objects.create(
                 user=tutor,
                 notification_type=config['type'],
                 message=config['message'],
             )
 
-        elif event_type == 'report.resolved' or event_type == 'report.rejected':
+        elif event_type == 'report.resolved' or event_type == 'report.rejected' or event_type == 'video_sesssion.approved':
             Notification.objects.create(
                 user=student,
                 notification_type=config['type'],

@@ -7,7 +7,7 @@ from .views import (
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseFeedbackView,
     ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView, AdminListReportsAPIView,
-    AdminReportActionPIView, ScheduleSessionView
+    AdminReportActionPIView, ScheduleSessionView, TutorVideoSessionsView, GetSessionTokenView, VideoSessionUpdateView
 )
 
 router = DefaultRouter()
@@ -85,4 +85,7 @@ urlpatterns = [
 
     # video session related
     path('video-session/<int:purchase_id>/', ScheduleSessionView.as_view(), name='video-session'),
+    path('tutor/video-sessions/', TutorVideoSessionsView.as_view(), name='tutor-sessions'),
+    path('video-sessions/<int:pk>/', VideoSessionUpdateView.as_view(), name='tutor-session-detail'),
+    path('video-session/get-session-token/', GetSessionTokenView.as_view(), name='get-session-token'),
 ]
