@@ -73,9 +73,11 @@ const LoginForm = ({ setLoading }) => {
                 login({
                     access: response.data.access,
                     refresh: response.data.refresh,
-                    role: "student", // Adjust role as needed
+                    role: "student",
                 })
             );
+            dispatch(fetchUserDetails());
+            dispatch(fetchUnreadMsgCount());
 
             const msg = response.data.registered ? "registration" : "login"
             toast.success(`${msg} successful!, ${msg === 'login' ? 'welcome back' : 'welcome to LearNerds' }`);

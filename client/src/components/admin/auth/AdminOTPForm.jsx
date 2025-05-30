@@ -56,9 +56,9 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                 sessionStorage.removeItem("adminUsername");
                 sessionStorage.removeItem("adminUsernameExpiry");
                 // dispatch(adminLogin({'adminAccessToken':response.data.access, 'adminRefreshToken':response.data.refresh}));
+                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin', 'userAccess': response.data.user_access, 'userRefresh': response.data.user_refresh}));
                 const user_response = await adminUserApi.get('/users/user/');
                 console.log('user_response:', user_response)
-                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin', 'userAccess': response.data.user_access, 'userRefresh': response.data.user_refresh}));
                 dispatch(setUser(user_response.data));
                 toast.success('Login successfull')
                 reset()
