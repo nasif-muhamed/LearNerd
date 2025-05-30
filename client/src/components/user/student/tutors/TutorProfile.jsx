@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { MessageSquareText, UserRound, ShieldMinus, ShieldCheck } from "lucide-react";
+import { UserRound } from "lucide-react";
 
 const UserProfile = ( {id, user, setUser, courses, setCourses, setCount, api, toast, BASE_URL } ) => {
     console.log('courses:', courses)

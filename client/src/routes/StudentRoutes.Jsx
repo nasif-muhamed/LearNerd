@@ -14,7 +14,6 @@ import StreamCourse from "../pages/user/student/study_room/StreamCourse";
 import ListTutorsLandingPage from "../pages/user/student/tutors/ListTutorsLandingPage";
 import TutorDetails from "../pages/user/student/tutors/TutorDetails";
 import PaymentSuccess from "../pages/user/student/courses/subscription_result/paymentSuccess";
-import PaymentCancel from "../pages/user/student/courses/subscription_result/PaymentCancel";
 import CheckoutFormPage from "../pages/user/student/courses/subscription_result/CheckoutFormPage";
 import StripeProvider from "../services/stripe/StripeProvider";
 
@@ -47,12 +46,11 @@ const StudentRoutes = () => {
                             <PaymentSuccess/>
                         </StripeProvider>
                     } />
-                    <Route path=":id/cancel" element={<PaymentCancel/>} />
                 </Route>
 
                 <Route path="/study-room">
                     <Route index element={<StudyRoomLanding />} />
-                    <Route path="my-course/:purchaseId" element={<StreamCourse/>} />
+                    <Route path="my-course/:courseId" element={<StreamCourse/>} />
                 </Route>
 
                 <Route path="/tutors">

@@ -1,13 +1,19 @@
+from datetime import timedelta
 from rest_framework import serializers
 import cloudinary.uploader
 from django.db import transaction
 from django.db.models import Sum
 import json
 from .models import (
-    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review,
-    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion
+    Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review, Report,
+    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion, VideoSession
 )
 from .services import CallUserService, UserServiceException
+from banners.utils import get_ad_content
+
+from django.utils import timezone
+from dateutil import parser
+import pytz
 
 
 call_user_service = CallUserService()
@@ -511,6 +517,7 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
     course_total_section_items = serializers.SerializerMethodField()
     purchase_type = serializers.CharField()
     completed_section_items = serializers.SerializerMethodField()
+    video_session_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
@@ -522,7 +529,8 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
             'course_thumbnail',
             'course_total_section_items',
             'purchase_type',
-            'completed_section_items'
+            'completed_section_items',
+            'video_session_status'
         ]
 
     def get_completed_section_items(self, obj):
@@ -535,6 +543,12 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
     def get_course_total_section_items(self, obj):
         # Count total section items for the course related to this purchase
         return SectionItem.objects.filter(section__course=obj.course).count()
+    
+    def get_video_session_status(self, obj):
+        # Count total section items for the course related to this purchase
+        print('session status:', obj.video_sessions.first())
+        return obj.video_sessions.first().status if obj.video_sessions.first() else None
+
 
 # class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
 #     objectives = LearningObjectiveSerializer(many=True, read_only=True)
@@ -620,15 +634,22 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
     purchase_type = serializers.CharField()
     completed_section_items = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
+    ad_viewed = serializers.SerializerMethodField()
+    ads = serializers.SerializerMethodField()
+    video_session = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
         fields = [
+            'id',
             'course',
             'course_total_section_items',
             'purchase_type',
             'completed_section_items',
             'sections',
+            'ad_viewed',
+            'ads',
+            'video_session',
         ]
 
     def get_course_total_section_items(self, obj):
@@ -645,12 +666,29 @@ class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
         return SectionDetailWithItemsSerializer(
             sections,
             many=True,
-            context={'purchase': obj}  # Pass the purchase object to nested serializers
+            context={'purchase': obj}
         ).data
    
     def get_course(self, obj):
         course = obj.course
         return CourseUnAuthDetailSerializer(course).data
+    
+    def get_ad_viewed(self, obj):
+        return SectionItemCompletion.objects.filter(
+            purchase=obj,
+            ad_viewed=True
+        ).values_list('section_item__id', flat=True)
+    
+    def get_ads(self, obj):  # <--- new method
+        if obj.purchase_type == 'freemium':
+            return get_ad_content()
+        return None
+    
+    def get_video_session(self, obj):
+        sessions = obj.video_sessions.all()
+        serializer = VideoSessionSerializer(sessions, many=True)
+        return serializer.data if sessions else None
+    
     
 class TutorCourseSerializer(serializers.ModelSerializer):
     total_courses = serializers.IntegerField()
@@ -675,3 +713,169 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = '__all__'
+
+class ReportCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'report', 'created_at']
+        read_only_fields = ['id', 'created_at']
+    
+class ReportSerializer(serializers.ModelSerializer):
+    instructor = serializers.IntegerField(source='course.instructor')
+    course_title = serializers.CharField(source='course.title')
+    purchase_details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Report
+        fields = ['id', 'course', 'course_title', 'user', 'report', 'resolved', 'status', 'reason', 'instructor', 'created_at', 'purchase_details']
+        read_only_fields = ['id', 'created_at']
+
+    def get_purchase_details(self, obj):
+        purchase = Purchase.objects.get(course=obj.course, user=obj.user)
+        purchase_details = {
+            'purchase_type': purchase.purchase_type,
+            'subscription_amount': purchase.subscription_amount,
+            'purchased_at': purchase.purchased_at,
+            'expire_at': purchase.safe_period_expiry if purchase.purchase_type == 'subscription' else None
+        }
+        # print('purchase_details:', purchase_details)
+        return purchase_details
+
+class VideoSessionSerializer(serializers.ModelSerializer):
+    course = serializers.SerializerMethodField()
+    class Meta:
+        model = VideoSession
+        fields = ["id", "tutor", "student", "purchase", "course", "room_id", "status", "scheduled_time", "duration_minutes", "ending_time", "is_active", "created_at"]
+        read_only_fields = ["id", "purchase", "room_id", "ending_time", "created_at"]
+
+    def validate(self, data):
+        # Ensure only valid status transitions are allowed
+        now = timezone.now()
+        if 'status' in data:
+            current_status = self.instance.status if self.instance else 'pending'
+            new_status = data['status']
+            
+            # Define allowed status transitions
+            allowed_transitions = {
+                'pending': ['approved'],
+                'approved': ['completed'],
+                'completed': []  # No transitions allowed from completed
+            }
+            
+            if new_status != current_status and new_status not in allowed_transitions.get(current_status, []):
+                raise serializers.ValidationError({
+                    'status': f"Cannot transition from '{current_status}' to '{new_status}'."
+                })
+
+
+            # If approving, scheduled_time and duration is required
+            if new_status == 'approved':
+                if not data.get('scheduled_time') and not self.instance.scheduled_time:
+                    raise serializers.ValidationError({
+                        'scheduled_time': "Scheduled time is required when approving a session."
+                    })
+                if not data.get('duration_minutes') and not self.instance.duration_minutes:
+                    raise serializers.ValidationError({
+                        'duration_minutes': "Duration minutes is required when approving a session."
+                    })
+                if data.get('scheduled_time') <= now:
+                    raise serializers.ValidationError({
+                        'scheduled_time': "Scheduled time must be in the future."
+                    })
+                # if int(data.get('scheduled_time')) <= 15:
+                #     raise serializers.ValidationError({
+                #         'scheduled_time': "session should be atleast 15 minutes."
+                #     })
+
+                
+            if new_status == 'completed':
+                if now < self.instance.ending_time:
+                    raise serializers.ValidationError({
+                        'status': "cannot change status to completed before the session end time."
+                    })
+
+        # Check for overlapping sessions if scheduled_time or duration_minutes is provided
+        print('data::', data)
+        if data.get('status') == 'approved' and data.get('scheduled_time') and data.get('duration_minutes'):
+            tutor = data.get('tutor', self.instance.tutor if self.instance else None)
+            scheduled_time = data['scheduled_time']
+            duration_minutes = data['duration_minutes']
+            print('scheduled_time:', type(scheduled_time), scheduled_time, duration_minutes)
+            ending_time = scheduled_time + timezone.timedelta(minutes=duration_minutes)
+
+            # Query for existing sessions for the same tutor
+            conflicting_sessions = VideoSession.objects.filter(
+                tutor=tutor,
+                status='approved',  # Only check approved sessions
+                scheduled_time__lt=ending_time,  # Existing session starts before new session ends
+                ending_time__gt=scheduled_time  # Existing session ends after new session starts
+            )
+
+            # Exclude the current session if updating
+            if self.instance:
+                conflicting_sessions = conflicting_sessions.exclude(id=self.instance.id)
+
+            if conflicting_sessions.exists():
+                raise serializers.ValidationError({
+                    'scheduled_time': "already has a session scheduled during this time."
+                })
+        return data
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if instance.scheduled_time and instance.duration_minutes:
+            instance.ending_time = instance.scheduled_time + timezone.timedelta(minutes=instance.duration_minutes)
+        
+        instance.save()
+        return instance
+    
+    def get_course(self, obj):
+        return obj.purchase.course.title
+
+class TutorVideoSessionSerializer(VideoSessionSerializer):
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        users_dict = self.context.get("users_dict", {})
+        student_id = instance.student
+        student_details = users_dict.get(student_id)
+
+        if student_details:
+            data["student"] = student_details
+
+        return data
+
+# class VideoSessionScheduleSerializer(serializers.ModelSerializer):
+#     duration_minutes = serializers.IntegerField(min_value=15, max_value=240, required=True)
+    
+#     class Meta:
+#         model = VideoSession
+#         fields = ['scheduled_time', 'status', 'duration_minutes']
+    
+#     def validate_scheduled_time(self, value):
+#         """
+#         Validate that scheduled time is in the future.
+#         """
+#         now = timezone.now()
+        
+#         # If the datetime passed is naive (no timezone), assume it's in UTC
+#         if value.tzinfo is None:
+#             value = pytz.utc.localize(value)
+        
+#         if value <= now:
+#             raise serializers.ValidationError("Scheduled time must be in the future.")
+        
+#         return value
+    
+#     def validate(self, data):
+#         """
+#         Custom validation for scheduling.
+#         """
+#         # Check if status is being set to approved
+#         if data.get('status') != 'approved':
+#             raise serializers.ValidationError({
+#                 'status': "Status must be set to 'approved' when scheduling a session."
+#             })
+        
+#         return data

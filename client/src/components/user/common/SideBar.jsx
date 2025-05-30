@@ -3,6 +3,7 @@ import { House, GraduationCap, Presentation, Users, Newspaper,
     MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash, 
     LayoutDashboard, WalletMinimal, Medal } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import useMessageCount from '../../../hooks/useMessageCount';
 
 const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
     const location = useLocation(); // current URL path
@@ -12,7 +13,8 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
         { name: "Courses", icon: GraduationCap, route: '/student/courses' },
         { name: "Study Room", icon: Presentation, route: '/student/study-room' },
         { name: "Tutors", icon: Users, route: '/student/tutors' },
-        { name: "News", icon: Newspaper, route: '/student/news' },
+        // { name: "News", icon: Newspaper, route: '/student/news' },
+        { name: "Wallet", icon: WalletMinimal, route: '/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Badges", icon: Medal, route: '/student/badges' },
         { name: "Profile", icon: UserRound, route: '/profile' },
@@ -22,16 +24,18 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
         { name: "Dashboard", icon: LayoutDashboard, route: '/tutor/dashboard' },
         { name: "My Courses", icon: GraduationCap, route: '/tutor/my-courses' },
         { name: "Class Room", icon: Presentation, route: '/tutor/class-room/' },
-        { name: "Wallet", icon: WalletMinimal, route: '/tutor/wallet' },
+        { name: "Wallet", icon: WalletMinimal, route: '/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/chats' },
         { name: "Profile", icon: UserRound, route: '/profile' },
     ]
+
+    const urReadMessageCount = useMessageCount()
 
     const sideContent = role == 'student' ? sideContentStudent : sideContentTutor
 
     return (
         <aside
-            className={`fixed md:static h-full md:h-auto z-30 transition-all duration-300 ease-in-out bg-gray-800 text-white overflow-y-auto
+            className={`fixed md:static h-full md:h-auto z-30 transition-all duration-300 ease-in-out bg-gray-950 text-white overflow-y-auto
                 ${
                     isSidebarOpen ? "w-44 left-0" : "-left-64 md:left-0 md:w-16"
                 } md:block`}
@@ -68,8 +72,14 @@ const SideBar = ({ isSidebarOpen, toggleSidebar, role }) => {
                             ) : (
                                 item.name[0]
                             )} */}
-                            <div className={`w-[70%] flex items-center ${!isSidebarOpen && 'justify-center'}`}>
+                            <div className={`w-[70%] relative flex items-center ${!isSidebarOpen && 'justify-center'}`}>
                                 <item.icon className={`${isSidebarOpen && 'mr-2'} h-6 w-6`} /> {isSidebarOpen && <span>{item.name}</span>}
+                                
+                                {item.name === 'Chats' && urReadMessageCount > 0 && (
+                                    <span className={`absolute ${!isSidebarOpen && '-top-1'} -right-1 bg-accent text-white text-xs px-1.5 py-0.5 rounded-full`}>
+                                        {urReadMessageCount}
+                                    </span>
+                                )}
                             </div>
                         </Link>
                     ))}

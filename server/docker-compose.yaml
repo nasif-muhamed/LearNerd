@@ -8,7 +8,12 @@ services:
         volumes:
             - redis_data:/data
         networks:
-            - ecom_network
+            - learn_network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     # Postgres database container
     db:
@@ -20,8 +25,31 @@ services:
         volumes:
             - postgres_data:/var/lib/postgresql/data
         networks:
-            - ecom_network
+            - learn_network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
+    # RabbitMQ message broker for async communication (the 3-management tag is used to get Management Plugin, which help with visualization web ui. Can avoid it in production)
+    rabbitmq:
+        image: "rabbitmq:3-management"
+        container_name: rabbitmq
+        ports:
+        - "15672:15672"
+        - "5672:5672"
+        environment:
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+        networks:
+        - learn_network
+        healthcheck:
+            test: ["CMD", "rabbitmqctl", "status"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            
     api_gateway_django:
         build:
             context: ./api_gateway_django
@@ -34,6 +62,7 @@ services:
             - USER_SERVICE_URL=${USER_SERVICE_URL}
             - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
             - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
+            - CHANNEL_SERVICE_URL=${CHANNEL_SERVICE_URL}
         ports:
             - "8000:8000"
         volumes:
@@ -41,10 +70,12 @@ services:
         command: >
             sh -c "python manage.py runserver 0.0.0.0:8000"
         depends_on:
-            - db
-            - redis
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
         networks:
-            - ecom_network
+            - learn_network
 
     user_service:
         build:
@@ -66,8 +97,11 @@ services:
             - EMAIL_HOST_USER=${EMAIL_HOST_USER}
             - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
             - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
-            - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH}
             - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
+            - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
         ports:
             - "8001:8001"
         volumes:
@@ -75,13 +109,18 @@ services:
         command: >
             sh -c "python manage.py makemigrations &&
                    python manage.py migrate &&
-                   python manage.py runserver 0.0.0.0:8001 & celery -A user_service worker -l info"
+                   python manage.py runserver 0.0.0.0:8001 & 
+                   celery -A user_service worker -l info & 
+                   python manage.py run_consumer"
         depends_on:
-            - db
-            - redis
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
         networks:
-            - ecom_network
-
+            - learn_network
     admin_service:
         build:
             context: ./admin_service
@@ -100,9 +139,13 @@ services:
             - EMAIL_HOST_USER=${EMAIL_HOST_USER}
             - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
             - USER_SERVICE_URL=${USER_SERVICE_URL}
+            - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
             - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
             - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
             - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
         ports:
             - "8002:8002"
         volumes:
@@ -114,12 +157,11 @@ services:
         depends_on:
             - user_service
         networks:
-            - ecom_network
-
+            - learn_network
 volumes:
     postgres_data:
     redis_data:
 
 networks:
-    ecom_network:
+    learn_network:
         driver: bridge

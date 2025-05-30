@@ -1,5 +1,4 @@
-import React from "react";
-import { LayoutDashboard, GraduationCap, Megaphone, Users, Medal, MessageCircleMore, UserRound, ArrowBigLeftDash, ArrowBigRightDash } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Megaphone, Users, Medal, MessageCircleMore, WalletMinimal, ArrowBigLeftDash, ArrowBigRightDash } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const AdminSideBar = ({ isSidebarOpen, toggleSidebar }) => {
@@ -9,6 +8,7 @@ const AdminSideBar = ({ isSidebarOpen, toggleSidebar }) => {
         { name: "Users", icon: Users, route: '/admin/users' },
         { name: "Courses", icon: GraduationCap, route: '/admin/courses' },
         { name: "Billboard", icon: Megaphone, route: '/admin/billboard' },
+        { name: "Wallet", icon: WalletMinimal, route: '/admin/wallet' },
         { name: "Chats", icon: MessageCircleMore, route: '/admin/chats' },
         { name: "Badges", icon: Medal, route: '/admin/badges' },
         // { name: "Profile", icon: UserRound, route: '/admin/profile' },
@@ -16,7 +16,7 @@ const AdminSideBar = ({ isSidebarOpen, toggleSidebar }) => {
 
     return (
         <aside
-            className={`fixed md:static h-full md:h-auto z-30 transition-all duration-300 ease-in-out bg-gray-800 text-white overflow-y-auto
+            className={`fixed md:static h-full md:h-auto z-30 transition-all duration-300 ease-in-out bg-gray-950 text-white overflow-y-auto
                 ${
                     isSidebarOpen ? "w-44 left-0" : "-left-64 md:left-0 md:w-16"
                 } md:block`}

@@ -14,40 +14,51 @@ import {
     FiRefreshCw,
     FiDownload,
 } from "react-icons/fi";
-import { useParams } from "react-router-dom";
+import { MdError } from "react-icons/md";
+import { Link, useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { UserRound } from "lucide-react";
 import api from "../../../../services/api/axiosInterceptor";
 import handleError from "../../../../utils/handleError";
 import LoadingSpinner from "../../../../components/ui/LoadingSpinner";
-import { toast } from "sonner";
+import InstructorDetails from "../../../../components/user/student/study_room/my_course/InstructorDetails";
+import VideoSessionList from "../../../../components/user/student/study_room/my_course/VideoSessionList";
 
 const StreamCourse = () => {
-    const { purchaseId } = useParams();
+    const BASE_URL = import.meta.env.VITE_BASE_URL
+    const { courseId } = useParams();
     const [loading, setLoading] = useState(null);
-    const [myCourse, setCourse] = useState(null);
+    const [myCourse, setMyCourse] = useState(null);
     const [error, setError] = useState("");
-
     const [activeTab, setActiveTab] = useState("overview");
     const [expandedSections, setExpandedSections] = useState({});
-    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false); 
+    const [showReportModal, setShowReportModal] = useState(false); 
     const [rating, setRating] = useState(0);
     const [review, setReview] = useState("");
+    const [report, setReport] = useState("");
     const [myReview, setMyReview] = useState(null);
+    const [myReport, setMyReport] = useState(null);
     const [reviews, setReviews] = useState(null);
     const [currentItem, setCurrentItem] = useState(null);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedAnswers, setSelectedAnswers] = useState({});
     const [assessmentComplete, setAssessmentComplete] = useState(false);
     const [assessmentScore, setAssessmentScore] = useState({ score: 0, total: 0, percentage: 0, passed: false });
-    
+    const [showVideoAd, setShowVideoAd] = useState(false);
+    const [adViewed, setAdViewed] = useState([])
     const contentRef = useRef(null);
-
+    const videoSessions = myCourse ? myCourse.video_session : null
+    console.log('videoSessions:', videoSessions)
+    
     const fetchCourse = async () => {
         try {
             setLoading(true);
-            const response = await api.get(`courses/stream/${purchaseId}/`);
-            console.log("My Purchase response:", response);
+            const response = await api.get(`courses/stream/${courseId}/`);
+            console.log("My Purchased course response:", response);
             const result = response.data;
-            setCourse(result);
+            setMyCourse(result);
+            setAdViewed(result.ad_viewed)
         } catch (error) {
             console.log("Couses Error:", error);
             handleError(error, "Error fetching Couses");
@@ -63,16 +74,17 @@ const StreamCourse = () => {
     }, []);
     // Dummy course data
 
-    const fetchReviews = async () => {
+    const fetchFeedbacks = async () => {
         if (!reviews || !myReview) {
             try{
                 setLoading(true);
-                const response = await api.get(`courses/my-course/${myCourse?.course?.id}/reviews/`);
+                const response = await api.get(`courses/my-course/${myCourse?.course?.id}/feedback/`);
                 console.log("My reviews response:", response);
                 const result = response.data;
 
                 if(result.reviews?.length) setReviews(result.reviews);
                 if(result.my_review) setMyReview(result.my_review);
+                if(result.my_report) setMyReport(result.my_report);
             }catch (error) {
                 console.log("Couses Error:", error);
                 handleError(error, "Error fetching reviews");
@@ -82,6 +94,7 @@ const StreamCourse = () => {
             }
         }
     }
+
     const toggleSection = (sectionId) => {
         setExpandedSections((prev) => ({
             ...prev,
@@ -101,10 +114,16 @@ const StreamCourse = () => {
             setSelectedAnswers({});
         }
         // Scroll to the content area using the ref
+        console.log('myCourse?.purchase_type == ', (item?.item_type === "video" && myCourse?.purchase_type == 'freemium' && !adViewed.includes(item.id)))
+        if (item?.item_type === "video" && myCourse?.purchase_type == 'freemium' && !adViewed.includes(item.id)){
+            setShowVideoAd(true)
+        }
         contentRef.current.scrollIntoView({ 
             behavior: 'smooth',
             block: 'start'
         });
+
+        console.log('myCourse:', myCourse)
     };
 
     const submitFeedback = async (e) => {
@@ -114,7 +133,7 @@ const StreamCourse = () => {
             const response = await api.post(`courses/${myCourse?.course?.id}/reviews/`, { rating, review });
             console.log("My feedback response:", response);
             toast.success("Feedback submitted successfully!");
-            fetchReviews();
+            fetchFeedbacks();
         } catch (error) {
             console.log("Couses Error:", error);
             handleError(error, "Error submitting feedback");
@@ -122,11 +141,33 @@ const StreamCourse = () => {
         } finally {
             setLoading(false);
         }
-
         console.log('ratings:', { rating, review });
         setShowFeedbackModal(false);
         setRating(0);
         setReview("");
+    };
+
+    const submitReport = async (e) => {
+        e.preventDefault();
+        try {
+            if (!report) {
+                toast.info('you must give a report')
+                return
+            }
+            setLoading(true);
+            const response = await api.post(`courses/${myCourse?.course?.id}/reports/`, { report });
+            console.log("My report response:", response);
+            toast.success("Report submitted successfully!");
+            setMyReport(response.data)
+        } catch (error) {
+            console.log("Couses Error:", error);
+            handleError(error, "Error submitting report");
+            setError("Failed to report.");
+        } finally {
+            setLoading(false);
+        }
+        setShowReportModal(false);
+        setReport("");
     };
 
     const handleAnswerSelect = (questionId, answerId) => {
@@ -158,7 +199,7 @@ const StreamCourse = () => {
             const response = await api.post(`courses/assessments/${assessmentId}/submit/`, body);
             console.log('Assessment response:', response);
             const result = response.data;
-            if (result?.purchase) setCourse(result.purchase);
+            if (result?.purchase) setMyCourse(result.purchase);
     
             // Calculate score
             const totalQuestions = currentItem?.assessment?.questions.length;
@@ -190,33 +231,76 @@ const StreamCourse = () => {
 
     };
 
-    const submitVideo = async (videoId, isCompleted=false) => {
+    const submitVideo = async () => {
+        console.log('currentItem:++', currentItem)
+        const videoId = currentItem?.id
+        const isCompleted= currentItem?.completion?.completed || false
         if (!isCompleted){
             try {
-                setLoading(true);
                 const body = {
-                    completed: true, // Example: mark video as completed
+                    completed: true,
                 };
         
                 const response = await api.post(`courses/lecture/${videoId}/submit/`, body);
                 console.log('Video response:', response);
                 const result = response.data;
         
-                if (result?.purchase) setCourse(result.purchase);
+                if (result?.purchase) setMyCourse(result.purchase);
                 toast.success("Video marked as completed successfully!");
             } catch (error) {
                 console.log("Courses Error:", error);
                 handleError(error, "Error submitting video");
-            } finally {
-                setLoading(false);
-            }
+            } 
         }
     };
+
+    const handleAdEnded = async () => {
+        console.log('handleEnded')
+        setShowVideoAd(false);
+        try{
+            const response = await api.post(`courses/ad-viewed/${currentItem.id}/`)
+            setAdViewed([...adViewed, currentItem.id])
+            console.log('handleAdEnded response:', response)
+        }catch (error) {
+            console.log('handleAdEnded error response:', error)
+        }
+    };
+    
+    const handleRequestSession = async () => {
+        try{
+            setLoading(true)
+            const body = {
+                status: 'pending'
+            }
+            const response = await api.post(`courses/video-session/${myCourse.id}/`, body);
+            console.log('request a session response:', response)
+            toast.success('Requested for a new session')
+            setMyCourse(prev => ({
+                ...prev,
+                video_session: prev.video_session
+                    ? [response.data, ...prev.video_session]
+                    : [response.data]
+            }));
+        }catch(err){
+            console.log('error requestion a session', err)
+            handleError(err, 'error requesting a session')
+        }finally{
+            setLoading(false)
+        }
+    }
 
     return (
         <div className="min-h-screen text-foreground">
             {loading && <LoadingSpinner />}
-
+            {myCourse?.ads?.study_room_banner && (
+                <div className="relative aspect-[8/1] overflow-hidden bg-gray-400 my-5 mx-10">
+                    <img
+                        src={myCourse.ads.study_room_banner.banner_url}
+                        alt={myCourse.ads.study_room_banner?.title}
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+            )}
             {/* for scrolling to the top on click of section item */}
             <div ref={contentRef}> </div>
             {/* Content Display Area */}
@@ -231,10 +315,15 @@ const StreamCourse = () => {
                             <div className="rounded-lg overflow-hidden shadow-md aspect-video">
                                 <video
                                     className="w-full h-full object-cover"
-                                    src={currentItem?.video?.video_url}
-                                    controls
-                                    poster={currentItem?.video?.thumbnail || ""}
-                                    onEnded={() => submitVideo(currentItem?.id, currentItem?.completion?.completed)}
+                                    src={showVideoAd? myCourse.ads?.pre_rollVideo?.video_url : currentItem?.video?.video_url}
+                                    controls={!showVideoAd}
+                                    autoPlay={showVideoAd}
+                                    poster={showVideoAd ? '' : currentItem?.video?.thumbnail || ''}
+                                    controlsList="nodownload"   
+                                    onEnded={() => {
+                                        showVideoAd ? handleAdEnded() : submitVideo()
+                                    }}
+                                    onContextMenu={e => e.preventDefault()}
                                 >
                                     Your browser does not support the video tag.
                                     Try with another browser.
@@ -497,10 +586,10 @@ const StreamCourse = () => {
                                 }`}
                                 onClick={() => {
                                     setActiveTab("reviews")
-                                    fetchReviews()
+                                    fetchFeedbacks()
                                 }}
                             >
-                                Reviews
+                                Reviews & feedback
                             </button>
                         </div>
 
@@ -520,7 +609,7 @@ const StreamCourse = () => {
                                                     {section.title}
                                                 </h3>
                                                 <p className="text-sm text-muted-foreground">
-                                                    {section.items.length}{" "}
+                                                    {section.items?.length}{" "}
                                                     lessons • {section.duration}
                                                 </p>
                                             </div>
@@ -603,9 +692,17 @@ const StreamCourse = () => {
                         {activeTab === "overview" && (
                             <div className="bg-card rounded-lg p-6">
                                 <div className="">
-                                    <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                                        {myCourse?.course?.title}
-                                    </h1>
+                                    <div className="flex">
+                                        <h1 className="text-2xl md:text-3xl font-bold mb-2">
+                                            {myCourse?.course?.title}
+                                        </h1>
+
+                                        {myCourse?.subscription && myCourse?.is_enrolled !== 'subscription' &&  (
+                                            <button onClick={()=>{handlePurchase('subscription')}} className="btn-primary w-full mb-2">
+                                                {myCourse.is_enrolled !== 'freemium' ? 'Subscribe' : 'Subscribe to Upgrade'}
+                                            </button>
+                                        )}
+                                    </div>
                                     <p className="text-muted-foreground mb-4">
                                         {myCourse?.course?.description}
                                     </p>
@@ -686,10 +783,16 @@ const StreamCourse = () => {
                                         <p className="text-muted-foreground">
                                             Video Sessions
                                         </p>
-                                        <p>{myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
+                                        <p>{myCourse?.course?.video_sessions ? myCourse?.course?.video_session - myCourse.video_session?.length : myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
                                     </div>
                                     <div>
-                                        <p className="text-muted-foreground">
+                                        <button onClick={handleRequestSession} className={`w-full mb-2 ${videoSessions && videoSessions[0].status == 'approved' ? 'btn-destructive' : videoSessions && videoSessions[0].status == 'pending' ? 'btn-secondary' : 'btn-primary'}`} disabled={videoSessions && videoSessions[0].status != 'completed'} >
+                                            {
+
+                                                videoSessions && videoSessions[0].status == 'approved' ? 'Scheduled Session Exists' : videoSessions && videoSessions[0].status == 'pending' ? 'Request is Pending' : 'Request a Session'
+                                            }
+                                        </button>
+                                        {/* <p className="text-muted-foreground">
                                             Chat up to
                                         </p>
                                         <p>
@@ -698,7 +801,7 @@ const StreamCourse = () => {
                                             date.setDate(date.getDate() + myCourse?.course?.chat_upto); // Adds 30 days to the current date
                                             return date.toLocaleDateString(); // Formats the date into a readable string
                                         })()}
-                                        </p>
+                                        </p> */}
                                     </div>
                                 </div>)}
                                 <div className="grid grid-cols-2 gap-4">
@@ -719,117 +822,186 @@ const StreamCourse = () => {
                         )}
 
                         {activeTab === "reviews" && (
-                            <div className="bg-card rounded-lg p-6">
-                                {myReview && (
-                                    <div className="mb-4">
-                                        <h2 className="text-xl font-bold mb-2">
-                                            Your Review
-                                        </h2>
-
-                                        <div className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0">
-                                            <div className="flex items-center mb-3">
-                                                {/* <img
-                                                    src={review.avatar}
-                                                    alt={review.user}
-                                                    className="w-10 h-10 rounded-full mr-3"
-                                                /> */}
-                                                <div>
-                                                    <p className="text-gray-400 font-light">
-                                                        {myReview.review}
-                                                    </p>
-                                                    <div className="flex items-center">
-                                                        <div className="rating-stars mr-2">
-                                                            {[...Array(5)]?.map(
-                                                                (_, i) => (
-                                                                    <FiStar
-                                                                        key={i}
-                                                                        className={`${
-                                                                            i <
-                                                                            myReview.rating
-                                                                                ? "fill-current"
-                                                                                : ""
-                                                                        }`}
-                                                                    />
-                                                                )
-                                                            )}
+                            <div>
+                                <div className="bg-card rounded-lg p-6">
+                                    {myReview && (
+                                        <div className="mb-4">
+                                            <h2 className="text-xl font-bold mb-2">
+                                                Your Review
+                                            </h2>
+    
+                                            <div className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0">
+                                                <div className="flex items-center mb-3">
+                                                    {/* <img
+                                                        src={review.avatar}
+                                                        alt={review.user}
+                                                        className="w-10 h-10 rounded-full mr-3"
+                                                    /> */}
+                                                    <div>
+                                                        <p className="text-gray-400 font-light">
+                                                            {myReview.review}
+                                                        </p>
+                                                        <div className="flex items-center">
+                                                            <div className="rating-stars mr-2">
+                                                                {[...Array(5)]?.map(
+                                                                    (_, i) => (
+                                                                        <FiStar
+                                                                            key={i}
+                                                                            className={`${
+                                                                                i <
+                                                                                myReview.rating
+                                                                                    ? "fill-current"
+                                                                                    : ""
+                                                                            }`}
+                                                                        />
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                            <span className="text-sm text-muted-foreground">
+                                                                {myReview?.created_at && new Date(
+                                                                    myReview?.created_at
+                                                                ).toLocaleDateString()
+                                                                }
+                                                            </span>
                                                         </div>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {myReview?.created_at && new Date(
-                                                                myReview?.created_at
-                                                            ).toLocaleDateString()
-                                                            }
-                                                        </span>
                                                     </div>
                                                 </div>
+                                                <p>{review.comment}</p>
                                             </div>
-                                            <p>{review.comment}</p>
+    
                                         </div>
-
+                                    )}
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h2 className="text-xl font-bold text-gray-300">
+                                            Students Reviews
+                                        </h2>
+                                        {!myReview && (<button
+                                            className="btn-primary "
+                                            onClick={() =>
+                                                setShowFeedbackModal(true)
+                                            }
+                                        >
+                                            Leave a Review
+                                        </button>)}
                                     </div>
-                                )}
-                                <div className="flex justify-between items-center mb-2">
-                                    <h2 className="text-xl font-bold">
-                                        Students Reviews
-                                    </h2>
-                                    {!myReview && (<button
-                                        className="btn-primary"
-                                        onClick={() =>
-                                            setShowFeedbackModal(true)
-                                        }
-                                    >
-                                        Leave a Review
-                                    </button>)}
+    
+                                    {reviews ? 
+                                        reviews.map((review) => (
+                                            <div
+                                                key={review.id}
+                                                className="mb-3 pb-3 border-b border-border last:border-b-0 last:mb-0 last:pb-0"
+                                            >
+                                                <div className="flex items-center mb-3">
+                                                    {review.user_image ? (
+                                                        <div className="h-10 w-10 rounded-full overflow-hidden mr-3">
+                                                            <img
+                                                                src={BASE_URL + review.user_image}
+                                                                alt={review.full_name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center mr-3">
+                                                            <UserRound />
+                                                        </div>
+                                                    )}
+        
+                                                    <div className="flex-1">
+                                                        <h5>{review.full_name}</h5>
+                                                        <p className="text-gray-400 font-light line-clamp-2">
+                                                            {review.review}
+                                                        </p>
+                                                        <div className="flex items-center">
+                                                            <div className="rating-stars mr-2">
+                                                                {[...Array(5)]?.map(
+                                                                    (_, i) => (
+                                                                        <FiStar
+                                                                            key={i}
+                                                                            className={`${
+                                                                                i <
+                                                                                review.rating
+                                                                                    ? "fill-current"
+                                                                                    : ""
+                                                                            }`}
+                                                                        />
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                            <span className="text-sm text-muted-foreground">
+                                                                {myReview?.created_at && new Date(
+                                                                        myReview?.created_at
+                                                                    ).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p>{review.comment}</p>
+                                            </div>
+                                        ))
+                                        :
+                                        (
+                                            <div className="text-gray-400 font-light italic">
+                                                No other students reviewed the course yet
+                                            </div>
+                                        )
+                                    }
                                 </div>
 
-                                {reviews && reviews.map((review) => (
-                                    <div
-                                        key={review.id}
-                                        className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0"
-                                    >
-                                        <div className="flex items-center mb-3">
-                                            {/* <img
-                                                src={review.avatar}
-                                                alt={review.user}
-                                                className="w-10 h-10 rounded-full mr-3"
-                                            /> */}
-                                            <div>
-                                                <p className="text-gray-400 font-light">
-                                                    {review.review}
-                                                </p>
-                                                <div className="flex items-center">
-                                                    <div className="rating-stars mr-2">
-                                                        {[...Array(5)]?.map(
-                                                            (_, i) => (
-                                                                <FiStar
-                                                                    key={i}
-                                                                    className={`${
-                                                                        i <
-                                                                        review.rating
-                                                                            ? "fill-current"
-                                                                            : ""
-                                                                    }`}
-                                                                />
-                                                            )
-                                                        )}
-                                                    </div>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {myReview?.created_at && new Date(
-                                                                myReview?.created_at
-                                                            ).toLocaleDateString()}
-                                                    </span>
+                                <div className="bg-card rounded-lg p-6 mt-4">
+                                    {myReport ? 
+                                        (<div className="mb-4">
+                                            <div className="flex md:justify-between md:items-center flex-col md:flex-row">
+                                                <h2 className="text-xl font-bold mb-2 text-gray-300 flex items-center gap-2">
+                                                    <MdError className="text-red-600"/> Your Report
+                                                </h2>
+
+                                                <h5 className="text-sm text-muted-foreground">
+                                                    {myReport?.created_at && new Date(
+                                                        myReport?.created_at
+                                                    ).toLocaleDateString()
+                                                    }
+                                                </h5>
+                                            </div>
+    
+                                            <div className="mb-6 pb-6 border-b border-border last:border-b-0 last:mb-0 last:pb-0">
+                                                <div className="flex items-center mb-3">
+                                                    {/* <img
+                                                        src={review.avatar}
+                                                        alt={review.user}
+                                                        className="w-10 h-10 rounded-full mr-3"
+                                                    /> */}
+                                                    <p className="text-gray-400 font-light">
+                                                        {myReport.report}
+                                                    </p>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <p>{review.comment}</p>
-                                    </div>
-                                ))}
-                            </div>
+    
+                                        </div>)
+                                        :
+                                        (<div className="flex justify-between items-center mb-2">
+                                            <h2 className="text-xl font-bold mb-2 text-gray-300 flex items-center gap-2">
+                                                <MdError className="text-destructive"/> Report Course
+                                            </h2>
+
+                                            <button
+                                                className="btn-primary bg-destructive"
+                                                onClick={() =>
+                                                    setShowReportModal(true)
+                                                }
+                                            >
+                                                Report
+                                            </button>
+                                        </div>)
+                                    }
+                                </div>
+                            </div>    
+
                         )}
                     </div>
 
                     {/* Right Column - Instructor & More */}
                     <div className="lg:w-1/3">
-                        <div className="bg-card rounded-lg p-6 mb-6">
+                        {/* <div className="bg-card rounded-lg p-6 mb-6">
                             <h2 className="text-xl font-bold mb-4">
                                 Instructor
                             </h2>
@@ -851,12 +1023,16 @@ const StreamCourse = () => {
                                 </div>
                             </div>
                             <p className="text-sm mb-4">
-                                {myCourse?.course?.instructor_details?.biography}                            
+                                {myCourse?.course?.instructor_details?.biography}                         
                             </p>
-                            <button className="btn-outline w-full">
+                            <Link to={`/student/tutors/${myCourse?.course?.instructor}`} className="btn-outline w-full">
                                 View Profile
-                            </button>
-                        </div>
+                            </Link>
+                        </div> */}
+
+                        {myCourse && <InstructorDetails purchase_type={myCourse?.purchase_type} course={myCourse.course} />}
+
+                        {videoSessions && <VideoSessionList videoSessions={videoSessions} />}
 
                     </div>
                 </div>
@@ -921,6 +1097,48 @@ const StreamCourse = () => {
                                     disabled={rating === 0}
                                 >
                                     Submit Review
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showReportModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-card rounded-lg max-w-md w-full p-6">
+                        <h2 className="text-xl font-bold mb-4">
+                            Course Feedback
+                        </h2>
+
+                        <form onSubmit={submitReport}>
+                            <div className="mb-6">
+                                <label htmlFor="report" className="block mb-2">
+                                    Report
+                                </label>
+                                <textarea
+                                    id="report"
+                                    rows="4"
+                                    className="w-full bg-muted border border-border rounded-md p-3 text-foreground"
+                                    placeholder="Report your experience with this course ..."
+                                    value={report}
+                                    onChange={(e) => setReport(e.target.value)}
+                                ></textarea>
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    className="btn-outline"
+                                    onClick={() => setShowReportModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                >
+                                    Submit Report
                                 </button>
                             </div>
                         </form>

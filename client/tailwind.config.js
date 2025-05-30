@@ -60,7 +60,19 @@ module.exports = {
 			'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 			border: 'hsl(var(--sidebar-border))',
 			ring: 'hsl(var(--sidebar-ring))'
-		  }
+		  },
+		  success: "hsl(var(--success))",
+		  "success-foreground": "hsl(var(--success-foreground))",
+  
+		  pending: "hsl(var(--pending))",
+		  "pending-foreground": "hsl(var(--pending-foreground))",
+  
+		  warning: "hsl(var(--warning))",
+		  "warning-foreground": "hsl(var(--warning-foreground))",
+  
+		  info: "hsl(var(--info))",
+		  "info-foreground": "hsl(var(--info-foreground))",
+  
 		},
 		borderRadius: {
 		  lg: 'var(--radius)',

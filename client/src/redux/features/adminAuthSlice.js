@@ -1,3 +1,5 @@
+// not using as of now
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 // import api from "../../services/api/axiosInterceptor";
 import storage from "redux-persist/lib/storage";

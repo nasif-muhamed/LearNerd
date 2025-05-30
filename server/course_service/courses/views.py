@@ -1,13 +1,19 @@
+import logging
 import cloudinary.uploader
-import jwt
+import json
+# import jwt
+# import pytz
 import stripe
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count
 from django.db import DatabaseError
 from django.conf import settings
+from django.db import connection, IntegrityError
+# from dateutil import parser
+# from datetime import datetime, timedelta
 
-from rest_framework import viewsets, generics, status
+from rest_framework import viewsets, generics, status # filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
@@ -15,10 +21,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
 from rest_framework.exceptions import PermissionDenied
+# from rest_framework.decorators import action
+from django.utils import timezone
 
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
-    SectionItemCompletion, Assessment, Review
+    SectionItemCompletion, Assessment, Review, Report, NoteSectionItem, VideoSession
 )
 
 from .serializers import (
@@ -26,12 +34,34 @@ from .serializers import (
     CourseRequirementSerializer, CourseObjectivesRequirementsSerializer, SectionSerializer,
     SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
-    ReviewCreateSerializer, ReviewSerializer
+    ReviewCreateSerializer, ReviewSerializer, ReportCreateSerializer, ReportSerializer, VideoSessionSerializer,
+    TutorVideoSessionSerializer,
 )
-from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor
+from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor, IsUserAdmin
 from .services import CallUserService, UserServiceException
+from .rabbitmq_publisher import publish_notification_event
+from banners.utils import get_home_banner
+from transactions.utils import record_course_purchase, record_course_refund, record_transaction_reported, change_transaction_status_back_to_pending
+from course_service.zego_cloud.token04 import generate_token04
+from .utils import mark_purchase_completed
 
+logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
+
+class HomeView(APIView):
+    permission_classes = [IsUser]
+    def get(self, request):
+        user_id = request.user_payload['user_id']
+        # Get 4 purchases for the user with related course data
+        purchases = Purchase.objects.filter(user=user_id).select_related('course')[:4]
+        my_course_serializer = StudentMyCourseSerializer(purchases, many=True)
+
+        courses = Course.objects.filter(is_complete=True, is_available=True)[:3]
+        course_serializer = CourseSerializer(courses, many=True)
+
+        ad_details = get_home_banner()
+        print('ad_details:', ad_details)
+        return Response({'my_courses': my_course_serializer.data, 'courses': course_serializer.data}, status=status.HTTP_200_OK)
 
 # Custom pagination class to handle pagination in API responses
 class CustomPagination(PageNumberPagination):
@@ -652,11 +682,21 @@ class CoursePurchaseView(APIView):
             serializer = PurchaseCreateSerializer(data=purchase_data)
             if serializer.is_valid():
                 serializer.save()
+                publish_notification_event(
+                   event_type='course.purchase',
+                   data={
+                       'student_id': user_id,
+                       'tutor_id': course.instructor,
+                       'course_title': course.title,
+                       'purchase_type': 'freemium',
+                   }
+                )
                 return Response({
                     'detail': 'Course purchased successfully',
                     'purchase_id': serializer.data.get('id'),
                     'is_freemium': True
                 }, status=status.HTTP_201_CREATED)
+
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         # elif purchase_type == 'subscription':
@@ -755,6 +795,9 @@ class CreatePaymentIntentView(APIView):
             if course.subscription_amount != float(request.data.get('amount')):
                 return Response({'error': 'Invalid amount', 'details': 'Amount mismatch'}, status=400)
             
+            if course.instructor == user_id:
+                return Response({'detail': 'You cannot purchase your own course'}, status=status.HTTP_400_BAD_REQUEST)
+
             # Create a payment intent
             intent = stripe.PaymentIntent.create(
                 amount=int(course.subscription_amount * 100),  # Amount in cents
@@ -809,7 +852,6 @@ class StripeWebhookView(APIView):
             # purchase.stripe_payment_intent_id = session.get('payment_intent')
             # purchase.save()
         if event['type'] == 'payment_intent.succeeded':
-            print('succeed++++++++++')
             intent = event['data']['object']
             user_id = intent['metadata']['user_id']
             purchase_type = intent['metadata']['purchase_type']
@@ -841,10 +883,29 @@ class StripeWebhookView(APIView):
                 # Only update if the existing purchase is freemium
                 if purchase.purchase_type == 'freemium':
                     serializer = PurchaseCreateSerializer(purchase, data=purchase_data, partial=True)
+                    
                     if serializer.is_valid():
-                        serializer.save()
+                        purchase = serializer.save()
+
+                        try:
+                            record_course_purchase(purchase, 'stripe', stripe_payment_intent_id)
+                        except IntegrityError:
+                            return Response({"detail": "A database error occurred during course purchase. contact admin if amount is debited"}, status=status.HTTP_400_BAD_REQUEST)
+                        except Exception as e:
+                            return Response({"detail": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
                         print('Freemium upgraded to subscription ----------------')
+                        publish_notification_event(
+                            event_type='course.upgraded',
+                            data={
+                                'student_id': user_id,
+                                'tutor_id': course.instructor,
+                                'course_title': course.title,
+                                'purchase_type': 'subscription',
+                            }
+                        )
                         return Response(serializer.data, status=status.HTTP_200_OK)
+                    
                     print('serializer not valid', serializer.errors)
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
                 
@@ -852,7 +913,22 @@ class StripeWebhookView(APIView):
 
             serializer = PurchaseCreateSerializer(data=purchase_data)
             if serializer.is_valid():
-                serializer.save()
+                purchase = serializer.save()
+                try:
+                    record_course_purchase(purchase, 'stripe', stripe_payment_intent_id)
+                except IntegrityError:
+                    return Response({"detail": "A database error occurred during course purchase. contact admin if amount is debited"}, status=status.HTTP_400_BAD_REQUEST)
+                except Exception as e:
+                    return Response({"detail": f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                publish_notification_event(
+                   event_type='course.purchase',
+                   data={
+                       'student_id': user_id,
+                       'tutor_id': course.instructor,
+                       'course_title': course.title,
+                       'purchase_type': 'subscription',
+                   }
+                )
                 print('saved----------------')
                 return Response( serializer.data, status=status.HTTP_201_CREATED )
             print('serializer not valid', serializer.errors)
@@ -865,8 +941,6 @@ class StudentMyCoursesListView(APIView):
     # permission_classes = [IsAuthenticated]
 
     def get(self, request, student_id):
-        print('StudentMyCoursesListView headers:', request.headers)
-        print('StudentMyCoursesListView user_payload:', request.user_payload)
         user_id = request.user_payload['user_id']
 
         if not student_id == user_id:
@@ -920,13 +994,17 @@ class StudentMyCourseDetailView(APIView):
             user_id = request.user_payload['user_id']
             purchase = Purchase.objects.get(course=course_id, user=user_id)
             serializer = StudentMyCourseDetailSerializer(purchase)
+            # response_data = serializer.data
+            # if purchase.purchase_type == 'freemium':
+            #     ad_content = get_ad_content()
+            #     response_data['ads'] = ad_content
             return Response(serializer.data)
         except Purchase.DoesNotExist:
             return Response({"error": "Course purchase not found"}, status=404)
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
-        
+
 # Mark checked - Submit Assessment Answers of an enrolled course
 class StudentAssessmentSubmitView(APIView):
     # permission_classes = [IsAuthenticated]
@@ -948,6 +1026,9 @@ class StudentAssessmentSubmitView(APIView):
                         correct_answers += 1
 
             # Update the purchase record to indicate the assessment was passed
+                
+            if correct_answers:
+                mark_purchase_completed(purchase)
             if correct_answers >= (questions.count() * passing_score / 100):
                 section_item_completion, created = SectionItemCompletion.objects.get_or_create(
                     purchase=purchase, section_item=assement.section_item
@@ -977,6 +1058,7 @@ class StudentLectureSubmitView(APIView):
             section_item_completion, created = SectionItemCompletion.objects.get_or_create(
                 purchase=purchase, section_item=section_item
             )
+            mark_purchase_completed(purchase)
             if created or not section_item_completion.completed:
                 section_item_completion.completed = True
                 section_item_completion.save()
@@ -990,6 +1072,32 @@ class StudentLectureSubmitView(APIView):
             return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+class AdViewedSubmitView(APIView):
+    def post(self, request, item_id):
+        try:
+            user_id = request.user_payload['user_id']
+            section_item = SectionItem.objects.get(id=item_id)
+            # Check if the user has already purchased the course
+            purchase = Purchase.objects.get(course=section_item.section.course, user=user_id)
+
+            section_item_completion, created = SectionItemCompletion.objects.get_or_create(
+                purchase=purchase, section_item=section_item,
+                defaults={'ad_viewed': True}
+            )
+            if not created and not section_item_completion.ad_viewed:
+                section_item_completion.ad_viewed = True
+                section_item_completion.save()
+
+            return Response({'status': 'updated ad_viewed'})
+        
+        except SectionItem.DoesNotExist:
+            return Response({"error": "Item not found"}, status=404)
+        except Purchase.DoesNotExist:
+            return Response({'detail': 'You are not enrolled in this course'}, status=status.HTTP_403_FORBIDDEN)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 
 # class EvaluateQuizView(APIView):
 #     permission_classes = [AllowAny]
@@ -1049,13 +1157,29 @@ class StudentFetchTopTutorsView(APIView):
 
     def get(self, request):
         try:
-            # Fetch top tutors based on course enrollments or ratings
-            tutors = Course.objects.values('instructor').annotate(
-                total_courses=Count('id'),
-                total_enrollments=Count('purchases')
-            ).order_by('-total_enrollments')
-            print('tutors:', tutors)
-            # If no tutors found, return a message
+            # tutors = Course.objects.values('instructor').annotate(
+            #     total_courses=Count('id'),
+            #     total_enrollments=Count('purchases')
+            # ).order_by('-total_enrollments')
+
+            # Fetch top tutors based on course enrollments or ratings. Previously used the above method but giving wrong results for total_courses & total_enrollments.
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        c.instructor, 
+                        COUNT(DISTINCT c.id) AS total_courses, 
+                        COUNT(p.id) AS total_enrollments 
+                    FROM courses_course c 
+                    LEFT JOIN courses_purchase p ON p.course_id = c.id 
+                    WHERE c.is_available = TRUE 
+                    GROUP BY c.instructor 
+                    ORDER BY total_enrollments DESC;
+                """)
+                # Fetch all rows and convert to list of dicts
+                columns = ['instructor', 'total_courses', 'total_enrollments']
+                rows = cursor.fetchall()
+                tutors = [dict(zip(columns, row)) for row in rows]
+
             if not tutors:
                 return Response({"message": "No tutors found."}, status=404)
 
@@ -1067,10 +1191,8 @@ class StudentFetchTopTutorsView(APIView):
             try:
                 response_user_service = call_user_service.get_users_details(tutor_ids)
             except UserServiceException as e:
-                # Handle user service exceptions and return appropriate error
                 return Response({"error": str(e)}, status=503)
             except Exception as e:
-                # Catch any unexpected exceptions
                 return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
             tutors_data = response_user_service.json()
@@ -1082,40 +1204,60 @@ class StudentFetchTopTutorsView(APIView):
                     status=500
                 )
 
-            result = []
-            for tutor, details in zip(paginated_tutors, tutors_data):
-                result.append({
+            result = [
+                {
                     'tutor_id': tutor['instructor'],
                     'course_count': tutor['total_courses'],
                     'enrollment_count': tutor['total_enrollments'],
                     'tutor_details': details
-                })
-
-            print('result:', result)
+                }
+                for tutor, details in zip(paginated_tutors, tutors_data)
+            ]
+            # logger.debug(f"Returning {len(result)} top tutors: {result}")
             return paginator.get_paginated_response(result)
 
         except DatabaseError as db_error:
+            logger.error(f"Database error for instructor: {str(e)}")
             return Response({"error": f"Database error: {str(db_error)}"}, status=500)
 
         except Exception as e:
+            logger.error(f"Unexpected error: {str(e)}")
             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
 # Total courses and enrollments of a tutor - called from user_service
 class StudentTutorAnalysisView(APIView):
     def get(self, request, id):
         try:
-            # Count the number of courses uploaded by the tutor
-            stats = Course.objects.filter(instructor=id).aggregate(
-                total_courses=Count('id'),
-                total_enrollments=Count('purchases')
-            )
-            # Return a response with total courses and total enrollments
+            # stats = Course.objects.filter(instructor=id, is_available=True).aggregate(
+            #     total_courses=Count('id'),
+            #     total_enrollments=Count('purchases')
+            # )
+
+            # Count the number of courses uploaded by the tutor. Previously used the above method but giving wrong results for total_courses & total_enrollments. 
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT 
+                        COUNT(DISTINCT c.id) AS total_courses,
+                        COUNT(p.id) AS total_enrollments
+                    FROM courses_course c
+                    LEFT JOIN courses_purchase p ON p.course_id = c.id
+                    WHERE c.instructor = %s AND c.is_available = TRUE;
+                """, [id])
+                row = cursor.fetchone()  # returns tuple
+            total_courses, total_enrollments = row
+
+            logger.debug(f"instructor: {id}, total_courses: {total_courses}, total_enrollments: {total_enrollments}")
             return Response({
-                'total_courses': stats['total_courses'],
-                'total_enrollments': stats['total_enrollments']
+                'total_courses': total_courses,
+                'total_enrollments': total_enrollments,
             }, status=status.HTTP_200_OK)
+        
+        except DatabaseError as e:
+            logger.error(f"Database error for instructor {id}: {str(e)}")
+            return Response({"error": "A database error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
+            logger.error(f"Unexpected error for instructor {id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Tutor can see the preview of the course and students enrolled in it
@@ -1186,17 +1328,35 @@ class ReviewListCreateAPIView(APIView):
             if Review.objects.filter(user=user_id, course=course).exists():
                 return Response({"error": "You have already reviewed this course"}, status=status.HTTP_400_BAD_REQUEST)
 
+            purchase = Purchase.objects.get(user=user_id, course=course)
+            sections = SectionItem.objects.filter(section__course=course).count()
+            completed_sections = SectionItemCompletion.objects.filter(purchase=purchase, completed=True).count()
+            print('eligible to review:', sections, completed_sections)
+            if sections != completed_sections:
+                print('sections and completed are not equal')
+                return Response({"error": "You have to complete the course to post a review"}, status=status.HTTP_400_BAD_REQUEST)
+
             serializer = ReviewCreateSerializer( data=request.data, context={'request': request} )
             
             if serializer.is_valid():
+                print('serializer before publish:', serializer)
                 serializer.save( user=user_id, course=course )
+                publish_notification_event(
+                    event_type='course.review',
+                    data={
+                        'student_id': user_id,
+                        'tutor_id': course.instructor,
+                        'course_title': course.title,
+                        'rating': serializer.data['rating'],
+                        'review': serializer.data['review']
+                    }
+                )
                 return Response( serializer.data, status=status.HTTP_201_CREATED )
             return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
             
         except Course.DoesNotExist:
             return Response( {"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND )
         
-
 # class CourseReviewsView(generics.ListAPIView):
 #     serializer_class = ReviewSerializer
 
@@ -1205,8 +1365,114 @@ class ReviewListCreateAPIView(APIView):
 #         print()
 #         return Review.objects.filter(course__id=course_id).order_by('-created_at')
 
-# Fetch Reviews of a course for a student, incuding own review
-class StudentCourseReviewsView(APIView):
+# Report a course
+class ReportListCreateAPIView(APIView):
+    permission_classes = [IsProfileCompleted]
+
+    def post(self, request, course_id):
+        print('here in Report')
+        try:
+            user_id = request.user_payload['user_id']
+            course = Course.objects.get(id=course_id)
+            
+            # Check if user already reported this course
+            if Report.objects.filter(user=user_id, course=course).exists():
+                return Response({"error": "You have already reported this course"}, status=status.HTTP_400_BAD_REQUEST)
+
+            purchase = Purchase.objects.get(user=user_id, course=course)
+            serializer = ReportCreateSerializer( data=request.data, context={'request': request} )
+
+            if serializer.is_valid():
+                print('serializer before publish:', serializer)
+                serializer.save( user=user_id, course=course )
+                if purchase.purchase_type == 'subscription' and not purchase.is_safe_period_over: 
+                    record_transaction_reported(purchase)
+                publish_notification_event(
+                    event_type='course.report',
+                    data={
+                        'student_id': user_id,
+                        'tutor_id': course.instructor,
+                        'course_title': course.title,
+                        'report': serializer.data['report']
+                    }
+                )
+                return Response( serializer.data, status=status.HTTP_201_CREATED )
+            return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
+            
+        except Purchase.DoesNotExist:
+            return Response({"error": "You must purchase the course to report it"}, status=status.HTTP_403_FORBIDDEN)
+
+        except Course.DoesNotExist:
+            return Response( {"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND )
+
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+class AdminListReportsAPIView(APIView):
+    permission_classes = [IsAdminUserCustom]
+    pagination_class = CustomPagination
+
+    def get(self, request):
+        try:
+            reports = Report.objects.all()
+            paginator = self.pagination_class()
+            page = paginator.paginate_queryset(reports, request)
+            serializer = ReportSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminReportActionPIView(APIView):
+    permission_classes = [IsAdminUserCustom]
+
+    def patch(self, request, report_id):
+        try:
+            print('AdminReportActionPIView course_service')
+            report = Report.objects.get(id=report_id)
+            purchase = Purchase.objects.get(course=report.course, user=report.user)
+            if request.data.get('status') == 'refunded':
+                if report.resolved:
+                    return Response({"error": "Report already resolved"}, status=status.HTTP_400_BAD_REQUEST)
+                if purchase.purchase_type == 'freemium':
+                    return Response({"error": "Freemium purchase cannot be refunded"}, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer = ReportSerializer(report, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save(resolved = True)
+                if serializer.data['status'] == 'refunded':
+                    record_course_refund(purchase)
+                    publish_notification_event(
+                        event_type='course.report.refund',
+                        data={
+                            'student_id': report.user,
+                            'tutor_id': report.course.instructor,
+                            'course_title': report.course.title,
+                            'amount': str(purchase.subscription_amount),
+                        }
+                    )
+
+                if serializer.data['status'] == 'rejected' or serializer.data['status'] == 'resolved':
+                    if purchase.purchase_type == 'subscription':
+                        change_transaction_status_back_to_pending(purchase)
+                    publish_notification_event(
+                        event_type='course.report.resolved' if serializer.data['status'] == 'resolved' else 'course.report.rejected',
+                        data={
+                            'student_id': report.user,
+                            'tutor_id': report.course.instructor,
+                            'course_title': report.course.title,
+                            'amount': str(purchase.subscription_amount),
+                        }
+                    )
+
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Report.DoesNotExist:
+            return Response({"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        
+# Fetch Reviews of a course for a student, incuding own review and report if any
+class StudentCourseFeedbackView(APIView):
     permission_classes = [IsUser]
 
     def get(self, request, course_id):
@@ -1219,11 +1485,44 @@ class StudentCourseReviewsView(APIView):
             my_review = Review.objects.filter(course=course, user=user_id).first()
             if my_review:
                 my_review_serializer = ReviewSerializer(my_review)
-            reviews = Review.objects.filter(course=course).exclude(user=user_id)[:4]
+            my_report = Report.objects.filter(course=course, user=user_id).first()
+            if my_report:
+                my_report_serializer = ReportSerializer(my_report)
+
+            reviews = Review.objects.filter(course=course).exclude(user=user_id)[:10]
             serializer = ReviewSerializer(reviews, many=True)
+            serializer_data = serializer.data
+            user_ids = [review['user'] for review in serializer_data]
+            print('user_ids:', user_ids)
+            result = []
+            if len(user_ids):
+                try:
+                    response_user_service = call_user_service.get_users_details(user_ids)
+                except UserServiceException as e:
+                    # Handle user service exceptions and return appropriate error
+                    return Response({"error": str(e)}, status=503)
+                except Exception as e:
+                    # Catch any unexpected exceptions
+                    return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+                users_data = response_user_service.json()
+                if len(users_data) != len(serializer_data):
+                    return Response(
+                        {"error": "Mismatch between number of tutors and tutor details returned."},
+                        status=500
+                    )
+
+                for review, user in zip(serializer_data, users_data):
+                    print('user:', user)
+                    review['full_name'] = user['first_name'] + ' ' + user['last_name']
+                    review['user_image'] = user['image']
+                    result.append(review)
+
+            print('result:', result)
             data = {
                 'my_review': my_review_serializer.data if my_review else None,
-                'reviews': serializer.data
+                'my_report': my_report_serializer.data if my_report else None,
+                'reviews': result
             }
             return Response(data, status=status.HTTP_200_OK)
         except Course.DoesNotExist:
@@ -1232,7 +1531,7 @@ class StudentCourseReviewsView(APIView):
             return Response({"error": "Review not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
+
 # Fetch all courses uploaded by a tutor and enrolled by a student - for admin
 class AdminUserCoursesDetailsView(APIView):
     permission_classes = [IsAdminUserCustom]
@@ -1255,4 +1554,287 @@ class AdminUserCoursesDetailsView(APIView):
             return Response({"error": "Course not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# request a video session by the student.
+class ScheduleSessionView(APIView):
+    permission_classes = [IsUser]
+
+    def post(self, request, purchase_id):
+        user_id = request.user_payload['user_id']
+        purchase = Purchase.objects.get(id=purchase_id)
+        tutor = purchase.course.instructor
+        student = purchase.user
+
+        # checking if not the requested user is either tutor or student.
+        if student != user_id: # tutor != user_id and
+            return Response({'detail': 'you should be a member of the purchase to schedule a session'}, status=status.HTTP_403_FORBIDDEN)
+
+        # checking if the tutor trying to request a session.
+        if request.data.get('status') != 'pending': # and student != user_id:
+            return Response({'detail': 'a request status can only be pending'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # # checking if the student trying to change the status of the schedule.
+        # if request.data.get('status') == 'approved' and tutor != user_id:
+        #     return Response({'detail': 'only tutor have the authority to approve a session'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # checking if freemium user trying for a video session.
+        if purchase.purchase_type != 'subscription' and not purchase.video_session:
+            return Response({'detail': 'Only subscribed user has access to the feature'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # checking if the user already has a pending session or not.
+        if purchase.video_sessions.filter(Q(status='pending') | Q(status='approved')).exists():
+            return Response({'detail': 'You already have a pending session'}, status=status.HTTP_409_CONFLICT)
+
+        # checking if the user have already used all his available video sessions or not.
+        if purchase.video_sessions.count() >= purchase.video_session:
+            return Response({'detail': 'Your available video sessions are over'}, status=status.HTTP_403_FORBIDDEN)
+        
+
+        request.data['tutor'] = tutor
+        request.data['student'] = student
+
+        print('request data;', request.data)
+
+        serializer = VideoSessionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(purchase=purchase)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        print('errors:', serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # def patch(self, request, pk):
+    #     try:
+    #         user_id = request.user_payload['user_id']
+    #         session = VideoSession.objects.get(pk=pk)
+    #         print('user:', user_id, 'session:', session)
+    #         print('request data:', request.data)
+    #         return Response({'working':'well'})
+    #     except VideoSession.DoesNotExist:
+    #         return Response({"error": "Video Session not found"}, status=status.HTTP_404_NOT_FOUND)
+    #     except Exception as e:
+    #         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# list video sessions of a tutor
+class TutorVideoSessionsView(APIView):
+    permission_classes = [IsUser]
+    pagination_class = CustomPagination
+
+    def get(self, request):
+        try:
+            user_id = request.user_payload['user_id']
+            sessions = VideoSession.objects.filter(tutor=user_id)
+            status_param = request.query_params.get('status', None)
+            print('status_param:', status_param)
+            if status_param:
+                sessions = sessions.filter(status=status_param)
+
+            paginator = self.pagination_class()
+            page = paginator.paginate_queryset(sessions, request)
+            print('page:', page)
+            user_ids = {session.student for session in page}
+            print('user ids Videos session:', user_ids)
+            users_dict={}
+            if user_ids:
+                response_user_service = call_user_service.get_users_details(list(user_ids))
+                users_data = response_user_service.json()
+                users_dict = {user['id']: user for user in users_data}
+                print('users_data:', users_data)
+            serializer = TutorVideoSessionSerializer(page, many=True, context={"users_dict": users_dict})
+            return paginator.get_paginated_response(serializer.data)
+
+        except UserServiceException as e:
+            return Response({"error": str(e)}, status=503)
+        
+        except Exception as e:
+            return Response({'detail': f'Error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# from .models import VideoSession
+# from .serializers import VideoSessionSerializer, VideoSessionScheduleSerializer
+# from dateutil import parser
+
+# class TutorSessionViewSet(viewsets.ModelViewSet):
+#     """
+#     ViewSet for tutors to manage their teaching sessions.
+#     Includes filtering by status, pagination, and scheduling functionality.
+#     """
+#     serializer_class = VideoSessionSerializer
+#     permission_classes = [IsUser]
+#     filter_backends = [filters.OrderingFilter]
+#     ordering_fields = ['created_at', 'scheduled_time', 'status']
+#     ordering = ['-created_at']
+    
+#     def get_queryset(self):
+#         """
+#         Return sessions where the current user is the tutor.
+#         Filter by status if provided in query params.
+#         """
+#         user_id = self.request.user_payload['user_id']
+#         queryset = VideoSession.objects.filter(tutor=user_id)
+        
+#         # Filter by status if provided
+#         status_filter = self.request.query_params.get('status', None)
+#         if status_filter and status_filter != 'all':
+#             queryset = queryset.filter(status=status_filter)
+            
+#         return queryset
+    
+#     def update(self, request, *args, **kwargs):
+#         """
+#         Override update to handle scheduling logic when approving sessions.
+#         """
+#         try:
+#             instance = self.get_object()
+#             print(f"Retrieved instance: {instance}")
+#             # Check if the user is the tutor for this session
+#             if instance.tutor != request.user_payload['user_id']:
+#                 return Response(
+#                     {"detail": "You don't have permission to update this session."},
+#                     status=status.HTTP_403_FORBIDDEN
+#                 )
+            
+#             print('request data:', request.data)
+#             status = request.data['status']
+#             scheduled_time = request.data['scheduled_time']
+#             duration_minutes = request.data['duration_minutes']
+#             formated_time = parser.parse(scheduled_time)
+#             end_time = formated_time + timedelta(minutes=int(duration_minutes))
+
+#             print('formated_time:', formated_time, end_time)
+
+#             # If we're updating status to approved and there's scheduling data
+#             # if 'scheduled_time' in request.data and request.data.get('status') == 'approved':
+#             #     # Use a separate serializer for scheduling validation
+#             #     schedule_serializer = VideoSessionScheduleSerializer(instance, data=request.data, context={'request': request})
+#             #     schedule_serializer.is_valid(raise_exception=True)
+                
+#             #     # Parse scheduled time from frontend (assuming ISO format)
+#             #     try:
+#             #         # Convert the string to datetime object
+#             #         scheduled_time_str = request.data.get('scheduled_time')
+#             #         duration_minutes = int(request.data.get('duration_minutes', 60))
+                    
+#             #         # Parse the datetime string
+#             #         scheduled_time = parser.parse(scheduled_time_str)
+                    
+#             #         # If the datetime is naive (no timezone info), assume it's in the user's timezone
+#             #         if scheduled_time.tzinfo is None:
+#             #             # Get the timezone from settings
+#             #             asia_kolkata = pytz.timezone('Asia/Kolkata')
+#             #             scheduled_time = asia_kolkata.localize(scheduled_time)
+                    
+#             #         # Convert to UTC for storage
+#             #         scheduled_time_utc = scheduled_time.astimezone(pytz.UTC)
+                    
+#             #         # Calculate ending time
+#             #         ending_time_utc = scheduled_time_utc + timedelta(minutes=duration_minutes)
+                    
+#             #         # Update the request data
+#             #         request.data['scheduled_time'] = scheduled_time_utc
+#             #         request.data['ending_time'] = ending_time_utc
+                    
+#         except (ValueError, TypeError) as e:
+#             return Response(
+#                 {"detail": f"Invalid date format: {str(e)}"},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+                
+#         return super().update(request, *args, **kwargs)
+    
+#     @action(detail=True, methods=['post'])
+#     def mark_completed(self, request, pk=None):
+#         """
+#         Custom action to mark a session as completed.
+#         """
+#         session = self.get_object()
+        
+#         # Check if the user is the tutor for this session
+#         if session.tutor != request.user_payload['user_id']:
+#             return Response(
+#                 {"detail": "You don't have permission to update this session."},
+#                 status=status.HTTP_403_FORBIDDEN
+#             )
+            
+#         # Check if the session is eligible to be marked as completed
+#         if session.status != 'approved':
+#             return Response(
+#                 {"detail": "Only approved sessions can be marked as completed."},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
+            
+#         # Update the session status
+#         session.status = 'completed'
+#         session.save()
+        
+#         serializer = self.get_serializer(session)
+#         return Response(serializer.data)
+    
+class VideoSessionUpdateView(APIView):
+    def get_object(self, pk):
+        try:
+            return VideoSession.objects.get(pk=pk)
+        except VideoSession.DoesNotExist:
+            raise Http404
+
+    def patch(self, request, pk, format=None):
+        user_id = request.user_payload['user_id']
+        session_status = request.data.get('status')
+        session = self.get_object(pk)
+        if not user_id == session.purchase.course.instructor:
+            return Response({'error': 'only tutor has the access to this course'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if session_status == 'completed':
+            request.data['is_active'] = False
+        serializer = VideoSessionSerializer(session, data=request.data, partial=True)
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class GetSessionTokenView(APIView):
+    permission_classes = [IsUser]
+
+    def post(self, request):
+        session_id = request.data.get("session_id")
+        print('session_id', session_id)
+        try:
+            user_id = request.user_payload['user_id']
+            session = VideoSession.objects.get(id=session_id, is_active=True)
+
+            # Verify user is either tutor or student
+            if user_id not in [session.tutor, session.student]:
+                return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+            
+            # Check if session is within a valid time window (e.g., 1 minutes before to end of session)
+            now = timezone.now()
+            session_end = session.scheduled_time + timezone.timedelta(minutes=session.duration_minutes)
+            print('before if')
+            if now < session.scheduled_time - timezone.timedelta(minutes=5) or now > session_end:
+                return Response({"error": "Session not active"}, status=status.HTTP_400_BAD_REQUEST)
+
+            print('before generate_zego_token')
+            payload = {
+                "room_id": session.room_id, # Room ID
+                "privilege": {
+                    1 : 1, # key 1 represents room permission, value 1 represents allowed, so here means allowing room login; if the value is 0, it means not allowed
+                    2 : 1  # key 2 represents push permission, value 1 represents allowed, so here means allowing push; if the value is 0, it means not allowed
+                }, 
+                "stream_id_list": None # Passing None means that all streams can be pushed. If a streamID list is passed in, only the streamIDs in the list can be pushed
+            }
+            effective_time_in_seconds = session.duration_minutes * 60
+            token_info = generate_token04(app_id=int(settings.ZEGO_APP_ID), user_id=str(user_id), secret=settings.ZEGO_SERVER_SECRET, 
+                                     effective_time_in_seconds=effective_time_in_seconds, payload=json.dumps(payload))
+            
+            print([token_info.token, token_info.error_code, token_info.error_message])
+            return Response({
+                "token": token_info.token,
+                "app_id": int(settings.ZEGO_APP_ID),
+                "room_id": session.room_id,
+                "user_id": str(user_id),
+            })
+        except VideoSession.DoesNotExist:
+            return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
         

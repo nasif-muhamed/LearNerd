@@ -23,7 +23,7 @@ const ListTutorsLandingPage = () => {
         setError(null);
 
         try {
-            const response = await api.get("courses/tutors", {
+            const response = await api.get("courses/tutors/", {
                 params: {
                     page: currentPage,
                     page_size: pageSize,

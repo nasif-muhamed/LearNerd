@@ -1,4 +1,7 @@
 import os
+import uuid
+from datetime import timedelta
+from django.utils import timezone
 from django.db import models
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, FileExtensionValidator, MaxLengthValidator, MaxValueValidator
@@ -27,11 +30,12 @@ class Course(models.Model):
     title = models.CharField(max_length=255, db_index=True, unique=True)
     description = models.TextField()
     thumbnail = models.URLField(blank=True, null=True)
-    instructor = models.BigIntegerField()
+    instructor = models.BigIntegerField(db_index=True)
     freemium = models.BooleanField(default=True)
     subscription = models.BooleanField(default=True)
     subscription_amount = models.DecimalField(max_digits=10, decimal_places=2, default=None, null=True, blank=True, validators=[MinValueValidator(0.00)])
     is_available = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
     is_complete = models.BooleanField(default=False)
     step = models.PositiveIntegerField(default=1)
     video_session = models.PositiveIntegerField(validators=[MinValueValidator(1)], null=True, blank=True, default=None)
@@ -59,8 +63,9 @@ class Course(models.Model):
 
     def get_average_rating(self):
         reviews = Review.objects.filter(course=self)
-        if reviews.exists():
-            return reviews.aggregate(models.Avg('rating'))['rating__avg']
+        if reviews.exists(): 
+            avg = reviews.aggregate(models.Avg('rating'))['rating__avg']
+            return round(avg, 1)
         return 0
 
     def get_total_reviews(self):
@@ -94,7 +99,6 @@ class CourseRequirement(models.Model):
     def __str__(self):
         return self.requirement
     
-
 class Section(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sections')
     title = models.CharField(max_length=255)
@@ -177,11 +181,11 @@ class Choice(models.Model):
     def __str__(self):
         return self.text
 
-def validate_pdf(value):
-    ext = os.path.splitext(value.name)[1].lower()
-    valid_extensions = ['.pdf']
-    if ext not in valid_extensions:
-        raise ValidationError('Unsupported file type. Only PDFs are allowed.')
+# def validate_pdf(value):
+#     ext = os.path.splitext(value.name)[1].lower()
+#     valid_extensions = ['.pdf']
+#     if ext not in valid_extensions:
+#         raise ValidationError('Unsupported file type. Only PDFs are allowed.')
     
 class SupportingDocument(models.Model):
     section_item = models.OneToOneField(SectionItem, on_delete=models.CASCADE, related_name='documents')
@@ -215,11 +219,30 @@ class Purchase(models.Model):
 
     def __str__(self):
         return f"{self.user} + {self.course.title}"
+    
+    @property
+    def is_completed(self):
+        total_section_items = SectionItem.objects.filter(section__course=self.course).count()
+        completed_items = self.section_items_completed.filter(completed=True).count()
+        return total_section_items == completed_items
+
+    @property
+    def safe_period_expiry(self):
+        if self.safe_period and self.purchased_at:
+            return self.purchased_at + timedelta(days=self.safe_period)
+        return None
+    
+    @property
+    def is_safe_period_over(self):
+        if self.safe_period_expiry:
+            return self.safe_period_expiry < timezone.now()
+        return False
 
 class SectionItemCompletion(models.Model):
-    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE)
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="section_items_completed")
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name="section_item_completion")
     completed = models.BooleanField(default=False)
+    ad_viewed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -227,7 +250,7 @@ class SectionItemCompletion(models.Model):
 
 class Review(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reviews')
-    user = models.BigIntegerField()
+    user = models.BigIntegerField(db_index=True)
     rating = models.PositiveIntegerField(validators=[MinValueValidator(0), MaxValueValidator(5)])
     review = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -238,10 +261,63 @@ class Review(models.Model):
 
     def __str__(self):
         return f"Review by {self.user} for {self.course.title}"
-    
+
+class Report(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('resolved', 'Resolved'),
+        ('rejected', 'Rejected'),
+        ('refunded', 'Refunded'),
+    )
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='reports')
+    # purchase = models.OneToOneField(Purchase, on_delete=models.CASCADE, related_name='reports')
+    user = models.BigIntegerField(db_index=True)
+    report = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
+    resolved = models.BooleanField(default=False)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    reason = models.TextField(validators=[MaxLengthValidator(500)], blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('course', 'user')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Report by {self.user} for {self.course.title}"
+
 class NoteSectionItem(models.Model):
     section_item = models.ForeignKey(SectionItem, on_delete=models.CASCADE, related_name='notes')
     notes = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"Notes for {self.section_item.title}"
+
+class VideoSession(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('completed', 'Completed'),
+    )
+
+    tutor = models.BigIntegerField(db_index=True)
+    student = models.BigIntegerField(db_index=True)
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="video_sessions")
+    room_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    scheduled_time = models.DateTimeField(null=True, blank=True)
+    ending_time = models.DateTimeField(null=True, blank=True)
+    duration_minutes = models.PositiveIntegerField(default=30, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Session {self.room_id} - {self.tutor} with {self.student}"
+
+    @property
+    def is_upcoming(self):
+        return self.scheduled_time > timezone.now()
+

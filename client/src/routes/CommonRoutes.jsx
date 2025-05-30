@@ -10,17 +10,27 @@ import Profile from "../pages/user/common/Profile";
 import FourNotFour from "../pages/FourNotFour";
 import DynamicRouter from "../routes/user_restrication/DynamicRouter";
 import ForgotPassword from "../pages/user/common/ForgotPassword";
-import StripeProvider from "../services/stripe/StripeProvider";
+import NotificationsPage from "../pages/common/Notifications";
+import LandingPage from "../pages/user/common/LandingPage";
+import Wallet from "../pages/user/common/Wallet";
+import ChatPage from "../pages/common/ChatPage";
+import OneToOneVideoSession from "../pages/user/common/OneToOneVideoSession";
 
 const CommonRoutes = () => {
     return (
         <Routes>
-            <Route path="/test/:id" element={
-                <Test />
-            } />
+            <Route element={<DynamicRouter />}>
+                <Route index element={<LandingPage />}/>
+            </Route>
+
+            <Route path="/test" element={<Test />} />
             <Route path="/" element={<ProtectedRoute />}>
                 <Route path="/logout" element={<Logout />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/wallet" element={<Wallet />} />
+                <Route path="/chats" element={<ChatPage />} />
+                <Route path="/video-call" element={<OneToOneVideoSession />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>

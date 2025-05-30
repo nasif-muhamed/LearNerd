@@ -13,7 +13,9 @@
     "@reduxjs/toolkit": "^2.5.1",
     "@stripe/react-stripe-js": "^3.6.0",
     "@stripe/stripe-js": "^7.0.0",
+    "@zegocloud/zego-uikit-prebuilt": "^2.14.3-beta",
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "firebase": "^11.4.0",
     "lucide-react": "^0.474.0",
     "react": "^19.0.0",
@@ -25,7 +27,8 @@
     "recharts": "^2.15.1",
     "redux-persist": "^6.0.0",
     "sonner": "^2.0.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zego-express-engine-webrtc": "^3.9.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

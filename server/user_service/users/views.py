@@ -8,6 +8,8 @@ from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
+from datetime import timedelta
 
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveAPIView
@@ -22,13 +24,14 @@ from rest_framework import generics
 from rest_framework.exceptions import AuthenticationFailed
 
 from . firebase_auth import auth as firebase_auth
-from . models import AdminUser, BadgesAquired
+from . models import AdminUser, BadgesAquired, Notification, Wallet
 from . serializers import RegisterSerializer, ProfileSerializer, CustomTokenObtainPairSerializer, UserActionSerializer, \
     BadgesAquiredSerializer, BadgeSerializer, ForgotPasswordSerializer, ForgotPasswordOTPVerifySerializer, ForgotPasswordResetSerializer, \
-    ProfileDetailsSerializer
+    ProfileDetailsSerializer, NotificationSerializer, WalletSerializer
 from .tasks import send_otp_email
 from .services import CallCourseService, CourseServiceException
-
+from .message_broker.rabbitmq_publisher import publish_chat_event
+from .utils import is_admin
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
 call_course_service = CallCourseService()
@@ -49,7 +52,6 @@ class RegisterView(APIView):
             print(message)
             recipient_list = [email]
             send_otp_email.delay(subject, message, recipient_list)
-                        
             cache_data = {
                 'otp': otp,
                 'data': serializer.validated_data,
@@ -61,7 +63,6 @@ class RegisterView(APIView):
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
             
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
@@ -89,7 +90,6 @@ class VerifyOTPView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ResendOTPView(APIView):
     permission_classes = [AllowAny]
@@ -144,10 +144,8 @@ class ResendOTPView(APIView):
 
         return Response({'message': 'New OTP sent successfully'}, status=status.HTTP_200_OK)
 
-
 class LoginView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
-
 
 class GoogleLoginView(APIView):
     permission_classes = [AllowAny]
@@ -186,7 +184,6 @@ class GoogleLoginView(APIView):
         except Exception as e:
             return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
 
@@ -215,7 +212,6 @@ class ForgotPasswordView(APIView):
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ForgotPasswordOTPVerifyView(APIView):
     permission_classes = [AllowAny]
@@ -246,7 +242,6 @@ class ForgotPasswordOTPVerifyView(APIView):
             return Response({'error': 'Invalid OTP'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class ForgotPasswordResetView(APIView):
     permission_classes = [AllowAny]
@@ -287,7 +282,6 @@ class ForgotPasswordResetView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-
 class UserView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -305,7 +299,8 @@ class UserView(APIView):
     def patch(self, request):
         try:
             profile = request.user
-            print("Received Data:", request.data) # Debugging
+            is_profile_completed = profile.is_profile_completed
+            print("Received Data:", request.data)
 
         except Profile.DoesNotExist:
             return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -313,11 +308,17 @@ class UserView(APIView):
         serializer = ProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            response_data = {'message': 'user updated successfully'}
+            if not is_profile_completed:
+                refresh = CustomTokenObtainPairSerializer.get_token(profile)
+                access_token = refresh.access_token
+                response_data['refresh'] = str(refresh)
+                response_data['access'] = str(access_token)
+            print('serializer.data +++++++++++:', response_data)
+            return Response(response_data, status=status.HTTP_200_OK)
         
         print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
     queryset = Profile.objects.all()
@@ -325,6 +326,7 @@ class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
     permission_classes = [AllowAny]
     lookup_field = 'pk'
 
+# used for fetching multiple users details - not only tutors.
 class MultipleTutorDetailsView(APIView):
     permission_classes = [AllowAny]
 
@@ -385,8 +387,8 @@ class SingleTutorDetailsView(APIView):
         except Profile.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-def is_admin(user):
-    return AdminUser.objects.filter(profile=user).exists()
+# def is_admin(user):
+#     return AdminUser.objects.filter(profile=user).exists()
 
 # class CheckIsAdmin(APIView):
 #     permission_classes = [IsAuthenticated]
@@ -431,6 +433,21 @@ class UserActionView(APIView):
 
         serializer = UserActionSerializer(user_to_modify)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class AdminUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user =  request.user
+        if not is_admin(user):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            serializer = ProfileDetailsSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'error': f'Un expected error {e}'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class CustomPagination(PageNumberPagination):
@@ -522,14 +539,12 @@ class UsersView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class MyBadgesView(generics.ListAPIView):
     serializer_class = BadgeSerializer
     permission_classes = [IsAuthenticated]  # Ensure the user is authenticated
 
     def get_queryset(self):
         return BadgesAquired.objects.filter(profile=self.request.user)
-
 
 class SubmitQuizView(APIView):
     permission_classes = [IsAuthenticated]
@@ -556,6 +571,13 @@ class SubmitQuizView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
+        if not result['is_passed']:
+            return Response({
+                'badge_acquired': None,
+                'aquired_mark': result['acquired_mark'],
+                'is_passed': result['is_passed']
+            }, status=status.HTTP_201_CREATED)
+
         # Check if this is a new attempt or update existing
         print('here1')
         badge_acquired, created = BadgesAquired.objects.get_or_create(
@@ -572,6 +594,15 @@ class SubmitQuizView(APIView):
         )
         print('here2')
 
+        if result['community'] and created:
+            publish_chat_event(
+                event_type='group_add',
+                data={
+                    'user_id': user.id,
+                    'badge_title': result['title']
+                }
+            )
+
         if not created:
             # Update existing record
             if badge_acquired.aquired_mark < result['acquired_mark']:
@@ -587,3 +618,130 @@ class SubmitQuizView(APIView):
             'aquired_mark': result['acquired_mark'],
             'is_passed': result['is_passed']
         }, status=status.HTTP_201_CREATED)
+
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request):
+        user = request.user
+        status_param = request.query_params.get('status', 'unread')  # Default is 'unread'
+        
+        if status_param == 'read':
+            notifications = Notification.objects.read(user)
+        else:
+            notifications = Notification.objects.unread(user)
+
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        user = request.user
+        notification_id = request.data.get('notification_id')
+        mark_all = request.data.get('mark_all', False)
+
+        updated = None  # Initialize to avoid potential "referenced before assignment"
+
+        if mark_all:
+            updated = Notification.objects.mark_all_read(user)
+
+        elif notification_id:
+            updated = Notification.objects.mark_read(user, notification_id)
+
+        else:
+            return Response(
+                {"error": "Either 'notification_id' or 'mark_all' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if updated:
+            notifications = Notification.objects.read(user)
+            serializer = NotificationSerializer(notifications, many=True)
+            return Response(
+                {"message": "Notification(s) marked as read", 'notifications': serializer.data},
+                status=status.HTTP_200_OK
+            )
+
+        return Response(
+            {"error": "Notification not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+class WalletBalanceView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, id):
+        try:
+            user = Profile.objects.get(id=id)
+            # wallet = user.wallet  # for now commented because lots of users without wallet exist
+            wallet, created = Wallet.objects.get_or_create(user=user)
+            serializer = WalletSerializer(wallet)
+            if created:
+                if serializer.is_valid():
+                    serializer.save()
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            print('wallet:', serializer.data)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        except Profile.DoesNotExist:
+            return Response(
+                {'error': 'Users not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+# class AdminListAllReportsView(APIView):
+#     permission_classes = [AllowAny]
+
+#     def get(self, request):
+#         print('inside get ::::')
+#         user =  request.user
+#         if not is_admin(user):
+#             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+
+#         try:
+#             reports_response = call_course_service.get_all_reports()
+#             reports = reports_response.json()
+#             return Response(reports, status=status.HTTP_200_OK)
+
+#         except CourseServiceException as e:
+#             return Response({"error": str(e)}, status=503)
+        
+#         except Exception as e:
+#             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+class AdminDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if not is_admin(user):
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        filter_type = request.query_params.get('filter', 'all').lower()
+        
+        now = timezone.now()
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today - timedelta(days=today.weekday())
+        month_start = today.replace(day=1)
+
+        time_filters = {
+            'today': {'created_at__gte': today},
+            'week': {'created_at__gte': week_start},
+            'month': {'created_at__gte': month_start},
+            'all': {}
+        }
+
+        filter_params = time_filters.get(filter_type, time_filters['all'])
+        try:
+            users = Profile.objects.filter()
+            if filter_params:
+                users = users.filter(**filter_params)
+            active_users = users.filter(is_active=True).count()
+            blocked_users = users.filter(is_active=False).count()
+
+            return Response({'active_users': active_users, 'blocked_users': blocked_users}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Unexpected error: {str(e)}"}, status=500)

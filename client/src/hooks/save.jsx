@@ -1,1344 +1,649 @@
-import { useState, useEffect } from 'react';
-import { Plus, X, Check, Upload } from 'lucide-react';
-import InputField from './InputField';
-import api from '../../../../../services/api/axiosInterceptor';
-import { toast } from 'sonner'; 
+import React, { useState } from 'react';
+import { Menu, X, CheckCircle, BookOpen, Users, MessageCircle, ArrowRight, User, Search } from 'lucide-react';
 
-const SectionItemForm = ({ 
-    sectionIndex, 
-    itemToEdit, 
-    onSave, 
-    onCancel,
-}) => {
-    const [title, setTitle] = useState("");
-    const [itemType, setItemType] = useState("video");
-    const [videoFile, setVideoFile] = useState(null);
-    const [duration, setDuration] = useState(0)
-    const [thumbnailFile, setThumbnailFile] = useState(null);
-    // const [videoPreview, setVideoPreview] = useState('');
-    // const [thumbnailPreview, setThumbnailPreview] = useState('');
-    const [instructions, setInstructions] = useState("");
-    const [passingScore, setPassingScore] = useState("70");
-    const [pdfs, setPdfs] = useState([]);
-    const [questions, setQuestions] = useState([
-        { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }]},
-    ]);
-    const [errors, setErrors] = useState({});
-    // console.log('videoFile:', videoFile)
-    // console.log('videoPreview:', videoPreview)
-    // console.log('thumbnailFile:', thumbnailFile)
-    // console.log('thumbnailPreview:', thumbnailPreview)
+const LandingPage = () => {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isAuthenticated] = useState(false); // This would be from your auth context
 
-    const handleError = (error, noData) => {
-        if (error.response?.data) {
-            toast.error(Object.values(error.response?.data)?.[0]);
-        } else {
-            toast.error(noData);
-            toast.error(error.message || 'Something went wrong');
+  // Demo statistics data
+    const stats = {
+        courses: 1250,
+        users: 25000,
+        instructors: 450,
+        satisfaction: 98
+    };
+
+  // Demo featured courses
+    const featuredCourses = [
+        {
+        id: 1,
+        title: "React Fundamentals",
+        instructor: "Alex Johnson",
+        price: 49.99,
+        image: "/api/placeholder/320/180",
+        rating: 4.8,
+        category: "Web Development",
+        studentsCount: 1243
+        },
+        {
+        id: 2,
+        title: "Python for Data Science",
+        instructor: "Maria Stevens",
+        price: 59.99,
+        image: "/api/placeholder/320/180",
+        rating: 4.9,
+        category: "Data Science",
+        studentsCount: 2198
+        },
+        {
+        id: 3,
+        title: "UX Design Principles",
+        instructor: "Sam Taylor",
+        price: 39.99,
+        image: "/api/placeholder/320/180",
+        rating: 4.7,
+        category: "Design",
+        studentsCount: 856
         }
-    };
+    ];
 
-    useEffect(() => {
-        if (itemToEdit) {
-            setTitle(itemToEdit.title || "");
-            setItemType(itemToEdit.item_type || "video");
-
-            if (itemToEdit.item_type === "video" && itemToEdit.video) {
-                setVideoFile(itemToEdit.video?.video_file);
-                setThumbnailFile(itemToEdit.video?.thumbnail_file || "");
-            } else if (itemToEdit.item_type === "assessment" && itemToEdit.assessment) {
-                setInstructions(itemToEdit.assessment.instructions || "");
-                setPassingScore(
-                    itemToEdit.assessment.passing_score
-                        ? itemToEdit.assessment.passing_score.toString()
-                        : "70"
-                );
-
-                if (itemToEdit.assessment.questions && itemToEdit.assessment.questions.length > 0) {
-                    setQuestions(
-                        itemToEdit.assessment.questions.map((q) => ({
-                            text: q.text || "",
-                            choices: q.choices && q.choices.length === 4
-                                ? q.choices.map((c) => ({
-                                      text: c.text || "",
-                                      isCorrect: c.is_correct || false,
-                                  }))
-                                : [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }]
-                        }))
-                    );
-                }
-            }
-
-            if (itemToEdit.supporting_documents && itemToEdit.supporting_documents.length > 0) {
-                setPdfs(itemToEdit.supporting_documents);
-            }
-        }
-    }, [itemToEdit]);
-
-    const validateForm = () => {
-        const newErrors = {};
-        if (!title.trim()) newErrors.title = "Title is required";
-        
-        if (itemType === "video") {
-            if (!videoFile) newErrors.video = "Video file is required";
-        } else {
-            if (!instructions.trim())
-                newErrors.instructions = "Instructions are required";
-            if (questions.length === 0)
-                newErrors.questions = "At least one question is required";
-
-            questions.forEach((question, index) => {
-                if (!question.text.trim()) {
-                    newErrors[`question_${index}`] =
-                        "Question text is required";
-                }
-
-                const hasCorrectAnswer = question.choices.some(
-                    (choice) => choice.isCorrect
-                );
-                if (!hasCorrectAnswer) {
-                    newErrors[`question_${index}_choices`] =
-                        "At least one correct answer is required";
-                }
-
-                question.choices.forEach((choice, choiceIndex) => {
-                    if (!choice.text.trim()) {
-                        newErrors[`question_${index}_choice_${choiceIndex}`] =
-                            "Choice text is required";
-                    }
-                });
-            });
-        }
-
-        setErrors(newErrors);
-        if (Object.keys(newErrors).length === 0){
-            return true
-        } else {
-            const dupCheck = new Set()
-            for(let val in newErrors){
-                console.log('dupCheck:', dupCheck)
-                if (!dupCheck.has(newErrors[val])){
-                    toast.error(newErrors[val])
-                } 
-                dupCheck.add(newErrors[val])
-            }
-            return false
-        }
-    };
-
-    const handleVideoUpload = (event) => {
-        const file = event.target.files[0];
-        console.log('video:',file)
-        if (file) {
-            setVideoFile(file);
-            const videoURL = URL.createObjectURL(file);
-
-            // Create a temporary video element to load the file
-            const videoElement = document.createElement('video');
-    
-            // Set the video element's source to the created URL
-            videoElement.src = videoURL;
-            console.log('hereddd')
-            // Once the metadata (like duration) is loaded, log the duration
-            videoElement.onloadedmetadata = () => {
-                console.log('Video Duration:', videoElement.duration);  // duration in seconds
-                setDuration(videoElement.duration)
-            };
-        }
-    };
-
-    const handleThumbnailUpload = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            setThumbnailFile(file);
-            // setThumbnail(file); // Store file object instead of URL
-            // const previewUrl = URL.createObjectURL(file);
-            // setThumbnailPreview(previewUrl);
-        }
-    };
-
-    const handleAddQuestion = () => {
-        setQuestions([
-            ...questions,
-            { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }] },
-        ]);
-    };
-
-    const handleRemoveQuestion = (index) => {
-        const newQuestions = [...questions];
-        newQuestions.splice(index, 1);
-        setQuestions(newQuestions);
-    };
-
-    const handleQuestionChange = (index, text) => {
-        const newQuestions = [...questions];
-        newQuestions[index].text = text;
-        setQuestions(newQuestions);
-    };
-
-    // const handleAddChoice = (questionIndex) => {
-    //     const newQuestions = [...questions];
-    //     newQuestions[questionIndex].choices.push({
-    //         text: "",
-    //         isCorrect: false,
-    //     });
-    //     setQuestions(newQuestions);
-    // };
-
-    // const handleRemoveChoice = (questionIndex, choiceIndex) => {
-    //     const newQuestions = [...questions];
-    //     newQuestions[questionIndex].choices.splice(choiceIndex, 1);
-    //     setQuestions(newQuestions);
-    // };
-
-    const handleChoiceChange = (questionIndex, choiceIndex, text) => {
-        const newQuestions = [...questions];
-        newQuestions[questionIndex].choices[choiceIndex].text = text;
-        setQuestions(newQuestions);
-    };
-
-    const handleChoiceCorrectChange = (questionIndex, choiceIndex) => {
-        const newQuestions = [...questions];
-        if (itemType === "assessment") {
-            newQuestions[questionIndex].choices.forEach(
-                (choice) => (choice.isCorrect = false)
-            );
-        }
-        newQuestions[questionIndex].choices[choiceIndex].isCorrect = true;
-        console.log('newQuestions:', newQuestions)
-        setQuestions(newQuestions);
-    };
-
-    const handlePdfUpload = (event) => {
-        const file = event.target.files[0];
-        if (file && file.type === "application/pdf") {
-            setPdfs([{
-                title: file.name,
-                file: file,
-                size: file.size,
-            }]);
-        }
-    };
-
-    // const handleSubmit = (e) => {
-    //     e.preventDefault();
-    //     if (validateForm()) {
-    //         const sectionItemData = {
-    //             title,
-    //             item_type: itemType,
-    //             order: itemToEdit?.order || 0,
-    //         };
-
-    //         let specificData = {};
-
-    //         if (itemType === "video") {
-    //             specificData = {
-    //                 video: {
-    //                     video_file: videoFile,
-    //                     thumbnail_file: thumbnailFile,
-    //                 },
-    //             };
-    //         } else {
-    //             specificData = {
-    //                 assessment: {
-    //                     instructions,
-    //                     passing_score: parseFloat(passingScore) || 70,
-    //                     questions: questions.map((q, idx) => ({
-    //                         text: q.text,
-    //                         order: idx,
-    //                         choices: q.choices.map((c) => ({
-    //                             text: c.text,
-    //                             is_correct: c.isCorrect,
-    //                         })),
-    //                     })),
-    //                 },
-    //             };
-    //         }
-
-    //         const supportingDocuments = pdfs.map((pdf) => ({
-    //             title: pdf.title,
-    //             file: pdf.file,
-    //             size: pdf.size,
-    //         }));
-
-    //         onSave({
-    //             ...sectionItemData,
-    //             ...specificData,
-    //             supporting_documents: supportingDocuments,
-    //             section_index: sectionIndex,
-    //         });
-    //     }
-    // };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (validateForm()) {
-            const formData = new FormData();
-            
-            // Add basic section item data
-            formData.append('section', 2)
-            formData.append('title', title);
-            formData.append('item_type', itemType);
-            formData.append('order', itemToEdit?.order || 0);
-    
-            if (itemType === 'video') {
-                if (videoFile) formData.append('video_file', videoFile);
-                if (thumbnailFile) formData.append('thumbnail_file', thumbnailFile);
-                const videoData = {
-                    duration: duration,
-                }
-                formData.append('video_data', JSON.stringify(videoData))
-            } else {
-                const assessmentData = {
-                    instructions: instructions,
-                    passing_score: parseFloat(passingScore) || 70,
-                    questions: questions.map((question, qIndex) => ({
-                        text: question.text,
-                        order: qIndex,
-                        choices: question.choices.map(choice => ({
-                            text: choice.text,
-                            is_correct: choice.isCorrect,
-                        })),
-                    })),
-                };
-                formData.append('assessment_data', JSON.stringify(assessmentData));
-            }
-    
-            if (pdfs.length > 0) {
-                const pdf = pdfs[0] 
-                const documentData = {
-                    title : pdf.title
-                }
-                formData.append(`document_file`, pdf.file);
-                formData.append(`document_data`, JSON.stringify(documentData));
-            }
-    
-            try {
-                const response = await api.post('courses/section-items/', formData);
-                console.log('response assessment:', response)
-                if (response.ok) {
-                    const data = response.data;
-                    // onSave(data);
-                } else {
-                    const errorData = response.data;
-                    // setErrors(errorData);
-                }
-
-            } catch (error) {
-                console.error('Upload failed:', error);
-            }
-        }
-    };
-    
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="bg-card border border-border rounded-lg shadow-lg p-6 animate-fade-in"
-        >
-            <div className="mb-6">
-                <h3 className="text-lg font-medium mb-4">
-                    {itemToEdit ? "Edit Section Item" : "New Section Item"}
-                </h3>
-
-                <InputField
-                    id="section-item-title"
-                    label="Title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter section item title"
-                    error={errors.title}
-                    required
-                />
-
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                        Item Type <span className="text-destructive">*</span>
-                    </label>
-                    <div className="flex space-x-4">
-                        <button
-                            type="button"
-                            onClick={() => setItemType("video")}
-                            className={`px-4 py-2 rounded-md transition-all ${
-                                itemType === "video"
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-secondary text-foreground"
-                            }`}
-                            disabled={!!itemToEdit}
-                        >
-                            Video
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setItemType("assessment")}
-                            className={`px-4 py-2 rounded-md transition-all ${
-                                itemType === "assessment"
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-secondary text-foreground"
-                            }`}
-                            disabled={!!itemToEdit}
-                        >
-                            Assessment
-                        </button>
-                    </div>
-                    {itemToEdit && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Item type cannot be changed after creation
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            {itemType === "video" ? (
-                <div className="mb-6 animate-fade-in">
-                    <h3 className="text-lg font-medium mb-4">Video Details</h3>
-
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                            Upload Video <span className="text-destructive">*</span>
-                        </label>
-                        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                            <div className="mb-3 flex flex-col items-center">
-                                <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                                <p className="text-sm text-muted-foreground">
-                                    Drag and drop your video here, or click to browse
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    MP4, AVI, MOV files (max 10MB)
-                                </p>
-                            </div>
-                            <input
-                                type="file"
-                                id="video-upload"
-                                accept="video/*"
-                                onChange={handleVideoUpload}
-                                className="hidden"
-                            />
-                            <label
-                                htmlFor="video-upload"
-                                className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md cursor-pointer inline-block transition-colors"
-                            >
-                                Browse Files
-                            </label>
+        <div className="min-h-screen flex flex-col">
+            {/* Navigation */}
+            <header className="border-b border-border sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center py-4">
+                    <div className="flex items-center gap-2">
+                    {/* Logo */}
+                    <div className="flex items-center">
+                        <div className="bg-accent rounded-full p-2 mr-2">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#3B82F6" />
+                            <circle cx="8" cy="10" r="2" fill="white" />
+                            <circle cx="16" cy="10" r="2" fill="white" />
+                            <path d="M8 15H16M12 13V17" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                            <path d="M7 7L9 9M15 7L17 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
                         </div>
-                        {videoFile && (
-                            <div className="mt-4">
-                                <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-md">
-                                    <div className="flex items-center">
-                                        <span className="text-sm truncate max-w-[250px]">
-                                            {videoFile.name}
-                                        </span>
-                                        {videoFile && (
-                                            <span className="text-xs text-muted-foreground ml-2">
-                                                ({Math.round(videoFile.size / 1024)} KB)
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        {errors.video && (
-                            <p className="mt-2 text-sm text-destructive">
-                                {errors.video}
-                            </p>
-                        )}
+                        <span className="text-2xl font-bold text-foreground">LearNerds</span>
                     </div>
-
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                            Upload Thumbnail
-                        </label>
-                        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                            <div className="mb-3 flex flex-col items-center">
-                                <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                                <p className="text-sm text-muted-foreground">
-                                    Drag and drop your image here, or click to browse
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    JPG, PNG files (max 5MB)
-                                </p>
-                            </div>
-                            <input
-                                type="file"
-                                id="thumbnail-upload"
-                                accept="image/*"
-                                onChange={handleThumbnailUpload}
-                                className="hidden"
-                            />
-                            <label
-                                htmlFor="thumbnail-upload"
-                                className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md cursor-pointer inline-block transition-colors"
-                            >
-                                Browse Files
-                            </label>
-                        </div>
-                        {thumbnailFile && (
-                            <div className="mt-4">
-                                <img
-                                    src={URL.createObjectURL(thumbnailFile)}
-                                    alt="Thumbnail preview"
-                                    className="w-full max-w-xs mx-auto rounded-lg object-cover"
-                                />
-                            </div>
-                        )}
+                    
+                    {/* Desktop Navigation */}
+                    <nav className="hidden md:flex items-center space-x-8 ml-10">
+                        <a href="#features" className="text-foreground hover:text-accent transition-colors">Features</a>
+                        <a href="#how-it-works" className="text-foreground hover:text-accent transition-colors">How It Works</a>
+                        <a href="#courses" className="text-foreground hover:text-accent transition-colors">Courses</a>
+                        <a href="#testimonials" className="text-foreground hover:text-accent transition-colors">Testimonials</a>
+                    </nav>
                     </div>
-                </div>
-            ) : (
-                <div className="mb-6 animate-fade-in">
-                    <h3 className="text-lg font-medium mb-4">
-                        Assessment Details
-                    </h3>
-
-                    <InputField
-                        id="instructions"
-                        label="Instructions"
-                        value={instructions}
-                        onChange={(e) => setInstructions(e.target.value)}
-                        placeholder="Enter instructions for the assessment"
-                        error={errors.instructions}
-                        required
-                        textarea
-                    />
-
-                    <InputField
-                        id="passing-score"
-                        label="Passing Score (%)"
-                        type="number"
-                        value={passingScore}
-                        onChange={(e) => setPassingScore(e.target.value)}
-                        placeholder="Enter passing score percentage"
-                        min="0"
-                        max="100"
-                    />
-
-                    <div className="mt-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-md font-medium">Questions</h4>
-                            <button
-                                type="button"
-                                onClick={handleAddQuestion}
-                                className="flex items-center text-primary hover:text-primary/80 transition-colors"
-                            >
-                                <Plus size={16} className="mr-1" /> Add Question
-                            </button>
-                        </div>
-
-                        {errors.questions && (
-                            <p className="mb-2 text-sm text-destructive">
-                                {errors.questions}
-                            </p>
-                        )}
-
-                        {questions.map((question, questionIndex) => (
-                            <div
-                                key={questionIndex}
-                                className="mb-6 p-4 bg-secondary/50 rounded-md border border-border"
-                            >
-                                <div className="flex justify-between mb-3">
-                                    <h5 className="text-sm font-medium">
-                                        Question {questionIndex + 1}
-                                    </h5>
-                                    {questions.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleRemoveQuestion(
-                                                    questionIndex
-                                                )
-                                            }
-                                            className="text-muted-foreground hover:text-destructive transition-colors"
-                                        >
-                                            <X size={16} />
-                                        </button>
-                                    )}
-                                </div>
-
-                                <InputField
-                                    id={`question-${questionIndex}`}
-                                    label="Question Text"
-                                    value={question.text}
-                                    onChange={(e) =>
-                                        handleQuestionChange(
-                                            questionIndex,
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="Enter question text"
-                                    error={errors[`question_${questionIndex}`]}
-                                    required
-                                />
-
-                                <div className="mt-3">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <h6 className="text-sm font-medium">
-                                            Choices
-                                        </h6>
-                                        {/* <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleAddChoice(questionIndex)
-                                            }
-                                            className="text-xs text-primary hover:text-primary/80 transition-colors"
-                                        >
-                                            <Plus
-                                                size={14}
-                                                className="mr-1 inline"
-                                            />{" "}
-                                            Add Choice
-                                        </button> */}
-                                    </div>
-
-                                    {errors[
-                                        `question_${questionIndex}_choices`
-                                    ] && (
-                                        <p className="mb-2 text-xs text-destructive">
-                                            {
-                                                errors[
-                                                    `question_${questionIndex}_choices`
-                                                ]
-                                            }
-                                        </p>
-                                    )}
-
-                                    {question.choices.map(
-                                        (choice, choiceIndex) => (
-                                            <div
-                                                key={choiceIndex}
-                                                className="flex items-center mb-2"
-                                            >
-                                                <button
-                                                    type="button"
-                                                    key={choiceIndex}
-                                                    onClick={() =>
-                                                        handleChoiceCorrectChange(
-                                                            questionIndex,
-                                                            choiceIndex
-                                                        )
-                                                    }
-                                                    className={`w-5 h-5 mr-3 rounded-full flex items-center justify-center transition-colors ${
-                                                        choice.isCorrect
-                                                            ? "bg-primary text-primary-foreground"
-                                                            : "bg-secondary-foreground/10 text-secondary-foreground/30"
-                                                    }`}
-                                                >
-                                                    {choice.isCorrect && (
-                                                        <Check size={12} />
-                                                    )}
-                                                </button>
-
-                                                <input
-                                                    type="text"
-                                                    value={choice.text}
-                                                    onChange={(e) =>
-                                                        handleChoiceChange(
-                                                            questionIndex,
-                                                            choiceIndex,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    placeholder={`Choice ${
-                                                        choiceIndex + 1
-                                                    }`}
-                                                    className={`flex-1 px-3 py-2 bg-secondary text-foreground rounded border ${
-                                                        errors[
-                                                            `question_${questionIndex}_choice_${choiceIndex}`
-                                                        ]
-                                                            ? "border-destructive"
-                                                            : "border-input"
-                                                    } focus:outline-none focus:ring-1 focus:ring-primary/20 text-sm`}
-                                                />
-
-                                                {/* {question.choices.length >
-                                                    1 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleRemoveChoice(
-                                                                questionIndex,
-                                                                choiceIndex
-                                                            )
-                                                        }
-                                                        className="ml-2 text-muted-foreground hover:text-destructive transition-colors"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
-                                                )} */}
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <div className="mb-6">
-                <h3 className="text-lg font-medium mb-4">
-                    Supporting Document (Optional)
-                </h3>
-
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                        Upload PDF
-                    </label>
-
-                    <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                        <div className="mb-3 flex flex-col items-center">
-                            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
-                            <p className="text-sm text-muted-foreground">
-                                Drag and drop your PDF here, or click to browse
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                PDF file only (max 5MB)
-                            </p>
-                        </div>
-
-                        <input
-                            type="file"
-                            id="pdf-upload"
-                            accept=".pdf"
-                            onChange={handlePdfUpload}
-                            className="hidden"
-                            disabled={pdfs.length > 0}
+                    
+                    <div className="flex items-center gap-4">
+                    {/* Search bar - visible on medium screens and up */}
+                    <div className="hidden md:flex items-center bg-secondary rounded-md px-3 py-1">
+                        <Search size={18} className="text-muted-foreground mr-2" />
+                        <input 
+                        type="text" 
+                        placeholder="Search courses..." 
+                        className="bg-transparent border-none outline-none text-sm w-48 placeholder:text-muted-foreground text-foreground"
                         />
-                        <label
-                            htmlFor="pdf-upload"
-                            className={`px-4 py-2 rounded-md cursor-pointer inline-block transition-colors ${
-                                pdfs.length > 0
-                                    ? "bg-secondary/50 text-foreground/50 cursor-not-allowed"
-                                    : "bg-secondary hover:bg-secondary/80 text-foreground"
-                            }`}
-                        >
-                            Browse File
-                        </label>
                     </div>
-                </div>
-
-                {pdfs.length > 0 && (
-                    <div className="mt-4">
-                        <h4 className="text-sm font-medium mb-2">
-                            Uploaded Document
-                        </h4>
-                        <div className="space-y-2">
-                            {pdfs.map((pdf, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-between p-3 bg-secondary/50 rounded-md"
-                                >
-                                    <div className="flex items-center">
-                                        <span className="text-sm truncate max-w-[250px]">
-                                            {pdf.title}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground ml-2">
-                                            ({Math.round(pdf.size / 1024)} KB)
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex justify-end space-x-3 mt-6">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md transition-colors"
-                >
-                    Cancel
-                </button>
-                <button
-                    type="submit"
-                    className="px-4 py-2 bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors"
-                >
-                    {itemToEdit ? "Update Item" : "Save Section Item"}
-                </button>
-            </div>
-        </form>
-    );
-};
-
-// export default SectionItemForm;
-
-
-import React, { useState } from "react";
-import {
-    ChevronDown,
-    ChevronUp,
-    Plus,
-    FileText,
-    Video,
-    CheckSquare,
-    Edit,
-    Trash2,
-} from "lucide-react";
-import SectionItemForm from "./SectionItemForm";
-
-const SectionCard = ({
-    section,
-    sectionIndex,
-    onAddItem,
-    onEditSection,
-    onDeleteSection,
-    onEditItem,
-    onDeleteItem,
-}) => {
-
-    const [expanded, setExpanded] = useState(true);
-    const [addingItem, setAddingItem] = useState(false);
-    const [editingItemIndex, setEditingItemIndex] = useState(null);
-    
-    const handleSaveItem = (itemData) => {
-        if (editingItemIndex !== null) {
-            // Handle edit
-            onEditItem(sectionIndex, editingItemIndex, itemData);
-            setEditingItemIndex(null);
-        } else {
-            // Handle add
-            console.log('Add item on SectionCard')
-            onAddItem(itemData);
-        }
-        setAddingItem(false);
-    };
-
-    const handleEditItem = (itemIndex) => {
-        setEditingItemIndex(itemIndex);
-        setAddingItem(true);
-    };
-
-    const getItemIcon = (type) => {
-        switch (type) {
-            case "video":
-                return <Video size={16} className="text-primary" />;
-            case "assessment":
-                return <CheckSquare size={16} className="text-accent" />;
-            default:
-                return <FileText size={16} />;
-        }
-    };
-
-    return (
-        <div className="mb-4 overflow-hidden bg-card border border-border rounded-lg animate-slide-up transition-all duration-300 ease-out">
-            <div className="p-4 flex justify-between items-center">
-                <div className="flex items-center">
-                    <button
-                        type="button"
-                        onClick={() => setExpanded(!expanded)}
-                        className="mr-3 text-muted-foreground hover:text-foreground"
-                    >
-                        {expanded ? (
-                            <ChevronUp size={20} />
+                    
+                    {/* Authentication buttons */}
+                    <div className="hidden md:flex items-center gap-4">
+                        {isAuthenticated ? (
+                        <>
+                            <a href="/dashboard" className="btn-secondary flex items-center gap-2">
+                            <User size={16} />
+                            Dashboard
+                            </a>
+                        </>
                         ) : (
-                            <ChevronDown size={20} />
+                        <>
+                            <a href="/login" className="btn-outline">Login</a>
+                            <a href="/register" className="btn-primary">Sign Up</a>
+                        </>
                         )}
-                    </button>
-                    <h3 className="text-lg font-medium">
-                        Section {sectionIndex + 1}: {section.title}
-                    </h3>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <button
-                        type="button"
-                        onClick={() => onEditSection(sectionIndex)}
-                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-full bg-secondary/30 hover:bg-secondary/70 transition-colors"
-                        aria-label="Edit section"
+                    </div>
+                    
+                    {/* Mobile menu button */}
+                    <button 
+                        className="md:hidden p-2 rounded-md text-foreground hover:bg-secondary"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     >
-                        <Edit size={16} />
+                        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => onDeleteSection(sectionIndex)}
-                        className="p-1.5 text-muted-foreground hover:text-destructive rounded-full bg-secondary/30 hover:bg-secondary/70 transition-colors"
-                        aria-label="Delete section"
-                    >
-                        <Trash2 size={16} />
-                    </button>
+                    </div>
                 </div>
-            </div>
+                </div>
+                
+                {/* Mobile menu */}
+                {mobileMenuOpen && (
+                <div className="md:hidden glass-effect">
+                    <div className="px-4 pt-2 pb-4 space-y-2">
+                    <a href="#features" className="block py-2 text-foreground hover:text-accent">Features</a>
+                    <a href="#how-it-works" className="block py-2 text-foreground hover:text-accent">How It Works</a>
+                    <a href="#courses" className="block py-2 text-foreground hover:text-accent">Courses</a>
+                    <a href="#testimonials" className="block py-2 text-foreground hover:text-accent">Testimonials</a>
+                    
+                    <div className="pt-2 border-t border-border mt-2">
+                        {isAuthenticated ? (
+                        <a href="/dashboard" className="block py-2 text-accent">Dashboard</a>
+                        ) : (
+                        <>
+                            <a href="/login" className="block py-2 text-foreground hover:text-accent">Login</a>
+                            <a href="/register" className="block py-2 text-accent">Sign Up</a>
+                        </>
+                        )}
+                    </div>
+                    
+                    {/* Mobile search */}
+                    <div className="flex items-center bg-secondary rounded-md px-3 py-2 mt-4">
+                        <Search size={18} className="text-muted-foreground mr-2" />
+                        <input 
+                        type="text" 
+                        placeholder="Search courses..." 
+                        className="bg-transparent border-none outline-none w-full placeholder:text-muted-foreground text-foreground"
+                        />
+                    </div>
+                    </div>
+                </div>
+                )}
+            </header>
 
-            {expanded && (
-                <div className="px-4 pb-4 animate-fade-in">
-                    {section.items && section.items.length > 0 ? (
-                        <div className="space-y-2 mb-4">
-                            {section.items.map((item, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center p-3 bg-secondary/30 rounded-md group"
-                                >
-                                    <div className="mr-3">
-                                        {getItemIcon(item.item_type)}
-                                    </div>
-                                    <span className="flex-1 text-sm">
-                                        {item.title}
-                                    </span>
-                                    <div className="opacity-100 group-hover:opacity-100 transition-opacity flex space-x-1">
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleEditItem(index)
-                                            }
-                                            className="p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors"
-                                        >
-                                            <Edit size={14} />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                onDeleteItem(
-                                                    sectionIndex,
-                                                    index
-                                                )
-                                            }
-                                            className="p-1 text-muted-foreground hover:text-destructive rounded-md transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                </div>
+            <main className="flex-grow">
+                {/* Hero Section */}
+                <section className="relative overflow-hidden">
+                {/* Background gradient effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-accent/20 to-primary/20 opacity-30"></div>
+                
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24 relative">
+                    <div className="grid md:grid-cols-2 gap-8 items-center">
+                    <div className="space-y-6">
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-balance leading-tight">
+                        Learn. Teach. <span className="text-accent">Connect.</span>
+                        </h1>
+                        <p className="text-lg md:text-xl text-muted-foreground max-w-lg">
+                        LearNerds is a community-driven platform where passionate learners meet dedicated teachers. Upload courses, learn at your pace, and connect through personalized sessions.
+                        </p>
+                        <div className="flex flex-wrap gap-4 pt-4">
+                        <a href="/register" className="btn-primary flex items-center gap-2">
+                            Get Started <ArrowRight size={16} />
+                        </a>
+                        <a href="#how-it-works" className="btn-outline">
+                            How It Works
+                        </a>
+                        </div>
+                        <div className="flex items-center gap-6 pt-2">
+                        <div className="flex -space-x-2">
+                            {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="w-8 h-8 rounded-full bg-secondary border-2 border-background flex items-center justify-center text-xs font-semibold">
+                                {i}
+                            </div>
                             ))}
                         </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                            <p className="mb-2 text-sm">
-                                No items in this section yet
-                            </p>
-                        </div>
-                    )}
-
-                    {addingItem ? (
-                        <SectionItemForm
-                            sectionIndex={sectionIndex}
-                            itemToEdit={
-                                editingItemIndex !== null
-                                    ? section.items[editingItemIndex]
-                                    : null
-                            }
-                            onSave={handleSaveItem}
-                            onCancel={() => {
-                                setAddingItem(false);
-                                setEditingItemIndex(null);
-                            }}
-                        />
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={() => setAddingItem(true)}
-                            className="w-full mt-2 py-2 flex items-center justify-center text-sm bg-secondary/50 hover:bg-secondary text-muted-foreground hover:text-foreground rounded-md transition-colors"
-                        >
-                            <Plus size={16} className="mr-1" /> Add Section Item
-                        </button>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// export default SectionCard;
-
-
-import React, { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { Plus } from "lucide-react";
-import CourseUploadHeader from "./CourseUploadHeader";
-import CourseFormNavigation from "./CourseFormNavigation";
-import SectionCard from "./SectionCard";
-import InputField from "./InputField";
-import api from "../../../../../services/api/axiosInterceptor";
-
-const Step3CourseContent = ({
-    setStep,
-    setLoading,
-    uploadedCourse,
-    setUploadedCourse,
-    sections,
-    setSections,
-    showSectionForm,
-    setShowSectionForm,
-    sectionTitle,
-    setSectionTitle,
-    editingSectionIndex,
-    setEditingSectionIndex,
-}) => {
-
-    console.log('uploadedCourse:', uploadedCourse)
-    const [errors, setErrors] = useState({});
-    // // Load existing data if editing
-    // useEffect(() => {
-    //     const existingSections = localStorage.getItem("courseSections");
-
-    //     if (existingSections) {
-    //         setSections(JSON.parse(existingSections));
-    //     }
-    // }, []);
-
-    const handleError = (error, noData) => {
-        if (error.response?.data) {
-            toast.error(Object.values(error.response?.data)?.[0]);
-        } else {
-            toast.error(noData);
-            toast.error(error.message || 'Something went wrong');
-        }
-    };
-    
-    const fetchSections = async (id) => {
-        setLoading(true)
-        try{
-            const response = await api.get(`courses/incomplete-course/${id}/content/`);
-            console.log('res req:', response)
-            setUploadedCourse(prevState => ({
-                ...prevState,
-                sections: Array.isArray(response.sections) ? response.sections : []
-            }));
-    
-        } catch (error) {
-            console.error("Error saving course:", error);
-            handleError(error, "There was a problem fetching sections.");
-        }finally{
-            setLoading(false)
-        }
-    }
-
-    useEffect(() => {
-        console.log('uploadedCourse:', uploadedCourse)
-        if (!uploadedCourse.sections) {
-            fetchSections(uploadedCourse.id);
-        }
-    }, [uploadedCourse.sections]);
-
-    // Handle section title change
-    const handleSectionTitleChange = (e) => {
-        setSectionTitle(e.target.value);
-    };
-
-    // Handle add section
-    const handleAddSection = async () => {
-        const sectionTitleTrimmed = sectionTitle.trim()
-        if (!sectionTitleTrimmed) {
-            setErrors({ sectionTitle: "Section title is required" });
-            return;
-        }
-        if (sectionTitleTrimmed.length < 10){
-            setErrors({ sectionTitle: "Section title must contain 10 letters" });
-            return;
-        }
-        try{
-            setLoading(true)
-            // Check if we're editing or adding
-            if (editingSectionIndex !== null) {
-                const updatedSections = [...sections];
-                updatedSections[editingSectionIndex] = {
-                    ...updatedSections[editingSectionIndex],
-                    title: sectionTitle,
-                };
-                setSections(updatedSections);
-                setEditingSectionIndex(null);
-            } else {
-                // Add new section
-                const body = {
-                    course: uploadedCourse.id,
-                    title: sectionTitle,
-                    order: sections.length + 1,
-                }
-                const response = await api.post('courses/sections/', body);
-                console.log('Data sent successfully:', response.data);
-                toast("Course section have been saved.");
-                setSections([
-                    ...sections,
-                    {
-                        title: sectionTitle,
-                        order: sections.length + 1,
-                        items: [],
-                    },
-                ]);
-            }
-            // Reset form
-            setSectionTitle("");
-            setShowSectionForm(false);
-            setErrors({});
-        }
-        catch (error) {
-            console.log('error:', error)
-            toast.error("Something went wrong.");
-        }finally{
-            setLoading(false)
-        }
-    };
-
-    // Handle edit section
-    const handleEditSection = (index) => {
-        setSectionTitle(sections[index].title);
-        setEditingSectionIndex(index);
-        setShowSectionForm(true);
-    };
-
-    // Handle delete section
-    const handleDeleteSection = (index) => {
-        const updatedSections = [...sections];
-        updatedSections.splice(index, 1);
-
-        // Update order for remaining sections
-        updatedSections.forEach((section, idx) => {
-            section.order = idx;
-        });
-
-        setSections(updatedSections);
-
-        // // Save to localStorage
-        // localStorage.setItem("courseSections", JSON.stringify(updatedSections));
-    };
-
-    // Handle add section item
-    const handleAddSectionItem = (itemData) => {
-        const { section_index, ...sectionItemData } = itemData;
-
-        const updatedSections = [...sections];
-        const currentItems = updatedSections[section_index].items || [];
-
-        updatedSections[section_index].items = [
-            ...currentItems,
-            {
-                ...sectionItemData,
-                order: currentItems.length,
-            },
-        ];
-        console.log('updated_sections:', updatedSections)
-        setSections(updatedSections);
-
-        // // Save to localStorage
-        // localStorage.setItem("courseSections", JSON.stringify(updatedSections));
-
-        // Save to backend
-        handleSaveItem(section_index, sectionItemData);
-    };
-
-    // Handle edit section item
-    const handleEditSectionItem = (sectionIndex, itemIndex, itemData) => {
-        const updatedSections = [...sections];
-        console.log('itemdata:', itemData)
-        // Preserve order and merge in updates
-        const updatedItem = {
-            ...updatedSections[sectionIndex].items[itemIndex],
-            ...itemData,
-        };
-        console.log('updatedItem:', updatedItem)
-
-
-        updatedSections[sectionIndex].items[itemIndex] = updatedItem;
-        setSections(updatedSections);
-
-        // // Save to localStorage
-        // localStorage.setItem("courseSections", JSON.stringify(updatedSections));
-
-        // Update item on backend
-        handleUpdateItem(sectionIndex, itemIndex, updatedItem);
-    };
-
-    // Handle delete section item
-    const handleDeleteSectionItem = (sectionIndex, itemIndex) => {
-        const updatedSections = [...sections];
-
-        // Remove the item
-        updatedSections[sectionIndex].items.splice(itemIndex, 1);
-
-        // Update order for remaining items
-        updatedSections[sectionIndex].items.forEach((item, idx) => {
-            item.order = idx;
-        });
-
-        setSections(updatedSections);
-
-        // // Save to localStorage
-        // localStorage.setItem("courseSections", JSON.stringify(updatedSections));
-
-        toast( "Section item has been removed.");
-    };
-
-    // Handle save item to backend
-    const handleSaveItem = async (sectionIndex, itemData) => {
-        try {
-            // API call to save section item
-            // const courseId = localStorage.getItem('currentCourseId');
-            // const sectionId = sections[sectionIndex].id; // Assuming you have section ID from backend
-
-            // await fetch(`api/courses/${courseId}/sections/${sectionId}/items`, {
-            //   method: 'POST',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //   },
-            //   body: JSON.stringify(itemData),
-            // });
-
-            toast("Section item has been added successfully.");
-        } catch (error) {
-            console.error("Error saving item:", error);
-            toast("There was a problem saving the section item. Please try again.");
-        }
-    };
-
-    // Handle update item on backend
-    const handleUpdateItem = async (sectionIndex, itemIndex, itemData) => {
-        try {
-            // API call to update section item
-            // const courseId = localStorage.getItem('currentCourseId');
-            // const sectionId = sections[sectionIndex].id;
-            // const itemId = sections[sectionIndex].items[itemIndex].id;
-
-            // await fetch(`api/courses/${courseId}/sections/${sectionId}/items/${itemId}`, {
-            //   method: 'PUT',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //   },
-            //   body: JSON.stringify(itemData),
-            // });
-
-            toast("Section item has been updated successfully.");
-        } catch (error) {
-            console.error("Error updating item:", error);
-            toast("There was a problem updating the section item. Please try again.");
-        }
-    };
-
-    // Handle form submission
-    const handleSubmit = async () => {
-        if (sections.length === 0) {
-            toast("You must add at least one section before continuing.");
-            return;
-        }
-
-        // Check if any sections have no items
-        const emptySections = sections.filter(
-            (section) => !section.items || section.items.length === 0
-        );
-        if (emptySections.length > 0) {
-            toast(`${emptySections.length} section(s) have no content. Add at least one item to each section.`);
-            return;
-        }
-
-        // localStorage.setItem("courseSections", JSON.stringify(sections));
-
-        try {
-            // API call to save all sections and items
-            // const courseId = localStorage.getItem('currentCourseId');
-            // await fetch(`api/courses/${courseId}/sections`, {
-            //   method: 'POST',
-            //   headers: {
-            //     'Content-Type': 'application/json',
-            //   },
-            //   body: JSON.stringify({ sections }),
-            // });
-
-            toast("Course content has been saved successfully.");
-
-            // Navigate to next step
-            setStep(4);
-        } catch (error) {
-            console.error("Error saving content:", error);
-            toast("There was a problem saving your course content. Please try again.");
-        }
-    };
-
-    // Handle going back to previous step
-    const handlePrevious = () => {
-        setStep(2);
-    };
-
-    return (
-        <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
-            <CourseUploadHeader
-                currentStep={3}
-                totalSteps={4}
-                title="Course Content"
-            />
-
-            <div className="mb-6">
-                {sections.length > 0 ? (
-                    <div className="space-y-4">
-                        {sections.map((section, index) => (
-                            <SectionCard
-                                key={index}
-                                section={section}
-                                sectionIndex={index}
-                                onAddItem={handleAddSectionItem}
-                                onEditItem={handleEditSectionItem}
-                                onDeleteItem={handleDeleteSectionItem}
-                                onEditSection={handleEditSection}
-                                onDeleteSection={handleDeleteSection}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="bg-card border border-border rounded-lg p-8 text-center">
-                        <p className="text-muted-foreground mb-4">
-                            No course sections added yet. Add your first section
-                            to get started.
+                        <p className="text-sm text-muted-foreground">
+                            Joined by <span className="text-foreground font-semibold">{stats.users.toLocaleString()}+</span> learners
                         </p>
+                        </div>
                     </div>
-                )}
-            </div>
-
-            {showSectionForm ? (
-                <div className="bg-card border border-border rounded-lg p-6 mb-6 animate-fade-in">
-                    <h3 className="text-lg font-medium mb-4">
-                        {editingSectionIndex !== null
-                            ? "Edit Section"
-                            : "Add New Section"}
-                    </h3>
-
-                    <InputField
-                        id="section-title"
-                        label="Section Title"
-                        value={sectionTitle}
-                        onChange={handleSectionTitleChange}
-                        placeholder="Enter section title"
-                        error={errors.sectionTitle}
-                        required
-                    />
-
-                    <div className="flex justify-end space-x-3 mt-4">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowSectionForm(false);
-                                setSectionTitle("");
-                                setEditingSectionIndex(null);
-                                setErrors({});
-                            }}
-                            className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground rounded-md transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleAddSection}
-                            className="px-4 py-2 bg-primary hover:bg-primary/80 text-primary-foreground rounded-md transition-colors"
-                        >
-                            {editingSectionIndex !== null
-                                ? "Update Section"
-                                : "Add Section"}
-                        </button>
+                    <div className="relative">
+                        <div className="glass-effect rounded-xl p-4 relative z-10">
+                        <img 
+                            src="/api/placeholder/600/400" 
+                            alt="E-learning in action" 
+                            className="rounded-lg w-full h-auto"
+                        />
+                        </div>
+                        <div className="absolute -bottom-6 -right-6 bg-card p-4 rounded-lg shadow-lg z-20 border border-border max-w-xs">
+                        <div className="flex items-start gap-3">
+                            <div className="bg-accent/20 p-2 rounded-full">
+                            <CheckCircle size={20} className="text-accent" />
+                            </div>
+                            <div>
+                            <h3 className="font-semibold">Learn Your Way</h3>
+                            <p className="text-sm text-muted-foreground">Choose between free courses with ads or premium subscriptions with personalized support.</p>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
                     </div>
                 </div>
-            ) : (
-                <button
-                    type="button"
-                    onClick={() => setShowSectionForm(true)}
-                    className="w-full py-4 flex items-center justify-center bg-secondary hover:bg-secondary/80 text-foreground rounded-lg transition-colors mb-6"
-                >
-                    <Plus size={20} className="mr-2" /> Add New Section
-                </button>
-            )}
+                </section>
+                
+                {/* Stats Section */}
+                <section className="bg-secondary/50">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div className="p-4">
+                        <div className="text-3xl md:text-4xl font-bold text-accent">{stats.courses.toLocaleString()}+</div>
+                        <div className="text-sm text-muted-foreground mt-1">Courses Available</div>
+                    </div>
+                    <div className="p-4">
+                        <div className="text-3xl md:text-4xl font-bold text-accent">{stats.users.toLocaleString()}+</div>
+                        <div className="text-sm text-muted-foreground mt-1">Active Learners</div>
+                    </div>
+                    <div className="p-4">
+                        <div className="text-3xl md:text-4xl font-bold text-accent">{stats.instructors.toLocaleString()}+</div>
+                        <div className="text-sm text-muted-foreground mt-1">Expert Instructors</div>
+                    </div>
+                    <div className="p-4">
+                        <div className="text-3xl md:text-4xl font-bold text-accent">{stats.satisfaction}%</div>
+                        <div className="text-sm text-muted-foreground mt-1">Satisfaction Rate</div>
+                    </div>
+                    </div>
+                </div>
+                </section>
 
-            <CourseFormNavigation
-                currentStep={3}
-                onNext={handleSubmit}
-                onPrevious={handlePrevious}
-                disableNext={sections.length === 0}
-            />
+                {/* Features Section */}
+                <section id="features" className="py-16">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-4">Why Choose LearNerds</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">Our platform offers unique features designed for both learners and teachers, creating a community where knowledge is easily accessible and teaching is rewarding.</p>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-3 gap-8">
+                    {/* Feature 1 */}
+                    <div className="glass-effect rounded-xl p-6 transition-all duration-300 hover:scale-105">
+                        <div className="bg-accent/20 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-4">
+                        <BookOpen size={24} className="text-accent" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Dual Access Options</h3>
+                        <p className="text-muted-foreground">Choose between free courses with ads to support creators or premium subscriptions for unlimited access and personalized support.</p>
+                    </div>
+                    
+                    {/* Feature 2 */}
+                    <div className="glass-effect rounded-xl p-6 transition-all duration-300 hover:scale-105">
+                        <div className="bg-accent/20 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-4">
+                        <Users size={24} className="text-accent" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">One-on-One Sessions</h3>
+                        <p className="text-muted-foreground">Premium subscribers gain access to personal video sessions with instructors, getting direct guidance and feedback on their progress.</p>
+                    </div>
+                    
+                    {/* Feature 3 */}
+                    <div className="glass-effect rounded-xl p-6 transition-all duration-300 hover:scale-105">
+                        <div className="bg-accent/20 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-4">
+                        <MessageCircle size={24} className="text-accent" />
+                        </div>
+                        <h3 className="text-xl font-semibold mb-2">Chat Support</h3>
+                        <p className="text-muted-foreground">Get your questions answered quickly with dedicated chat support from course instructors, available to premium subscribers.</p>
+                    </div>
+                    </div>
+                </div>
+                </section>
+
+                {/* How It Works Section */}
+                <section id="how-it-works" className="py-16 bg-card">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-4">How LearNerds Works</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">Our platform is designed to be simple and intuitive, connecting learners with quality educational content.</p>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-16 items-center">
+                    <div className="space-y-8">
+                        {/* Step 1 */}
+                        <div className="flex items-start gap-4">
+                        <div className="bg-accent text-accent-foreground rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                            1
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold mb-2">Browse or Create</h3>
+                            <p className="text-muted-foreground">Search through our vast library of courses or create and upload your own to share your expertise with the world.</p>
+                        </div>
+                        </div>
+                        
+                        {/* Step 2 */}
+                        <div className="flex items-start gap-4">
+                        <div className="bg-accent text-accent-foreground rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                            2
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold mb-2">Choose Your Access</h3>
+                            <p className="text-muted-foreground">Select between free access with ads or premium subscription for unlimited viewing and personalized support.</p>
+                        </div>
+                        </div>
+                        
+                        {/* Step 3 */}
+                        <div className="flex items-start gap-4">
+                        <div className="bg-accent text-accent-foreground rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                            3
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold mb-2">Learn & Connect</h3>
+                            <p className="text-muted-foreground">Engage with course materials at your own pace and connect with instructors through video sessions and chat support.</p>
+                        </div>
+                        </div>
+                        
+                        {/* Step 4 */}
+                        <div className="flex items-start gap-4">
+                        <div className="bg-accent text-accent-foreground rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1">
+                            4
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold mb-2">Earn & Grow</h3>
+                            <p className="text-muted-foreground">As a teacher, earn from your courses through ads and subscriptions. As a learner, track your progress and earn certificates.</p>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    <div className="relative">
+                        <div className="glass-effect rounded-xl overflow-hidden">
+                        <img 
+                            src="/api/placeholder/600/500" 
+                            alt="LearNerds platform in action" 
+                            className="w-full h-auto"
+                        />
+                        </div>
+                        <div className="absolute -top-6 -left-6 bg-card p-4 rounded-lg shadow-lg border border-border max-w-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="text-accent font-bold">T</span>
+                            </div>
+                            <div>
+                            <h4 className="font-medium">Teacher Dashboard</h4>
+                            <div className="text-xs text-muted-foreground">Monitor your courses, students, and earnings</div>
+                            </div>
+                        </div>
+                        </div>
+                        <div className="absolute -bottom-6 -right-6 bg-card p-4 rounded-lg shadow-lg border border-border max-w-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="text-accent font-bold">S</span>
+                            </div>
+                            <div>
+                            <h4 className="font-medium">Student Experience</h4>
+                            <div className="text-xs text-muted-foreground">Track progress and engage with instructors</div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                </section>
+
+                {/* Featured Courses Section */}
+                <section id="courses" className="py-16">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+                    <div>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-2">Featured Courses</h2>
+                        <p className="text-muted-foreground max-w-2xl">Explore our most popular courses across various categories.</p>
+                    </div>
+                    <a href="/courses" className="btn-outline mt-4 md:mt-0 flex items-center gap-2">
+                        View All Courses <ArrowRight size={16} />
+                    </a>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {featuredCourses.map((course) => (
+                        <div key={course.id} className="course-card border border-border">
+                        <div className="relative">
+                            <img 
+                            src={course.image} 
+                            alt={course.title} 
+                            className="w-full h-48 object-cover"
+                            />
+                            <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-xs font-medium">
+                            {course.category}
+                            </div>
+                        </div>
+                        <div className="p-4">
+                            <h3 className="text-lg font-semibold mb-1">{course.title}</h3>
+                            <p className="text-sm text-muted-foreground mb-3">By {course.instructor}</p>
+                            
+                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center">
+                                <div className="rating-stars flex">
+                                {Array(5).fill(0).map((_, i) => (
+                                    <svg 
+                                    key={i} 
+                                    width="16" 
+                                    height="16" 
+                                    viewBox="0 0 24 24" 
+                                    fill={i < Math.floor(course.rating) ? "currentColor" : "none"} 
+                                    stroke="currentColor"
+                                    className="text-yellow-400"
+                                    >
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                                    </svg>
+                                ))}
+                                </div>
+                                <span className="ml-2 text-sm">{course.rating}</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                                {course.studentsCount.toLocaleString()} students
+                            </div>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                            <span className="text-lg font-bold">${course.price}</span>
+                            <a href={`/courses/${course.id}`} className="btn-primary text-sm">
+                                View Course
+                            </a>
+                            </div>
+                        </div>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </section>
+
+                {/* Testimonials Section */}
+                <section id="testimonials" className="py-16 bg-card">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-4">What Our Users Say</h2>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">Hear from our community of learners and teachers about their experience with LearNerds.</p>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-3 gap-6">
+                    {/* Testimonial 1 */}
+                    <div className="glass-effect rounded-xl p-6">
+                        <div className="rating-stars flex mb-4">
+                        {Array(5).fill(0).map((_, i) => (
+                            <svg 
+                            key={i} 
+                            width="16" 
+                            height="16" 
+                            viewBox="0 0 24 24" 
+                            fill="currentColor" 
+                            stroke="currentColor"
+                            className="text-yellow-400"
+                            >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        ))}
+                        </div>
+                        <p className="mb-4 text-muted-foreground">"As a self-taught developer, LearNerds has been an incredible resource. The one-on-one sessions with experienced instructors helped me overcome challenges I couldn't solve through traditional courses."</p>
+                        <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="font-semibold">JD</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium">John Doe</h4>
+                            <div className="text-xs text-muted-foreground">Software Developer</div>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    {/* Testimonial 2 */}
+                    <div className="glass-effect rounded-xl p-6">
+                        <div className="rating-stars flex mb-4">
+                        {Array(5).fill(0).map((_, i) => (
+                            <svg 
+                            key={i} 
+                            width="16" 
+                            height="16" 
+                            viewBox="0 0 24 24" 
+                            fill="currentColor" 
+                            stroke="currentColor"
+                            className="text-yellow-400"
+                            >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        ))}
+                        </div>
+                        <p className="mb-4 text-muted-foreground">"Teaching on LearNerds has allowed me to share my knowledge with students worldwide. The platform's dual access model ensures my content is accessible while still providing fair compensation."</p>
+                        <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="font-semibold">JS</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium">Jane Smith</h4>
+                            <div className="text-xs text-muted-foreground">Digital Marketing Instructor</div>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    {/* Testimonial 3 */}
+                    <div className="glass-effect rounded-xl p-6">
+                        <div className="rating-stars flex mb-4">
+                        {Array(5).fill(0).map((_, i) => (
+                            <svg 
+                            key={i} 
+                            width="16" 
+                            height="16" 
+                            viewBox="0 0 24 24" 
+                            fill="currentColor" 
+                            stroke="currentColor"
+                            className="text-yellow-400"
+                            >
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                        ))}
+                        </div>
+                        <p className="mb-4 text-muted-foreground">"The chat support feature has been a game-changer for my learning journey. Being able to ask questions and get quick responses helped me progress much faster than with other platforms."</p>
+                        <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
+                            <span className="font-semibold">RJ</span>
+                        </div>
+                        <div>
+                            <h4 className="font-medium">Robert Johnson</h4>
+                            <div className="text-xs text-muted-foreground">Data Science Student</div>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                </section>
+
+                {/* CTA Section */}
+                <section className="py-16 relative overflow-hidden">
+                {/* Background gradient effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-accent/20 opacity-30"></div>
+                
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
+                    <div className="max-w-3xl mx-auto text-center">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Start Your Learning Journey?</h2>
+                    <p className="text-lg text-muted-foreground mb-8">Join our community of learners and teachers today and transform the way you learn and share knowledge.</p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="/register" className="btn-primary text-center px-8 py-3">
+                        Sign Up Now
+                        </a>
+                        <a href="/courses" className="btn-outline text-center px-8 py-3">
+                        Browse Courses
+                        </a>
+                    </div>
+                    <p className="text-muted-foreground mt-6 text-sm">No credit card required. Start learning today.</p>
+                    </div>
+                </div>
+                </section>
+            </main>
+
+            <footer className="bg-card border-t border-border">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+                <div className="grid md:grid-cols-4 gap-8">
+                <div>
+                    <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-accent rounded-full p-1">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" fill="#3B82F6" />
+                        <circle cx="8" cy="10" r="2" fill="white" />
+                        <circle cx="16" cy="10" r="2" fill="white" />
+                        <path d="M8 15H16M12 13V17" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                        <path d="M7 7L9 9M15 7L17 9" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                    </div>
+                    <span className="text-xl font-bold text-foreground">LearNerds</span>
+                    </div>
+                    <p className="text-muted-foreground text-sm mb-4">Empowering self-learners and teachers with a platform that makes education accessible and teaching rewarding.</p>
+                    <div className="flex space-x-4">
+                    <a href="#" className="text-muted-foreground hover:text-accent">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path>
+                        </svg>
+                    </a>
+                    <a href="#" className="text-muted-foreground hover:text-accent">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"></path>
+                        </svg>
+                    </a>
+                    <a href="#" className="text-muted-foreground hover:text-accent">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path>
+                        </svg>
+                    </a>
+                    <a href="#" className="text-muted-foreground hover:text-accent">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path>
+                        </svg>
+                    </a>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 className="font-semibold text-lg mb-4">Platform</h3>
+                    <ul className="space-y-2">
+                    <li><a href="/courses" className="text-muted-foreground hover:text-accent">Browse Courses</a></li>
+                    <li><a href="/teach" className="text-muted-foreground hover:text-accent">Become an Instructor</a></li>
+                    <li><a href="/pricing" className="text-muted-foreground hover:text-accent">Pricing Plans</a></li>
+                    <li><a href="/features" className="text-muted-foreground hover:text-accent">Features</a></li>
+                    <li><a href="/affiliates" className="text-muted-foreground hover:text-accent">Affiliate Program</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 className="font-semibold text-lg mb-4">Resources</h3>
+                    <ul className="space-y-2">
+                    <li><a href="/help" className="text-muted-foreground hover:text-accent">Help Center</a></li>
+                    <li><a href="/blog" className="text-muted-foreground hover:text-accent">Blog</a></li>
+                    <li><a href="/tutorials" className="text-muted-foreground hover:text-accent">Tutorials</a></li>
+                    <li><a href="/webinars" className="text-muted-foreground hover:text-accent">Webinars</a></li>
+                    <li><a href="/community" className="text-muted-foreground hover:text-accent">Community</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 className="font-semibold text-lg mb-4">Company</h3>
+                    <ul className="space-y-2">
+                    <li><a href="/about" className="text-muted-foreground hover:text-accent">About Us</a></li>
+                    <li><a href="/careers" className="text-muted-foreground hover:text-accent">Careers</a></li>
+                    <li><a href="/contact" className="text-muted-foreground hover:text-accent">Contact Us</a></li>
+                    <li><a href="/press" className="text-muted-foreground hover:text-accent">Press</a></li>
+                    <li><a href="/investors" className="text-muted-foreground hover:text-accent">Investors</a></li>
+                    </ul>
+                </div>
+                </div>
+                
+                <div className="border-t border-border mt-10 pt-8">
+                <div className="flex flex-col md:flex-row justify-between items-center">
+                    <div className="text-sm text-muted-foreground mb-4 md:mb-0">
+                    &copy; {new Date().getFullYear()} LearNerds. All rights reserved.
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                    <a href="/terms" className="text-muted-foreground hover:text-accent">Terms of Service</a>
+                    <a href="/privacy" className="text-muted-foreground hover:text-accent">Privacy Policy</a>
+                    <a href="/cookies" className="text-muted-foreground hover:text-accent">Cookie Policy</a>
+                    <a href="/accessibility" className="text-muted-foreground hover:text-accent">Accessibility</a>
+                    </div>
+                </div>
+                </div>
+            </div>
+            </footer>
         </div>
-    );
-};
+    )
+}
 
-// export default Step3CourseContent;
+export default LandingPage

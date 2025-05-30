@@ -75,3 +75,24 @@ class CallUserService:
 
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
+        
+    def get_user_wallet(self, id):
+        if not id:
+            raise ValueError("user identifier is required")
+
+        path = f"api/v1/users/user-wallet/{id}/"
+        try:
+            response = self._make_request("GET", path=path)
+            # print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise UserServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error: {str(e)}")

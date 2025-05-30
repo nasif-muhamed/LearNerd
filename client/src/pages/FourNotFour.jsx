@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import Header404 from "../components/layout/Header404";
 import { useSelector } from "react-redux";
 
 const FourNotFour = () => {

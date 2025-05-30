@@ -13,6 +13,7 @@ const AdminUserDetails = () => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [userCourses, setUserCourses] = useState(null);
+    
     const fetchCourses = async () => {
         try {
             setLoading(true);
@@ -35,26 +36,26 @@ const AdminUserDetails = () => {
         }
     }, []);
 
-    const enrolledCourses = [
-        {
-            title: "Complete web development course",
-            instructor: "John Chandler",
-            price: 3999,
-            image: "/api/placeholder/400/250?text=Web+Dev",
-        },
-        {
-            title: "React - Complete Developer Course with Hands-On Projects",
-            instructor: "Digital Media",
-            price: 2999,
-            image: "/api/placeholder/400/250?text=React",
-        },
-        {
-            title: "React Redux Ultimate - State Management",
-            instructor: "Types Info",
-            price: 2999,
-            image: "/api/placeholder/400/250?text=Redux",
-        },
-    ];
+    // const enrolledCourses = [
+    //     {
+    //         title: "Complete web development course",
+    //         instructor: "John Chandler",
+    //         price: 3999,
+    //         image: "/api/placeholder/400/250?text=Web+Dev",
+    //     },
+    //     {
+    //         title: "React - Complete Developer Course with Hands-On Projects",
+    //         instructor: "Digital Media",
+    //         price: 2999,
+    //         image: "/api/placeholder/400/250?text=React",
+    //     },
+    //     {
+    //         title: "React Redux Ultimate - State Management",
+    //         instructor: "Types Info",
+    //         price: 2999,
+    //         image: "/api/placeholder/400/250?text=Redux",
+    //     },
+    // ];
 
     const reviews = [
         {
@@ -120,7 +121,7 @@ const AdminUserDetails = () => {
                                             className="w-full h-48 object-cover"
                                         />
                                         {/* Hover overlay with buttons */}
-                                        <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-300">
+                                        {/* <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-300">
                                             <Link 
                                                 to={'/tutor/my-courses/' + course.id}
                                                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
@@ -133,7 +134,7 @@ const AdminUserDetails = () => {
                                             >
                                                 Preview
                                             </Link>
-                                        </div>
+                                        </div> */}
                                     </div>
                                     <div className="p-4">
                                         <h3 className="text-md font-bold mb-2 line-clamp-2">
@@ -220,7 +221,7 @@ const AdminUserDetails = () => {
                                             className="w-full h-48 object-cover"
                                         />
                                         {/* Hover overlay with buttons */}
-                                        <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-300">
+                                        {/* <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-4 transition-opacity duration-300">
                                             <Link 
                                                 to={'/tutor/my-courses/' + course.id}
                                                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition-colors"
@@ -233,7 +234,7 @@ const AdminUserDetails = () => {
                                             >
                                                 Preview
                                             </Link>
-                                        </div>
+                                        </div> */}
                                     </div>
                                     <div className="p-4">
                                         <h3 className="text-md font-bold mb-2 line-clamp-2">

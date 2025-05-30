@@ -1,6 +1,5 @@
 import json
 
-
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
@@ -13,7 +12,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
 from .models import Badges, Questions, Answers
 from .serializers import BadgeSerializer, SimplifiedBadgeSerializer
+from .message_broker.rabbitmq_publisher import publish_chat_event
+from admins.utils import CallUserService, UserServiceException
 
+call_user_service = CallUserService()
 
 class CustomPagination(PageNumberPagination):
     page_size = 3  # Default items per page
@@ -40,11 +42,15 @@ class CustomPagination(PageNumberPagination):
             })
 
 class BadgesView(APIView):
-    permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     pagination_class = CustomPagination
 
-    def get(self, request):        
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAdminUser()]
+        return [AllowAny()]
+    
+    def get(self, request):
         # Return the list of badges without questions and answers
         try:
             badges = Badges.objects.all().order_by('-created_at')
@@ -90,13 +96,45 @@ class BadgesView(APIView):
             )
 
     def post(self, request):
-        serializer = BadgeSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            print('Validated data:', serializer.validated_data)
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        print('Serializer errors:', serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = request.user
+        print('BadgesView user: ', user)
+
+        try:
+            response = call_user_service.get_admin_user_details(
+                admin=user
+            )
+            admin = response.json()
+            print('admin badge view:', admin)
+            serializer = BadgeSerializer(data=request.data, context={'request': request})
+            if serializer.is_valid():
+                print('Validated data:', serializer.validated_data)
+                serializer.save()
+                print('BadgesView serializer data:', serializer.data)
+                if serializer.data['community']:
+                    publish_chat_event(
+                        event_type='create_group_chat_room',
+                        data={
+                            'name': serializer.data['title'],
+                            'image': serializer.data['image_url'],
+                            'admin': admin,
+                        }
+                    )
+
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            print('Serializer errors:', serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except UserServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )        
+
 
 
 class BadgeView(APIView):
@@ -157,7 +195,8 @@ class EvaluateQuizView(APIView):
                 'total_questions': total_questions,
                 'pass_mark': pass_mark,
                 'acquired_mark': correct_answers,
-                'is_passed': correct_answers >= pass_mark
+                'is_passed': correct_answers >= pass_mark,
+                'community': badge.community, 
             }
             print('result:', result)
             return Response(result, status=status.HTTP_200_OK)

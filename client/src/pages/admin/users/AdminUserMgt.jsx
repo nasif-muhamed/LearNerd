@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { UserRound } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { BadgeAlert, UserRound } from "lucide-react";
 import api from "../../../services/api/axiosInterceptor";
 import LoadingSpinner from "../../../components/ui/LoadingSpinner";
 
@@ -100,26 +100,17 @@ const AdminUserMgt = () => {
                     </div>
 
                     <div className="flex bg-gray-800 rounded-lg overflow-hidden">
-                        <button
-                            className={`px-6 py-2 ${
+                        <Link
+                            to={'/admin/users/reports'}
+                            className={`px-6 py-2 flex gap-2 ${
                                 userType === "students"
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-gray-800 text-gray-300"
+                                    ? "bg-red-800 text-white"
+                                    : "bg-red-600 text-gray-300"
                             }`}
                             onClick={() => handleTabChange("students")}
                         >
-                            Students
-                        </button>
-                        <button
-                            className={`px-6 py-2 ${
-                                userType === "tutors"
-                                    ? "bg-blue-600 text-white"
-                                    : "bg-gray-800 text-gray-300"
-                            }`}
-                            onClick={() => handleTabChange("tutors")}
-                        >
-                            Tutors
-                        </button>
+                            <BadgeAlert /> Reports
+                        </Link>
                     </div>
                 </div>
 

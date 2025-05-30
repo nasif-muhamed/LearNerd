@@ -1,39 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 @layer base {
   :root {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
-  
     --card: 222 47% 8%;
     --card-foreground: 210 40% 98%;
-  
     --popover: 222 47% 9%;
     --popover-foreground: 210 40% 98%;
-  
     --primary: 210 100% 66%;
     --primary-foreground: 222 47% 11%;
-  
     --secondary: 220 16% 22%;
     --secondary-foreground: 210 40% 98%;
-  
     --muted: 217 33% 18%;
     --muted-foreground: 215 20% 65%;
-  
     --accent: 224 100% 69%;
     --accent-foreground: 210 40% 98%;
-  
     --destructive: 0 63% 63%;
     --destructive-foreground: 210 40% 98%;
-  
     --border: 215 28% 17%;
     --input: 215 28% 17%;
     --ring: 216 34% 32%;
-  
     --radius: 0.75rem;
-
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 224 100% 69%;
@@ -42,12 +31,18 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 215 28% 17%;
     --sidebar-ring: 216 34% 32%;
+    --success: 142 70% 45%;
+    --success-foreground: 210 40% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 210 40% 98%;
+    --info: 200 100% 50%;
+    --info-foreground: 210 40% 98%;
+    --pending: 39 100% 58%;
+    --pending-foreground: 210 40% 98%;
   }
-
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -58,15 +53,12 @@
   .glass-effect {
     @apply bg-white/5 backdrop-blur-md border border-white/10;
   }
-  
   .text-balance {
     text-wrap: balance;
   }
-  
   .animated-border {
     @apply relative;
   }
-  
   .animated-border::after {
     content: "";
     @apply absolute inset-0 rounded-md pointer-events-none;
@@ -74,79 +66,116 @@
     background-size: 500px 100%;
     animation: shimmer 2s infinite linear;
   }
+  
+  /* Added wallet-specific utilities */
+  .wallet-card {
+    @apply bg-card border border-border rounded-lg p-6 transition-all duration-300 hover:border-muted;
+  }
+  .transaction-positive {
+    @apply text-green-400;
+  }
+  .transaction-negative {
+    @apply text-destructive;
+  }
+  .transaction-pending {
+    @apply text-yellow-400;
+  }
 }
-
 /* Custom scrollbar for webkit browsers */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   @apply bg-background;
 }
-
 ::-webkit-scrollbar-thumb {
   @apply bg-muted rounded-full;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground;
 }
-
 /* Page transitions and animations */
 .page-transition-enter {
   opacity: 0;
   transform: translateY(10px);
 }
-
 .page-transition-enter-active {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 300ms, transform 300ms;
 }
-
 .page-transition-exit {
   opacity: 1;
   transform: translateY(0);
 }
-
 .page-transition-exit-active {
   opacity: 0;
   transform: translateY(-10px);
   transition: opacity 300ms, transform 300ms;
 }
-
 @layer components {
   .course-section {
     @apply py-6 border-b border-secondary last:border-b-0;
   }
-  
   .tag {
     @apply inline-flex items-center bg-secondary text-xs px-2 py-1 rounded-md mr-2;
   }
-  
   .btn-primary {
     @apply bg-primary hover:bg-opacity-90 text-primary-foreground font-semibold py-2 px-4 rounded-md transition-all duration-300;
   }
-  
   .btn-secondary {
     @apply bg-secondary hover:bg-opacity-90 text-secondary-foreground font-semibold py-2 px-4 rounded-md transition-all duration-300;
   }
-  
   .btn-outline {
     @apply border border-muted text-muted-foreground hover:bg-muted/20 font-semibold py-2 px-4 rounded-md transition-all duration-300;
   }
-  
+  .btn-destructive {
+    @apply bg-destructive hover:bg-opacity-90 text-secondary-foreground font-semibold py-2 px-4 rounded-md transition-all duration-300;
+  }
   .checklist-item {
     @apply flex items-start space-x-3 mb-3;
   }
-  
   .rating-stars {
     @apply flex items-center text-yellow-400;
   }
-  
   .course-card {
     @apply bg-card rounded-lg overflow-hidden hover:shadow-lg transition-all duration-300;
+  }
+  
+  /* Added wallet-specific components */
+  .transaction-card {
+    @apply bg-card border border-border p-4 rounded-lg mb-4 transition-all duration-300 hover:border-muted;
+  }
+  .balance-card {
+    @apply glass-effect rounded-lg p-6;
+  }
+  .transaction-icon {
+    @apply w-10 h-10 rounded-full flex items-center justify-center;
+  }
+  .transaction-icon-credit {
+    @apply bg-green-500/20;
+  }
+  .transaction-icon-debit {
+    @apply bg-destructive/20;
+  }
+  .filter-button {
+    @apply text-xs px-3 py-1.5 rounded-md transition-colors;
+  }
+  .filter-button-active {
+    @apply bg-accent text-accent-foreground;
+  }
+  .filter-button-inactive {
+    @apply bg-secondary text-secondary-foreground hover:bg-muted;
+  }
+}
+
+/* Animation for loading states */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
   }
 }

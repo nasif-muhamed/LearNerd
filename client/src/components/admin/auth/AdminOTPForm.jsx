@@ -3,10 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner'
 import { useDispatch } from "react-redux";
 import { useForm } from "react-hook-form";
-import { adminLogin } from "../../../redux/features/adminAuthSlice";
-import { login } from '../../../redux/features/authSlice'
+import { login, setUser } from '../../../redux/features/authSlice'
 import api from '../../../services/api/axiosInterceptor';
-
+import adminUserApi from '../../../services/api/adminUserAxiosInterceptor';
 
 const AdminOTPForm = ({setLoading, setStep}) => {
     const { register, handleSubmit, reset, formState: { errors } } = useForm({ mode: "onBlur" });
@@ -49,6 +48,7 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                     password: data.pass,
                 }
                 const response = await api.post("admin/login/verify-otp/", credentials);
+                console.log('resoponse admin login:', response)
                 if (response.status !== 200) {
                     console.log(response.status, response.data);
                     throw new Error(response.data);
@@ -56,7 +56,10 @@ const AdminOTPForm = ({setLoading, setStep}) => {
                 sessionStorage.removeItem("adminUsername");
                 sessionStorage.removeItem("adminUsernameExpiry");
                 // dispatch(adminLogin({'adminAccessToken':response.data.access, 'adminRefreshToken':response.data.refresh}));
-                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin'}));
+                const user_response = await adminUserApi.get('/users/user/');
+                console.log('user_response:', user_response)
+                dispatch(login({'access':response.data.access, 'refresh':response.data.refresh, 'role':'admin', 'userAccess': response.data.user_access, 'userRefresh': response.data.user_refresh}));
+                dispatch(setUser(user_response.data));
                 toast.success('Login successfull')
                 reset()
                 navigate("/admin/dashboard");

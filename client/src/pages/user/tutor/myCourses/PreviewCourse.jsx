@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, UserRound } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import LoadingSpinner from '../../../../components/ui/LoadingSpinner'
 import CourseHeader from '../../../../components/user/student/courses/course_details/CourseHeader'

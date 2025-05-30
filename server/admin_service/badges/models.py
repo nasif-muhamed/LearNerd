@@ -27,7 +27,6 @@ class Answers(models.Model):
         ('C', 'C'),
         ('D', 'D'),
     ]
-
     question_id = models.ForeignKey(Questions, related_name='answers', on_delete=models.CASCADE)
     options = models.CharField(max_length=1, choices=OPTION_CHOICES)
     answer = models.TextField(max_length=1000)
