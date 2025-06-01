@@ -15,6 +15,7 @@ import LandingPage from "../pages/user/common/LandingPage";
 import Wallet from "../pages/user/common/Wallet";
 import ChatPage from "../pages/common/ChatPage";
 import OneToOneVideoSession from "../pages/user/common/OneToOneVideoSession";
+import CommunityVideoCall from "../pages/user/common/CommunityVideoCall";
 
 const CommonRoutes = () => {
     return (
@@ -31,6 +32,7 @@ const CommonRoutes = () => {
                 <Route path="/wallet" element={<Wallet />} />
                 <Route path="/chats" element={<ChatPage />} />
                 <Route path="/video-call" element={<OneToOneVideoSession />} />
+                <Route path="/community-call" element={<CommunityVideoCall />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>
