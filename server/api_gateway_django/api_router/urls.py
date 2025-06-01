@@ -7,6 +7,7 @@ urlpatterns = [
     path('v1/badges/', views.BadgeGateway.as_view(), name="admin-badge"),
     path('v1/badges/<int:id>/', views.SingleBadgeGateway.as_view(), name="admin-badge-single"),
     path('v1/courses/', views.BasicCouseCreationGateway.as_view(), name="course-creation"),
+    path('v1/courses/upload-chunk/', views.CourseVideoChunkingGateway.as_view(), name="chunk-upload"),
     path('v1/courses/section-items/', views.BasicCouseCreationGateway.as_view(), name="sectionItem-creation"),
     path('v1/courses/stripe/webhook/', views.proxy_to_course_web_hook, name="stripe-webhook"), # webhook request's bodyshould be passed to course service as it is without manipulation or parsing, otherwise the verification will fail.
     
