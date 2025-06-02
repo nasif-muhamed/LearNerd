@@ -42,7 +42,7 @@ function CommunityVideoCall() {
                 zpRef.current.joinRoom({
                     container: containerRef.current,
                     scenario: {
-                        mode: ZegoUIKitPrebuilt.GroupCall, // ✅ GROUP CALL
+                        mode: ZegoUIKitPrebuilt.GroupCall, // GROUP CALL
                     },
                     sharedLinks: [
                         {

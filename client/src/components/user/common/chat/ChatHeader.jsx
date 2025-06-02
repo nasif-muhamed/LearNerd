@@ -20,7 +20,10 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
 
                 <RoundedImage 
                     style={`w-10 h-10 bg-primary/20`}
-                    source={`${selectedChat.room_type === "group" ? '' : BASE_URL}${selectedChat.room_type === "group" ? selectedChat.image : selectedChat.participants.image}`} 
+                    // source={`${selectedChat.room_type === "group" ? '' : BASE_URL}${selectedChat.room_type === "group" ? selectedChat.image : selectedChat.participants.image}`} 
+                    // alternative={selectedChat.room_type === "group" ? selectedChat.name : selectedChat.participants.full_name}
+                    // userName={selectedChat.room_type === "group" ? selectedChat.name : selectedChat.participants.full_name}
+                    source={selectedChat.image || selectedChat.participants?.image ? `${selectedChat.room_type === "group" ? '' : BASE_URL}${selectedChat.room_type === "group" ? selectedChat.image : selectedChat.participants.image}`: null} 
                     alternative={selectedChat.room_type === "group" ? selectedChat.name : selectedChat.participants.full_name}
                     userName={selectedChat.room_type === "group" ? selectedChat.name : selectedChat.participants.full_name}
                 />
@@ -66,6 +69,30 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
                     {selectedChat.temp_chat ? 'Temporary chat on' : formatExpiryMessage(selectedChat.expires_at) }
                 </p>
             </div>)}
+
+            {selectedChat.room_type === "group" && selectedChat.meeting && (
+            <div className="flex flex-col items-end text-right">
+                <div className='flex flex-col items-center btn-secondary'>
+                    <p className="text-sm font-semibold text-primary truncate max-w-[30ch] overflow-hidden whitespace-nowrap">{selectedChat.meeting.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                        {new Date(selectedChat.meeting.scheduled_time).toLocaleString()}
+                    </p>
+                </div>
+
+                {selectedChat.meeting.status === "open" && (
+                    <button
+                        className="mt-1 px-3 py-1 text-xs font-medium text-white bg-green-500 animate-pulse rounded hover:bg-green-600 transition"
+                        onClick={() => {
+                        // Call your join meeting handler here
+                        console.log("Joining meeting...");
+                        }}
+                    >
+                        Join Meeting
+                    </button>
+                )}
+            </div>
+            )}
+            
         </div>
     );
   };

@@ -412,12 +412,12 @@ const MyClassRoom = () => {
                         {/* Actions */}
                         <div className="flex items-center justify-end space-x-2">
                             {session.status === 'pending' && (
-                            <button 
-                                className="btn-primary text-sm py-1.5 px-3"
-                                onClick={() => handleApproveClick(session)}
-                            >
-                                Approve & Schedule
-                            </button>
+                                <button 
+                                    className="btn-primary text-sm py-1.5 px-3"
+                                    onClick={() => handleApproveClick(session)}
+                                >
+                                    Approve & Schedule
+                                </button>
                             )}
 
                             {session.status === 'approved' && !session.is_upcoming && (                    
