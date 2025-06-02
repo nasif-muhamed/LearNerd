@@ -473,3 +473,25 @@ class CallCourseService:
 
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
+
+    def get_community_scheduled_meeting(self, request, badge_id):
+        path = f"api/v1/meetings/admin/community-meeting/{badge_id}/"
+        headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
+        print('get_community_scheduled_meeting badge_id:', badge_id)
+        try:
+            response = self._make_request("GET", headers, path)
+            
+            print('response:', response.json())
+            print('response.ok:', response.ok)
+            if response.status_code != 200:
+                raise CourseServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except CourseServiceException as e:
+            raise
+
+        except Exception as e:
+            raise CourseServiceException(f"Unexpected error: {str(e)}")

@@ -2,6 +2,7 @@ import json
 
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import AnonymousUser
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -13,9 +14,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from .models import Badges, Questions, Answers
 from .serializers import BadgeSerializer, SimplifiedBadgeSerializer
 from .message_broker.rabbitmq_publisher import publish_chat_event
-from admins.utils import CallUserService, UserServiceException
+from admins.utils import CallUserService, UserServiceException, CallCourseService, CourseServiceException
 
 call_user_service = CallUserService()
+call_course_service = CallCourseService()
 
 class CustomPagination(PageNumberPagination):
     page_size = 3  # Default items per page
@@ -138,17 +140,35 @@ class BadgesView(APIView):
 
 
 class BadgeView(APIView):
-    permission_classes = [AllowAny]
+    # permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser, JSONParser)
+    def get_permissions(self):
+        if self.request.method == 'PATCH':
+            return [IsAdminUser()]
+        return [AllowAny()]
+    
 
     def get(self, request, id):
         try:
+            user = request.user
+            print('BadgeView user:', user, type(user))
             badge = Badges.objects.get(id=id)
             print('badge:', badge)
             serializer = BadgeSerializer(badge)
-            return Response(serializer.data)
+            serializer_data = serializer.data
+            if not isinstance(user, AnonymousUser) and user.is_staff:
+                course_response = call_course_service.get_community_scheduled_meeting(request, badge.id)
+                meeting = course_response.json()
+                serializer_data['meeting'] = meeting if meeting else None
+                print('meeting:', meeting)
+            return Response(serializer_data)
         except Badges.DoesNotExist:
             return Response({'detail': 'Badge not found'}, status=status.HTTP_404_NOT_FOUND)
+        except CourseServiceException as e:
+            return Response(
+                {"error": str(e.detail)},
+                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
 
     def patch(self, request, id):
         badge = get_object_or_404(Badges, id=id)

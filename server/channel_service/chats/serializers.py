@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from .models import User, Room, Message
+from .models import User, Room, Message, Meeting
 from urllib.parse import urlparse
 from django_redis import get_redis_connection
+from django.utils import timezone
 
 class UserSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
@@ -27,6 +28,12 @@ class MessageSerializer(serializers.Serializer):
     timestamp = serializers.DateTimeField()
     room = serializers.CharField(source='room.id.__str__')
 
+class MeetingSerializer(serializers.Serializer):
+    id = serializers.CharField(source='id.__str__')
+    # group = RoomSerializer()
+    title = serializers.CharField()
+    scheduled_time = serializers.DateTimeField()
+
 class RoomSerializer(serializers.Serializer):
     id = serializers.CharField(source='id.__str__')
     room_type = serializers.CharField()
@@ -40,6 +47,7 @@ class RoomSerializer(serializers.Serializer):
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
     expires_at = serializers.DateTimeField(allow_null=True)
+    meeting = serializers.SerializerMethodField()
 
     def get_participants(self, obj):
         # Get the requesting user_id from context
@@ -72,10 +80,30 @@ class RoomSerializer(serializers.Serializer):
         user_ids_list = [int(uid.decode()) for uid in user_ids]
         print('user_ids_list:', user_ids_list)
         return len(user_ids_list)
+    
+    def get_meeting(self, obj):
+        try:
+            now = timezone.now()
+            meeting = Meeting.objects(group=obj).order_by('-scheduled_time').first()
+            print(f"Meeting for room {obj.id}: {meeting.title}")
+            if meeting:
+                print(f"meeting.scheduled_time: {meeting.scheduled_time}, tzinfo: {meeting.scheduled_time.tzinfo}")
+                print(f"now: {now}, tzinfo: {now.tzinfo}")
+                
+            scheduled_time = meeting.scheduled_time
+            if timezone.is_naive(scheduled_time):
+                scheduled_time = timezone.make_aware(scheduled_time, timezone=timezone.utc)
+
+            if scheduled_time > now:
+                return MeetingSerializer(meeting).data
+        except Exception as e:
+            print(f"Error fetching meeting for room {obj.id}: {e}")
+        return None
 
 class UserRoomsSerializer(serializers.Serializer):
     one_to_one = RoomSerializer(many=True)
     group = RoomSerializer(many=True)
+
 
 # class UnreadMsgCountSerializer(serializers.Serializer):
 #     un_read_messages = serializers.SerializerMethodField()
