@@ -222,6 +222,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
+    async def group_meeting_status(self, event):
+        print('inside group_meeting_status:', event)
+        await self.send(text_data=json.dumps({
+            'type': 'group_meeting_status',
+            'meeting': event['data']
+        }))
+
     @database_sync_to_async
     def is_user_in_room(self):
         try:

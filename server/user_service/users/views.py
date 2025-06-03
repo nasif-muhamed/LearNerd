@@ -619,6 +619,20 @@ class SubmitQuizView(APIView):
             'is_passed': result['is_passed']
         }, status=status.HTTP_201_CREATED)
 
+class DoesBadgeExistView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        print('inside DoesBadgeExistView', request.data)
+        try:
+            badge_id = request.data.get('badge_id')
+            user_id = request.data.get('user_id')
+            user = Profile.objects.get(id=user_id)
+            return Response({"exists": user.badges_aquired.filter(badge_id=badge_id).exists()})
+        except Profile.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    
+
 class NotificationListView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request):

@@ -10,6 +10,12 @@ class CommunityVideoMeeting(models.Model):
     room_id = models.CharField(max_length=100, unique=True, default=uuid.uuid4)
     scheduled_time = models.DateTimeField()
     is_active = models.BooleanField(default=True)
+    status = models.CharField(max_length=50, choices=[
+        ('scheduled', 'Scheduled'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled')
+    ], default='scheduled')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

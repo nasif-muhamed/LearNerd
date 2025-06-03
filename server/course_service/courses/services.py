@@ -96,3 +96,28 @@ class CallUserService:
 
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
+
+    def get_user_badge_exist(self, user_id, badge_id):
+        if not user_id or not badge_id:
+            raise ValueError("user_id and badge_id are required")
+
+        path = f"api/v1/users/user-badge-exist/"
+        data = {
+            "user_id": user_id,
+            "badge_id": badge_id
+        }
+        
+        try:
+            response = self._make_request("GET", path=path, data=data)
+            if response.status_code != 200:
+                raise UserServiceException(
+                    f"Request failed with status {response.status_code}: {response.text}"
+                )
+
+            return response
+
+        except UserServiceException as e:
+            raise
+
+        except Exception as e:
+            raise UserServiceException(f"Unexpected error: {str(e)}")

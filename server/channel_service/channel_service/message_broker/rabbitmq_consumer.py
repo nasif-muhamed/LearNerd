@@ -4,7 +4,7 @@ import os
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from chats.service import (create_or_update_user, create_or_update_chat_room, create_or_update_group_chat_room, 
-                           add_to_group_chat, update_group_chat_name, create_group_meeting)
+                           add_to_group_chat, update_group_chat_name, create_group_meeting, delete_group_meeting, update_group_meeting)
 
 def notification_callback(ch, method, properties, body):
     body = json.loads(body)
@@ -99,10 +99,29 @@ def chat_callback(ch, method, properties, body):
 
         elif event_type == 'create_community_meeting':
             badge_name = body['badge_name']
+            meeting_id = body['meeting_id']
             title = body['title']
             scheduled_time = body['scheduled_time']
-            print('create_community_meeting:', badge_name, title, scheduled_time)
-            meeting = create_group_meeting(badge_name, title, scheduled_time)
+            status = body['status']
+            print('create_community_meeting:', badge_name, title, scheduled_time, status)
+            meeting = create_group_meeting(meeting_id, badge_name, title, scheduled_time, status)
+
+        elif event_type == 'delete_community_meeting':
+            meeting_id = body['meeting_id']
+            badge_name = body['badge_name']
+            title = body['title']
+            status = body['status']
+            print('create_community_meeting:', badge_name, title, status)
+            delete_group_meeting(meeting_id, badge_name, title, status)
+
+        elif event_type == 'update_community_meeting':
+            meeting_id = body['meeting_id']
+            badge_name = body['badge_name']
+            title = body['title']
+            status = body['status']
+            print('create_community_meeting:', badge_name, title, status)
+            update_group_meeting(meeting_id, badge_name, title, status)
+        
         
         print(f" [x] chat event received: {event_type}")
         ch.basic_ack(delivery_tag=method.delivery_tag)

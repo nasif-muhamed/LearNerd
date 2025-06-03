@@ -30,9 +30,10 @@ class MessageSerializer(serializers.Serializer):
 
 class MeetingSerializer(serializers.Serializer):
     id = serializers.CharField(source='id.__str__')
-    # group = RoomSerializer()
+    meeting_id = serializers.IntegerField()
     title = serializers.CharField()
     scheduled_time = serializers.DateTimeField()
+    status = serializers.CharField()
 
 class RoomSerializer(serializers.Serializer):
     id = serializers.CharField(source='id.__str__')
@@ -83,19 +84,18 @@ class RoomSerializer(serializers.Serializer):
     
     def get_meeting(self, obj):
         try:
-            now = timezone.now()
-            meeting = Meeting.objects(group=obj).order_by('-scheduled_time').first()
-            print(f"Meeting for room {obj.id}: {meeting.title}")
-            if meeting:
-                print(f"meeting.scheduled_time: {meeting.scheduled_time}, tzinfo: {meeting.scheduled_time.tzinfo}")
-                print(f"now: {now}, tzinfo: {now.tzinfo}")
-                
-            scheduled_time = meeting.scheduled_time
-            if timezone.is_naive(scheduled_time):
-                scheduled_time = timezone.make_aware(scheduled_time, timezone=timezone.utc)
+            # now = timezone.now()
+            meeting = Meeting.objects(
+                group=obj,
+                status__nin=['cancelled', 'completed'],
+            ).order_by('-created_at').first()
+            
+            # scheduled_time = meeting.scheduled_time
+            # if timezone.is_naive(scheduled_time):
+            #     scheduled_time = timezone.make_aware(scheduled_time, timezone=timezone.utc)
 
-            if scheduled_time > now:
-                return MeetingSerializer(meeting).data
+            # if scheduled_time > now:
+            return MeetingSerializer(meeting).data
         except Exception as e:
             print(f"Error fetching meeting for room {obj.id}: {e}")
         return None
