@@ -53,7 +53,11 @@ const ChatArea = ({ selectedChat, setSelectedChat, activeTab, setActiveTab, isMo
             //         }
             //     }
             // }) 
-            setMessages(result);
+            setMessages(result.messages || []);
+            setSelectedChat(prev => ({
+                ...prev,
+                meeting: result.meeting,
+            }))
             // setMessages(result);
         } catch (error) {
             console.log('error fetching chat list:', error);

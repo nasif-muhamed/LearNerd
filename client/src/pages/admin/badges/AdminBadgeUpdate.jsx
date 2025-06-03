@@ -192,6 +192,7 @@ const AdminBadgeUpdate = () => {
         setIsModalOpen(true);
         setScheduledDate('');
         setScheduledTime('');
+        setScheduleTitle('');
     };
 
     const handleSubmitSchedule = async (e) => {
@@ -240,25 +241,46 @@ const AdminBadgeUpdate = () => {
         }
     };
 
-    const deactivateMeeting = async (e) => {
-        e.preventDefault();
+    // const deactivateMeeting = async (e) => {
+    //     e.preventDefault();
+                
+    //     try {
+    //         const response = await adminUserApi.patch(`meetings/community-meetings/`, {
+    //             'id': originalData.meeting?.id,
+    //             'is_active': false
+    //         });
+
+    //         console.log('response from video-sessions:', response)
+    //         setOriginalData((prev) => ({
+    //             ...prev,
+    //             meeting: null,
+    //         }));
+    //         toast.info('Meeting deactivated!');
+    //     } catch (err) {
+    //         console.log('schedule meeting error', err)
+    //         handleError(err, 'Failed to schedule meeting');
+    //     } finally {
+    //         // setLoadingScheduleButton(false)
+    //     }
+    // };
+    
+    const updateMeeting = async (is_active, status) => {
                 
         try {
-            const response = await adminUserApi.patch(`meetings/community-meetings/`, {
+            const data = {
                 'id': originalData.meeting?.id,
-                'is_active': false
-            });
+            } 
 
-            console.log('response from video-sessions:', response)
+            if (is_active !== undefined) data.is_active = is_active;
+            if (status) data.status = status;
+            const response = await adminUserApi.patch(`meetings/community-meetings/`, data);
+
             setOriginalData((prev) => ({
                 ...prev,
-                meeting: null,
+                meeting: response.data,
             }));
-            toast.info('Meeting deactivated!');
-
-            // Close modal
-            setScheduleTitle('')
-            setIsModalOpen(false);
+            console.log('response from video-sessions:', response)
+            toast.info('Meeting updated!');
         } catch (err) {
             console.log('schedule meeting error', err)
             handleError(err, 'Failed to schedule meeting');
@@ -266,8 +288,14 @@ const AdminBadgeUpdate = () => {
             // setLoadingScheduleButton(false)
         }
     };
-    
-    
+
+    const isRoomOpenToJoin = (schedule) => {
+        let scheduledTime = new Date(schedule);
+        scheduledTime.setMinutes(scheduledTime.getMinutes() - 5)
+        const currentTime = new Date();
+        return scheduledTime <= currentTime
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             {loading && <LoadingSpinner />}
@@ -276,7 +304,7 @@ const AdminBadgeUpdate = () => {
                 <div className="flex flex-col gap-2 md:flex-row justify-between items-center mb-4">
                     <h2 className="text-2xl font-bold">Update Badge</h2>
 
-                    {!originalData?.meeting ? 
+                    {!originalData?.meeting || !originalData?.meeting?.is_active  ? 
                         (<button 
                             className="btn-secondary text-sm py-1.5 px-3"
                             onClick={() => handleScheduleClick()}
@@ -284,17 +312,38 @@ const AdminBadgeUpdate = () => {
                             Schedule Meeting
                         </button>) 
                         : 
-                        (<div className="btn-secondary text-sm py-1.5 px-3 flex flex-col gap-1">
+                        (<div className="btn-secondary text-sm py-1.5 px-3 flex flex-col gap-2">
                             <h1 className="font-semibold truncate max-w-[30ch] overflow-hidden whitespace-nowrap">
                                 Meeting: <span className="font-extralight ">{originalData.meeting.title}</span>
                             </h1>
-                            <div className="flex gap-2 justify-between items-center">
-                                <h1 className="font-semibold">
-                                    At: <span className="font-extralight">{new Date(originalData.meeting?.scheduled_time).toLocaleString()}</span>
-                                </h1>
-                                <button onClick={deactivateMeeting} className="bg-white rounded-lg text-black px-3 py-1 hover:bg-gray-200">
-                                    {new Date(originalData.meeting?.scheduled_time) < new Date() ? 'Complete' : 'Cancel'}
-                                </button>
+                            <h1 className="font-semibold">
+                                At: <span className="font-extralight">{new Date(originalData.meeting?.scheduled_time).toLocaleString()}</span>
+                            </h1>
+                            <div className="flex gap-2 justify-between items-center ">
+                                {/* <button onClick={() => {updateMeeting(false, isRoomOpenToJoin(originalData.meeting?.scheduled_time) ? 'completed' : 'cancelled')}} className="bg-white rounded-lg text-black px-3 py-1 hover:bg-gray-200 w-full">
+                                    {isRoomOpenToJoin(originalData.meeting?.scheduled_time) ? 'Complete' : 'Cancel'}
+                                </button> */}
+                                {originalData.meeting?.status == 'scheduled' && (<button onClick={() => {updateMeeting(false, 'cancelled')}} className="bg-destructive rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Cancel
+                                </button>)}
+                                {isRoomOpenToJoin(originalData.meeting?.scheduled_time) && originalData.meeting?.status == 'scheduled' && (<button onClick={() => {updateMeeting(undefined, 'in_progress')}} className="bg-success rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Start
+                                </button>)}
+                                {isRoomOpenToJoin(originalData.meeting?.scheduled_time) && originalData.meeting?.status == 'in_progress' && (<button onClick={() => {updateMeeting(false, 'completed')}} className="bg-white rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Complete
+                                </button>)}
+                                {/* <button onClick={() => {}} className="bg-success rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Join
+                                </button> */}
+                                {isRoomOpenToJoin(originalData.meeting?.scheduled_time) && originalData.meeting?.status == 'in_progress' && (<a 
+                                    href={isRoomOpenToJoin(originalData.meeting?.scheduled_time) ? `/community-call?meeting_id=${originalData.meeting?.id}` : '#'}
+                                    target={isRoomOpenToJoin(originalData.meeting?.scheduled_time) ?  `_blank` : ''}
+                                    rel="noopener noreferrer"
+                                    className={`bg-success rounded-lg text-black px-3 py-1 hover:opacity-80 w-full`}
+                                >
+                                    Join
+                                </a>)}
+
                             </div>
                         </div>)
                     }

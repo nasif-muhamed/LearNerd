@@ -71,26 +71,37 @@ const ChatHeader = ({ selectedChat, activeTab }) => {
             </div>)}
 
             {selectedChat.room_type === "group" && selectedChat.meeting && (
-            <div className="flex flex-col items-end text-right">
-                <div className='flex flex-col items-center btn-secondary'>
-                    <p className="text-sm font-semibold text-primary truncate max-w-[30ch] overflow-hidden whitespace-nowrap">{selectedChat.meeting.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                        {new Date(selectedChat.meeting.scheduled_time).toLocaleString()}
-                    </p>
-                </div>
+                <div className="flex flex-col items-end text-right">
+                    <div className='flex flex-col items-center btn-secondary'>
+                        <p className="text-sm font-semibold text-primary truncate max-w-[30ch] overflow-hidden whitespace-nowrap">{selectedChat.meeting.title}</p>
+                        {selectedChat.meeting?.status !== "in_progress" ?
+                            (<p className="text-xs text-muted-foreground">
+                                {new Date(selectedChat.meeting.scheduled_time).toLocaleString()}
+                            </p>)
+                            :
+                            (
+                                // <button
+                                //     className="mt-1 px-3 py-1 text-xs font-medium text-white bg-green-500 animate-pulse rounded hover:bg-green-600 transition"
+                                //     onClick={() => {
+                                //     // Call your join meeting handler here
+                                //         console.log("Joining meeting...");
+                                //     }}
+                                // >
+                                //     Join Meeting
+                                // </button>
+                                <a 
+                                    href={`/community-call?meeting_id=${selectedChat.meeting?.meeting_id}`}
+                                    target={`_blank`}
+                                    rel="noopener noreferrer"
+                                    className={`mt-1 px-3 py-1 text-xs font-medium text-white bg-green-500 animate-pulse rounded hover:bg-green-600 transition`}
+                                >
+                                    Join
+                                </a>
+                            )
+                        }
+                    </div>
 
-                {selectedChat.meeting.status === "open" && (
-                    <button
-                        className="mt-1 px-3 py-1 text-xs font-medium text-white bg-green-500 animate-pulse rounded hover:bg-green-600 transition"
-                        onClick={() => {
-                        // Call your join meeting handler here
-                        console.log("Joining meeting...");
-                        }}
-                    >
-                        Join Meeting
-                    </button>
-                )}
-            </div>
+                </div>
             )}
             
         </div>

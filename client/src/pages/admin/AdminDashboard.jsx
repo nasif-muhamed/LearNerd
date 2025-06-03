@@ -114,7 +114,7 @@ const AdminDashboard = () => {
             });
             console.log('charts response', response);
             setBarChartData(response.data?.purchase_chart_data || [])
-            setTotalSubscriptions(response.data?.total_subcriptions || 0)
+            setTotalSubscriptions(response.data?.total_subscriptions || 0)
             setTotalFreemium(response.data?.total_freemium || 0)
         } catch (error) {
             console.error("Error fetching charts data:", error);

@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { ZegoUIKitPrebuilt } from '@zegocloud/zego-uikit-prebuilt';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../../services/api/axiosInterceptor';
+import adminUserApi from '../../../services/api/adminUserAxiosInterceptor';
 import useUser from '../../../hooks/useUser'
 import handleError from '../../../utils/handleError';
 import LoadingSpinner from '../../../components/ui/LoadingSpinner';
+import useRole from '../../../hooks/useRole';
 
 function CommunityVideoCall() {
     const [roomId, setRoomId] = useState('');
@@ -13,19 +15,21 @@ function CommunityVideoCall() {
     const zpRef = useRef(null);
     const location = useLocation();
     const user = useUser();
+    const role = useRole();
     const navigate = useNavigate();
 
     const initZego = async () => {
         try {
-            const sessionId = new URLSearchParams(location.search).get('session_id');
-            if (!sessionId) throw new Error('Session ID not provided');
+            const urlEnd = `meetings/community-meeting/get-token/`
+            const meetingId = new URLSearchParams(location.search).get('meeting_id');
+            if (!meetingId) throw new Error('Session ID not provided');
 
-            const response = await api.post('courses/video-session/get-session-token/', {
-                session_id: sessionId,
-            });
+            let response;
+            if (role === 'admin') response = await adminUserApi.post(urlEnd, {meeting_id: meetingId});
+            else response = await api.post(urlEnd, {meeting_id: meetingId});
 
             const { token, app_id, room_id, user_id } = response.data;
-            const user_name = `${user.first_name} ${user.last_name}`;
+            const user_name = role !== "admin" ? `${user.first_name} ${user.last_name}` : `Admin ${user.id}`;
             setRoomId(room_id);
 
             if (!zpRef.current) {
@@ -47,7 +51,7 @@ function CommunityVideoCall() {
                     sharedLinks: [
                         {
                             name: 'Community Link',
-                            url: `${window.location.protocol}//${window.location.host}${window.location.pathname}?session_id=${sessionId}`,
+                            url: `${window.location.protocol}//${window.location.host}${window.location.pathname}?meeting_id=${meetingId}`,
                         },
                     ],
                     turnOnMicrophoneWhenJoining: false,

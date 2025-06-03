@@ -32,13 +32,16 @@ const CommonRoutes = () => {
                 <Route path="/wallet" element={<Wallet />} />
                 <Route path="/chats" element={<ChatPage />} />
                 <Route path="/video-call" element={<OneToOneVideoSession />} />
-                <Route path="/community-call" element={<CommunityVideoCall />} />
             </Route>
 
             <Route path="/" element={<AntiProtectedRoute />}>
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+            </Route>
+
+            <Route path="/" element={<DynamicRouter />}>
+                <Route path="/community-call" element={<CommunityVideoCall />} />
             </Route>
 
             <Route path="*" element={<DynamicRouter />}>

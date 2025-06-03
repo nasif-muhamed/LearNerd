@@ -16,8 +16,9 @@ const Home = () => {
     const [myCourses, setMyCourses] = useState([])
     const [allCourses, setAllCourses] = useState([])
     const [tutors, setTutors] = useState([])
-    const [myCoursesLoading, setMyCoursesLoading] = useState(false);
-    const [allCoursesLoading, setAllCoursesLoading] = useState(false);
+    const [myCoursesLoading, setMyCoursesLoading] = useState(null);
+    const [allCoursesLoading, setAllCoursesLoading] = useState(null);
+    const [banner_details, setBannerDetails] = useState(null);
     const [tutorsLoading, setTutorsLoading] = useState(false);
     const pageSize = 3;
 
@@ -68,6 +69,7 @@ const Home = () => {
             const result = response.data
             setMyCourses(result.my_courses)
             setAllCourses(result.courses)
+            setBannerDetails(result.banner_details)
         }catch (error) {
             console.log('Mycourse Error:', error)
             handleError(error, "Error fetching courses")
@@ -112,15 +114,15 @@ const Home = () => {
                 <div className="flex items-center justify-between">
                     <div className="mx-auto max-w-5xl w-full flex bg-gray-200 rounded-lg overflow-hidden">
                         <div className="w-2/5 p-8 text-gray-800">
-                            <h2 className="text-3xl font-bold mb-4">Learning that gets you</h2>
-                            <p className="mb-4">Skills for your present (and your future). Get started with us.</p>
+                            <h2 className="text-2xl font-bold mb-4">{banner_details?.title || "Learning that gets you"}</h2>
+                            <p className="mb-4">{banner_details?.description || "Skills for your present (and your future). Get started with us."}</p>
                             <Link to={'/student/courses'} className="bg-gray-600 text-white py-2 px-6 rounded-md">
                                 Explore Courses
                             </Link>
                         </div>
                         <div className="w-3/5">
                             <img
-                                src={studs2}
+                                src={banner_details?.banner_url || studs2}
                                 alt="Learning illustration"
                                 className="h-full w-full object-cover"
                             />
