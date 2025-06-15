@@ -1,4 +1,4 @@
-import { Facebook, Github } from "lucide-react";
+import { FaGoogle, FaFacebookF, FaGithub } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -192,10 +192,10 @@ const RegisterForm = ({ setStep, setLoading }) => {
                 <div
                     onClick={handleGoogleLogin}
                 >
-                    <SocialButton icon={Facebook} bgColor="bg-red-600" />
+                    <SocialButton icon={FaGoogle} bgColor="bg-red-600" />
                 </div>
-                <SocialButton icon={Facebook} bgColor="bg-blue-600" />
-                <SocialButton icon={Github} bgColor="bg-gray-700" />
+                <SocialButton icon={FaFacebookF} bgColor="bg-blue-600" />
+                <SocialButton icon={FaGithub} bgColor="bg-gray-700" />
             </div>
         </>
     );

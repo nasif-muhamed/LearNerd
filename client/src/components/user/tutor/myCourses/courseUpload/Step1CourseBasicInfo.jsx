@@ -40,7 +40,7 @@ const Step1CourseBasicInfo = ({
     setUpdateCourseThumb,
 }) => {
     // Form state
-    console.log('categories:', categories, categories.length)
+    console.log('categories:', categories, categories && categories.length)
     console.log('uploadedCourse', uploadedCourse)
     const { register, handleSubmit, control, watch, setValue, formState: { errors }, reset } = useForm({
         defaultValues: {
@@ -104,7 +104,7 @@ const Step1CourseBasicInfo = ({
 
     // Load existing data if editing
     useEffect(() => {
-        if (!categories.length){
+        if (!categories){
             fetchCategories()
         }
     }, [categories]);
@@ -364,7 +364,7 @@ const Step1CourseBasicInfo = ({
                                 <label className="block text-sm font-medium mb-2">Category</label>
                                 <select {...field} className="input-field text-black">
                                     <option value="">Select a category</option>
-                                    {categories.map((cat, idx) => (
+                                    {categories && categories.map((cat, idx) => (
                                         <option key={idx} value={cat.id}>{cat.title}</option>
                                     ))}
                                 </select>

@@ -29,7 +29,7 @@ const CreateCourse = ({}) => {
     const [videoSession, setVideoSession] = useState(null);
     const [chat_upto, setChatUpto] = useState(null);
     const [safe_period, setSafePeriod] = useState(null);
-    const [categories, setCategories] = useState([]);
+    const [categories, setCategories] = useState(null);
     const [thumbnailPreview, setThumbnailPreview] = useState(null);
     const [updateCourseThumb, setUpdateCourseThumb] = useState(null)
 
