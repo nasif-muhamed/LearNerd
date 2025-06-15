@@ -29,7 +29,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('DJANGO_SECRET_CHANNEL')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
@@ -111,6 +111,16 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.dummy',
     }
+}
+
+# Disable Django migrations for MongoDB
+MIGRATION_MODULES = {
+    'admin': None,
+    'auth': None,
+    'contenttypes': None,
+    'sessions': None,
+    'messages': None,
+    'chats': None, 
 }
 
 # MongoDB Atlas connection

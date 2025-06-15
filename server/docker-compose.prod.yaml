@@ -18,15 +18,14 @@ services:
     # Postgres database container
     db:
         image: postgres:latest
-        container_name: db
         environment:
             POSTGRES_USER: ${DB_USER}
             POSTGRES_PASSWORD: ${DB_PASSWORD}
             POSTGRES_DB: ${DB_NAME_USER}
+        volumes:
+            - postgres_test_data6:/var/lib/postgresql/data
         ports:
             - "5432:5432"
-        volumes:
-            - postgres_test_data10:/var/lib/postgresql/data
         networks:
             - learn_network
         healthcheck:
@@ -54,8 +53,7 @@ services:
             retries: 5
             
     api_gateway_django:
-        build:
-            context: ./api_gateway_django
+        image: muhdnasif/learnerds-api_gateway_django
         container_name: api_gateway
         environment:
             - DJANGO_SECRET_GATEWAY=${DJANGO_SECRET_GATEWAY}
@@ -68,8 +66,6 @@ services:
             - CHANNEL_SERVICE_URL=${CHANNEL_SERVICE_URL}
         ports:
             - "8000:8000"
-        volumes:
-            - ./api_gateway_django:/app
         command: >
             sh -c "python manage.py runserver 0.0.0.0:8000"
         depends_on:
@@ -81,8 +77,7 @@ services:
             - learn_network
 
     user_service:
-        build:
-            context: ./user_service
+        image: muhdnasif/learnerds-user_service
         container_name: user_service
         environment:
             - DB_NAME_USER=${DB_NAME_USER}
@@ -99,7 +94,6 @@ services:
             - REDIS_PORT=${REDIS_PORT}
             - EMAIL_HOST_USER=${EMAIL_HOST_USER}
             - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
-            - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH}
             - RABBITMQ_HOST=${RABBITMQ_HOST}
             - RABBITMQ_USER=${RABBITMQ_USER}
             - RABBITMQ_PASS=${RABBITMQ_PASS}
@@ -118,13 +112,11 @@ services:
 
         ports:
             - "8001:8001"
-        volumes:
-            - ./user_service:/app
         command: >
-            sh -c "python manage.py makemigrations &&
+            sh -c "python manage.py makemigrations users && python manage.py makemigrations &&
                    python manage.py migrate &&
-                   python manage.py runserver 0.0.0.0:8001 & 
-                   celery -A user_service worker -l info & 
+                   python manage.py runserver 0.0.0.0:8001 && 
+                   celery -A user_service worker -l info && 
                    python manage.py run_consumer"
         depends_on:
             db:
@@ -137,8 +129,7 @@ services:
             - learn_network
 
     admin_service:
-        build:
-            context: ./admin_service
+        image: muhdnasif/learnerds-admin_service
         container_name: admin_service
         environment:
             - DB_NAME_ADMIN=${DB_NAME_ADMIN}
@@ -163,10 +154,8 @@ services:
             - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
         ports:
             - "8002:8002"
-        volumes:
-            - ./admin_service:/app
         command: >
-            sh -c "python manage.py makemigrations &&
+            sh -c "python manage.py makemigrations admins && python manage.py makemigrations &&
                    python manage.py migrate &&
                    python manage.py runserver 0.0.0.0:8002"
         depends_on:
@@ -175,8 +164,7 @@ services:
             - learn_network
 
     course_service:
-        build:
-            context: ./course_service
+        image: muhdnasif/learnerds-course_service
         container_name: course_service
         environment:
             - DB_NAME_COURSE=${DB_NAME_COURSE}
@@ -204,20 +192,19 @@ services:
             - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
         ports:
             - "8003:8003"
-        volumes:
-            - ./course_service:/app
         command: >
             sh -c "python manage.py makemigrations &&
                    python manage.py migrate &&
-                   python manage.py runserver 0.0.0.0:8003"
+                   python manage.py runserver 0.0.0.0:8003 &&
+                   celery -A course_service worker -l info &&
+                   celery -A course_service beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
         depends_on:
             - user_service
         networks:
             - learn_network
 
     channel_service:
-        build:
-            context: ./channel_service
+        image: muhdnasif/learnerds-channel_service
         container_name: channel_service
         environment:
             - DB_NAME_CHANNEL=${DB_NAME_CHANNEL}
@@ -242,10 +229,8 @@ services:
             - USER_SERVICE_URL=${USER_SERVICE_URL}
         ports:
             - "8004:8004"
-        volumes:
-            - ./channel_service:/app
         command: >
-            sh -c "daphne -b 0.0.0.0 -p 8004 channel_service.asgi:application &
+            sh -c "daphne -b 0.0.0.0 -p 8004 channel_service.asgi:application &&
                    python manage.py run_consumer"
         depends_on:
             - user_service
@@ -253,7 +238,7 @@ services:
             - learn_network
 
 volumes:
-    postgres_test_data10:
+    postgres_test_data6:
     redis_data:
 
 networks:

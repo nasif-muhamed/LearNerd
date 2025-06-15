@@ -1,0 +1,43 @@
+# course-service-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: course-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: course-service
+  template:
+    metadata:
+      labels:
+        app: course-service
+    spec:
+      containers:
+      - name: course-service
+        image: muhdnasif/learnerds-course_service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8003
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+      restartPolicy: Always
+
+---
+# course-service-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: course-service
+spec:
+  ports:
+  - port: 8003
+    targetPort: 8003
+
+  selector:
+    app: course-service
+  type: ClusterIP
+  

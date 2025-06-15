@@ -1,0 +1,53 @@
+# channel-service-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: channel-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: channel-service
+  template:
+    metadata:
+      labels:
+        app: channel-service
+    spec:
+      containers:
+      - name: channel-service
+        image: muhdnasif/learnerds-channel_service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8004
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        # command: ["sh", "-c", "daphne -b 0.0.0.0 -p 8004 channel_service.asgi:application"]
+      - name: channel-service-rabbitmq-consumer
+        image: muhdnasif/learnerds-channel_service:latest
+        imagePullPolicy: Never
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["python", "manage.py", "run_consumer"]
+      restartPolicy: Always
+
+---
+# channel-service-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: channel-service
+spec:
+  ports:
+  - port: 8004
+    targetPort: 8004
+    nodePort: 30004
+  selector:
+    app: channel-service
+  type: NodePort
+  

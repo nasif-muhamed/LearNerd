@@ -35,6 +35,9 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'admins',
+    'badges',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -47,8 +50,6 @@ INSTALLED_APPS = [
     'cloudinary',
     'cloudinary_storage',
 
-    'admins',
-    'badges',
 ]
 
 REST_FRAMEWORK = {
@@ -113,7 +114,7 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT'),
     }
 }
-
+print('DB_NAME_ADMIN:', os.getenv('DB_NAME_ADMIN'))
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
