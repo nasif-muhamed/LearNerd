@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Check, CheckCheck, Loader } from 'lucide-react';
 import useUser from '../../../../hooks/useUser'
-import formatTimeAgo from '../../../../utils/formatTimeAgo';
+import chatTime from '../../../../utils/chatTime';
 import TypingIndicator from '../../../ui/TypingIndicator';
 import RoundedImage from '../../../ui/RoundedImage';
 
@@ -46,7 +46,7 @@ const MessageList = ({ messages, loading, activeTyper, activeTab }) => {
                             )}
                                 <p>{msg.content}</p>
                                 <div className="text-xs opacity-70 text-right mt-1 flex items-center justify-end gap-1">
-                                    {formatTimeAgo(msg.timestamp)}
+                                    {chatTime(msg.timestamp)}
                                     {activeTab !== 'community' && msg.sender?.user_id === userId && (
                                         msg.is_read === 'no' ? 
                                             <Check size={14} /> 

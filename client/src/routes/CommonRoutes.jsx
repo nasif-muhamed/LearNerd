@@ -15,6 +15,7 @@ import LandingPage from "../pages/user/common/LandingPage";
 import Wallet from "../pages/user/common/Wallet";
 import ChatPage from "../pages/common/ChatPage";
 import OneToOneVideoSession from "../pages/user/common/OneToOneVideoSession";
+import CommunityVideoCall from "../pages/user/common/CommunityVideoCall";
 
 const CommonRoutes = () => {
     return (
@@ -37,6 +38,10 @@ const CommonRoutes = () => {
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+            </Route>
+
+            <Route path="/" element={<DynamicRouter />}>
+                <Route path="/community-call" element={<CommunityVideoCall />} />
             </Route>
 
             <Route path="*" element={<DynamicRouter />}>

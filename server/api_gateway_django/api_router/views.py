@@ -517,6 +517,39 @@ class BasicCouseCreationGateway(APIView):
                 except (ValueError, AttributeError):
                     return Response({"error": "Failed to update course"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class CourseVideoChunkingGateway(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    def post(self, request):
+        print('CourseVideoChunkingGateway request post:')
+        print('request:', request)
+        url = COURSE_SERVICE_URL + request.path
+        headers = {
+            "Authorization": request.headers.get("Authorization")
+        }
+        user_payload = request.META.get('HTTP_X_USER_PAYLOAD')
+        headers['X-User-Payload'] = user_payload
+        # Forward files and data
+        files = request.FILES
+        data = request.POST if files else request.data
+        print("files:", files)
+        print("FILES KEYS:", list(files.keys()))
+        print("data:", data)
+
+        try:
+            response = requests.post(url, headers=headers, data=data, files=files)
+            print('response: ', response)
+            # print('response.content: ', response.content)
+            response.raise_for_status()  # Raise exception for 4xx/5xx
+            json_data = response.json()
+            return Response(json_data, status=response.status_code)
+
+        except requests.exceptions.RequestException as e:
+            try:
+                error_data = response.json()  # Try to parse error details
+                return Response(error_data, status=response.status_code)
+            except (ValueError, AttributeError):
+                return Response({"error": "Failed to update profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 from django.views.decorators.csrf import csrf_exempt
 @csrf_exempt
 @api_view(['POST'])

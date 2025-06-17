@@ -3,7 +3,8 @@ import json
 import os
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from chats.service import create_or_update_user, create_or_update_chat_room, create_or_update_group_chat_room, add_to_group_chat
+from chats.service import (create_or_update_user, create_or_update_chat_room, create_or_update_group_chat_room, 
+                           add_to_group_chat, update_group_chat_name, create_group_meeting, delete_group_meeting, update_group_meeting)
 
 def notification_callback(ch, method, properties, body):
     body = json.loads(body)
@@ -60,20 +61,16 @@ def chat_callback(ch, method, properties, body):
             print('create chat room:', student_id, tutor_id, expiry_date)
             room, _ = create_or_update_chat_room(student_id, tutor_id, expiry_date)
             if room is None:
-                raise Exception("Failed to create or update user")
+                raise Exception("Failed to create chat room")
             
         elif event_type == 'update_temp_chat':
             print('inside update_temp_chat', body)
             student_id = body['student_id']
-            print('student_id:', student_id)
             tutor_id = body['tutor_id']
-            print('tutor_id:', tutor_id)
             temporary = body['temporary']
-            print('temporary:', temporary)
-            print('update_temp_chat:', student_id, tutor_id, temporary)
             room, _ = create_or_update_chat_room(student_id, tutor_id, None, temporary)
             if room is None:
-                raise Exception("Failed to create or update user")
+                raise Exception("Failed to update temporary chat")
 
         elif event_type == 'create_group_chat_room':
             name = body['name']
@@ -82,7 +79,7 @@ def chat_callback(ch, method, properties, body):
             print('create room chat room:', name, image, admin)
             room, _ = create_or_update_group_chat_room(name, image, admin)
             if room is None:
-                raise Exception("Failed to create or update user")
+                raise Exception("Failed to create or update group chat room")
     
         elif event_type == 'group_add':
             user_id = body['user_id']
@@ -90,9 +87,42 @@ def chat_callback(ch, method, properties, body):
             print('create room chat room:', user_id, badge_title)
             room, _ = add_to_group_chat(user_id, badge_title)
             if room is None:
-                raise Exception("Failed to create or update user")
+                raise Exception("Failed to add user to group chat")
 
+        elif event_type == 'update_group_name':
+            old_title = body['old_title']
+            new_title = body['new_title']
+            print('update group name:', old_title, new_title)
+            room = update_group_chat_name(old_title, new_title)
+            if room is None:
+                raise Exception("Failed to update group name")
 
+        elif event_type == 'create_community_meeting':
+            badge_name = body['badge_name']
+            meeting_id = body['meeting_id']
+            title = body['title']
+            scheduled_time = body['scheduled_time']
+            status = body['status']
+            print('create_community_meeting:', badge_name, title, scheduled_time, status)
+            meeting = create_group_meeting(meeting_id, badge_name, title, scheduled_time, status)
+
+        elif event_type == 'delete_community_meeting':
+            meeting_id = body['meeting_id']
+            badge_name = body['badge_name']
+            title = body['title']
+            status = body['status']
+            print('create_community_meeting:', badge_name, title, status)
+            delete_group_meeting(meeting_id, badge_name, title, status)
+
+        elif event_type == 'update_community_meeting':
+            meeting_id = body['meeting_id']
+            badge_name = body['badge_name']
+            title = body['title']
+            status = body['status']
+            print('create_community_meeting:', badge_name, title, status)
+            update_group_meeting(meeting_id, badge_name, title, status)
+        
+        
         print(f" [x] chat event received: {event_type}")
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

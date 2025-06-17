@@ -1,0 +1,246 @@
+services:
+    # Redis container
+    redis:
+        image: redis
+        container_name: redis
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        networks:
+            - learn_network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Postgres database container
+    db:
+        image: postgres:latest
+        environment:
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_PASSWORD: ${DB_PASSWORD}
+            POSTGRES_DB: ${DB_NAME_USER}
+        volumes:
+            - postgres_test_data6:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        networks:
+            - learn_network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # RabbitMQ message broker for async communication (the 3-management tag is used to get Management Plugin, which help with visualization web ui. Can avoid it in production)
+    rabbitmq:
+        image: "rabbitmq:3-management"
+        container_name: rabbitmq
+        ports:
+        - "15672:15672"
+        - "5672:5672"
+        environment:
+            RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+            RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+        networks:
+        - learn_network
+        healthcheck:
+            test: ["CMD", "rabbitmqctl", "status"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            
+    api_gateway_django:
+        image: muhdnasif/learnerds-api_gateway_django
+        container_name: api_gateway
+        environment:
+            - DJANGO_SECRET_GATEWAY=${DJANGO_SECRET_GATEWAY}
+            - DEBUG=${DEBUG}
+            - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
+            - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
+            - USER_SERVICE_URL=${USER_SERVICE_URL}
+            - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
+            - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
+            - CHANNEL_SERVICE_URL=${CHANNEL_SERVICE_URL}
+        ports:
+            - "8000:8000"
+        command: >
+            sh -c "python manage.py runserver 0.0.0.0:8000"
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        networks:
+            - learn_network
+
+    user_service:
+        image: muhdnasif/learnerds-user_service
+        container_name: user_service
+        environment:
+            - DB_NAME_USER=${DB_NAME_USER}
+            - DJANGO_SECRET_USER=${DJANGO_SECRET_USER}
+            - DB_ENGINE=${DB_ENGINE}
+            - DB_HOST=${DB_HOST}
+            - DB_USER=${DB_USER}
+            - DB_PASSWORD=${DB_PASSWORD}
+            - DB_PORT=${DB_PORT}
+            - DEBUG=${DEBUG}
+            - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
+            - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
+            - REDIS_HOST=${REDIS_HOST}
+            - REDIS_PORT=${REDIS_PORT}
+            - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+            - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
+            - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
+            - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
+            - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+            - FIREBASE_PRIVATE_KEY_ID=${FIREBASE_PRIVATE_KEY_ID}
+            - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+            - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+            - FIREBASE_CLIENT_ID=${FIREBASE_CLIENT_ID}
+            - FIREBASE_AUTH_URI=${FIREBASE_AUTH_URI}
+            - FIREBASE_TOKEN_URI=${FIREBASE_TOKEN_URI}
+            - FIREBASE_AUTH_PROVIDER_X509_CERT_URL=${FIREBASE_AUTH_PROVIDER_X509_CERT_URL}
+            - FIREBASE_CLIENT_X509_CERT_URL=${FIREBASE_CLIENT_X509_CERT_URL}
+            - FIREBASE_UNIVERSE_DOMAIN=${FIREBASE_UNIVERSE_DOMAIN}
+
+        ports:
+            - "8001:8001"
+        command: >
+            sh -c "python manage.py makemigrations users && python manage.py makemigrations &&
+                   python manage.py migrate &&
+                   python manage.py runserver 0.0.0.0:8001 && 
+                   celery -A user_service worker -l info && 
+                   python manage.py run_consumer"
+        depends_on:
+            db:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+        networks:
+            - learn_network
+
+    admin_service:
+        image: muhdnasif/learnerds-admin_service
+        container_name: admin_service
+        environment:
+            - DB_NAME_ADMIN=${DB_NAME_ADMIN}
+            - DJANGO_SECRET_ADMIN=${DJANGO_SECRET_ADMIN}
+            - DB_ENGINE=${DB_ENGINE}
+            - DB_HOST=${DB_HOST}
+            - DB_USER=${DB_USER}
+            - DB_PASSWORD=${DB_PASSWORD}
+            - DB_PORT=${DB_PORT}
+            - DEBUG=${DEBUG}
+            - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
+            - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
+            - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+            - EMAIL_HOST_PASSWORD_USER=${EMAIL_HOST_PASSWORD_USER}
+            - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+            - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+            - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
+            - USER_SERVICE_URL=${USER_SERVICE_URL}
+            - COURSE_SERVICE_URL=${COURSE_SERVICE_URL}
+        ports:
+            - "8002:8002"
+        command: >
+            sh -c "python manage.py makemigrations admins && python manage.py makemigrations &&
+                   python manage.py migrate &&
+                   python manage.py runserver 0.0.0.0:8002"
+        depends_on:
+            - user_service
+        networks:
+            - learn_network
+
+    course_service:
+        image: muhdnasif/learnerds-course_service
+        container_name: course_service
+        environment:
+            - DB_NAME_COURSE=${DB_NAME_COURSE}
+            - DJANGO_SECRET_COURSE=${DJANGO_SECRET_COURSE}
+            - DB_ENGINE=${DB_ENGINE}
+            - DB_HOST=${DB_HOST}
+            - DB_USER=${DB_USER}
+            - DB_PASSWORD=${DB_PASSWORD}
+            - DB_PORT=${DB_PORT}
+            - DEBUG=${DEBUG}
+            - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+            - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+            - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
+            - REDIS_HOST=${REDIS_HOST}
+            - REDIS_PORT=${REDIS_PORT}
+            - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+            - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+            - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+            - ZEGO_APP_ID=${ZEGO_APP_ID}
+            - ZEGO_SERVER_SECRET=${ZEGO_SERVER_SECRET}
+            - USER_SERVICE_URL=${USER_SERVICE_URL}
+            - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
+        ports:
+            - "8003:8003"
+        command: >
+            sh -c "python manage.py makemigrations &&
+                   python manage.py migrate &&
+                   python manage.py runserver 0.0.0.0:8003 &&
+                   celery -A course_service worker -l info &&
+                   celery -A course_service beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+        depends_on:
+            - user_service
+        networks:
+            - learn_network
+
+    channel_service:
+        image: muhdnasif/learnerds-channel_service
+        container_name: channel_service
+        environment:
+            - DB_NAME_CHANNEL=${DB_NAME_CHANNEL}
+            - DJANGO_SECRET_CHANNEL=${DJANGO_SECRET_CHANNEL}
+            - DB_ENGINE=${DB_ENGINE}
+            - DB_HOST=${DB_HOST}
+            - DB_USER=${DB_USER}
+            - DB_PASSWORD=${DB_PASSWORD}
+            - DB_PORT=${DB_PORT}
+            - DEBUG=${DEBUG}
+            - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
+            - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
+            - RABBITMQ_HOST=${RABBITMQ_HOST}
+            - RABBITMQ_USER=${RABBITMQ_USER}
+            - RABBITMQ_PASS=${RABBITMQ_PASS}
+            - REDIS_HOST=${REDIS_HOST}
+            - REDIS_PORT=${REDIS_PORT}
+            - MONGODB_DATABASENAME=${MONGODB_DATABASENAME}
+            - MONGODB_URI=${MONGODB_URI}
+            - MONGODB_USERNAME=${MONGODB_USERNAME}
+            - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+            - USER_SERVICE_URL=${USER_SERVICE_URL}
+        ports:
+            - "8004:8004"
+        command: >
+            sh -c "daphne -b 0.0.0.0 -p 8004 channel_service.asgi:application &&
+                   python manage.py run_consumer"
+        depends_on:
+            - user_service
+        networks:
+            - learn_network
+
+volumes:
+    postgres_test_data6:
+    redis_data:
+
+networks:
+    learn_network:
+        driver: bridge

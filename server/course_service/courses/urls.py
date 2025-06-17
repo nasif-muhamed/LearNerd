@@ -7,7 +7,7 @@ from .views import (
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseFeedbackView,
     ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView, AdminListReportsAPIView,
-    AdminReportActionPIView, ScheduleSessionView, TutorVideoSessionsView, GetSessionTokenView, VideoSessionUpdateView
+    AdminReportActionPIView, ScheduleSessionView, TutorVideoSessionsView, GetSessionTokenView, VideoSessionUpdateView, ChunkUploadView
 )
 
 router = DefaultRouter()
@@ -44,6 +44,9 @@ urlpatterns = [
     path('sections/', SectionCreateView.as_view(), name='section-create'),
     path('sections/<int:id>/delete', SectionDeleteView.as_view(), name='section-delete'),
 
+    # Section items related
+    path('upload-chunk/', ChunkUploadView.as_view(), name='chunk-upload'),
+    # path('upload-to-cloudinary/', CloudinaryUploadView.as_view(), name='cloudinary-upload'),
     path('section-items/', SectionItemCreateView.as_view(), name='section-item-create'),
     path('section-items/<int:id>/delete', SectionItemDeleteView.as_view(), name='section-item-delete'),
     

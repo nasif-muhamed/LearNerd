@@ -2,7 +2,7 @@ from django.urls import path
 from . views import RegisterView, VerifyOTPView, ResendOTPView, LoginView,\
     UserView, UsersView, UserDetailsView, UserActionView, MyBadgesView, SubmitQuizView, ForgotPasswordView,\
     ForgotPasswordOTPVerifyView, ForgotPasswordResetView, GoogleLoginView, MultipleTutorDetailsView,\
-    SingleTutorDetailsView, NotificationListView, WalletBalanceView, AdminUserView, AdminDashboardView
+    SingleTutorDetailsView, NotificationListView, WalletBalanceView, AdminUserView, AdminDashboardView, DoesBadgeExistView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
@@ -26,6 +26,7 @@ urlpatterns = [
     # path('check_admin/', CheckIsAdmin.as_view(), name='is_admin'),
     path('badges/', MyBadgesView.as_view(), name='badge-list'),
     path('quiz/submit/', SubmitQuizView.as_view(), name='submit_quiz'),
+    path('user-badge-exist/', DoesBadgeExistView.as_view(), name='badge-exists'),
 
     # for fetching unread/read Notificaiton and update a single/all notifications as read
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
@@ -37,4 +38,5 @@ urlpatterns = [
     # path('admin/all-reports/', AdminListAllReportsView.as_view(), name='list-reports-admin'),
     path('admin-details/', AdminUserView.as_view(), name='admin-details'),
     path('dashboard/admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard-data'),
+
 ]

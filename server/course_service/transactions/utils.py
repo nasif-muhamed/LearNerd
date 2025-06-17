@@ -38,7 +38,6 @@ def record_platform_fee_collect(transaction):
     commission_rate = Decimal('0.10')
     commission_amount = transaction.amount * commission_rate
     tutor_credit_amount = transaction.amount - commission_amount
-    admin_user = settings.ADMIN_USER_ID
     user = transaction.user
     print('inside record_platform_fee_collect')
     print('Admin user:', user)

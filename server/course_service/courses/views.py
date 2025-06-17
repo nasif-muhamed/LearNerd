@@ -1,6 +1,9 @@
 import logging
 import cloudinary.uploader
 import json
+import os
+import uuid
+
 # import jwt
 # import pytz
 import stripe
@@ -26,7 +29,7 @@ from django.utils import timezone
 
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Purchase, 
-    SectionItemCompletion, Assessment, Review, Report, NoteSectionItem, VideoSession
+    SectionItemCompletion, Assessment, Review, Report, VideoUpload, VideoSession
 )
 
 from .serializers import (
@@ -35,7 +38,7 @@ from .serializers import (
     SectionItemSerializer, SectionItemDetailSerializer, SectionDetailSerializer, CourseDetailSerializer,
     CourseUnAuthDetailSerializer, PurchaseCreateSerializer, StudentMyCourseSerializer, StudentMyCourseDetailSerializer,
     ReviewCreateSerializer, ReviewSerializer, ReportCreateSerializer, ReportSerializer, VideoSessionSerializer,
-    TutorVideoSessionSerializer,
+    TutorVideoSessionSerializer, ChunkUploadSerializer, VideoUploadSerializer
 )
 from .permissions import IsAdminUserCustom, IsProfileCompleted, IsUser, IsUserTutor, IsUserAdmin
 from .services import CallUserService, UserServiceException
@@ -61,7 +64,8 @@ class HomeView(APIView):
 
         ad_details = get_home_banner()
         print('ad_details:', ad_details)
-        return Response({'my_courses': my_course_serializer.data, 'courses': course_serializer.data}, status=status.HTTP_200_OK)
+        banner_details = ad_details.get('home_banner')
+        return Response({'my_courses': my_course_serializer.data, 'courses': course_serializer.data, 'banner_details': banner_details}, status=status.HTTP_200_OK)
 
 # Custom pagination class to handle pagination in API responses
 class CustomPagination(PageNumberPagination):
@@ -504,6 +508,95 @@ class SectionDeleteView(generics.DestroyAPIView):
 #             serializer.save()
 #             return Response(serializer.data, status=status.HTTP_201_CREATED)
 #         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Upload Video In Chunks
+class ChunkUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+    permission_classes = [AllowAny] # [IsProfileCompleted]
+    def post(self, request):
+        print('ChunkUploadView post request:', request.data)
+        serializer = ChunkUploadSerializer(data=request.data)
+        if serializer.is_valid():
+            upload_id = serializer.validated_data['upload_id']
+            chunk_number = serializer.validated_data['chunk_number']
+            total_chunks = serializer.validated_data['total_chunks']
+            chunk = serializer.validated_data['chunk']
+            file_name = serializer.validated_data['file_name']
+
+            video_upload, created = VideoUpload.objects.get_or_create(
+                upload_id=upload_id,
+                defaults={'file_name': file_name, 'total_chunks': total_chunks}
+            )
+
+            # Define temporary chunk storage path
+            temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_chunks', str(upload_id))
+            os.makedirs(temp_dir, exist_ok=True)
+            chunk_path = os.path.join(temp_dir, f'chunk_{chunk_number}')
+
+            # Save chunk to temporary storage
+            with open(chunk_path, 'wb') as f:
+                for chunk_data in chunk.chunks():
+                    f.write(chunk_data)
+
+            # Update chunks_uploaded count
+            video_upload.chunks_uploaded += 1
+            video_upload.save()
+
+            # Check if all chunks are uploaded
+            if video_upload.chunks_uploaded == video_upload.total_chunks:
+                # Assemble chunks into final file
+                final_path = os.path.join(settings.MEDIA_ROOT, 'course_videos', f"{upload_id}_{file_name}_{timezone.now().strftime('%Y%m%d%H%M%S')}")
+                os.makedirs(os.path.join(settings.MEDIA_ROOT, 'course_videos'), exist_ok=True)
+                with open(final_path, 'wb') as final_file:
+                    for i in range(1, total_chunks + 1):
+                        chunk_path = os.path.join(temp_dir, f'chunk_{i}')
+                        print('chunk_path:', chunk_path)
+                        with open(chunk_path, 'rb') as chunk_file:
+                            final_file.write(chunk_file.read())
+                        os.remove(chunk_path)  # Clean up chunk
+
+                # Update video_upload with final file path
+                video_upload.file_path = final_path
+                video_upload.save()
+                print('fineal path:', final_path)
+
+                # Clean up temp directory
+                os.rmdir(temp_dir)
+
+            return Response({
+                'message': 'Chunk uploaded successfully',
+                'upload_id': upload_id,
+                'chunks_uploaded': video_upload.chunks_uploaded
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class CloudinaryUploadView(APIView):
+#     def post(self, request):
+#         upload_id = request.data.get('upload_id')
+#         try:
+#             video_upload = VideoUpload.objects.get(upload_id=upload_id)
+#             if not video_upload.file_path:
+#                 return Response({'error': 'Video not fully uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+#             # Upload to Cloudinary
+#             result = cloudinary.uploader.upload(
+#                 video_upload.file_path,
+#                 resource_type="video",
+#                 folder="videos_sample_chunk"
+#             )
+#             video_upload.cloudinary_url = result['secure_url']
+#             video_upload.save()
+
+#             # Clean up local file
+#             os.remove(video_upload.file_path)
+
+#             serializer = VideoUploadSerializer(video_upload)
+#             return Response({
+#                 'message': 'Video uploaded to Cloudinary successfully',
+#                 'data': serializer.data
+#             }, status=status.HTTP_200_OK)
+#         except VideoUpload.DoesNotExist:
+#             return Response({'error': 'Invalid upload_id'}, status=status.HTTP_404_NOT_FOUND)
 
 # Create New Section Item
 class SectionItemCreateView(generics.CreateAPIView):

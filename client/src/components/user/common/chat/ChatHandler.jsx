@@ -15,7 +15,7 @@ const ChatHandler = ({ roomId, setMessages, setActiveTyper, setSelectedChat }) =
 
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log('message received:', data);
+            console.log('message received in chat handler:', data);
             if (data.type === 'message'){
                 const newMessage = data['message']
                 if (newMessage.sender.user_id !== user.id){
@@ -59,6 +59,11 @@ const ChatHandler = ({ roomId, setMessages, setActiveTyper, setSelectedChat }) =
                     return {...prev, online_user_count: userCount}
                 })
 
+            } else if (data.type === 'group_meeting_status') {
+                setSelectedChat(prev => ({
+                    ...prev,
+                    meeting: data.meeting
+                }))
             }
 
             // dispatch(addMessage({

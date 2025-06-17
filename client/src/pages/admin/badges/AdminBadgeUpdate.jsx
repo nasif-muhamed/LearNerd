@@ -2,8 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { FolderPen, Calendar, Clock, Check, X } from 'lucide-react';
 import api from "../../../services/api/axiosInterceptor";
+import adminUserApi from "../../../services/api/adminUserAxiosInterceptor"
 import LoadingSpinner from "../../../components/ui/LoadingSpinner";
+import handleError from "../../../utils/handleError";
 
 const AdminBadgeUpdate = () => {
     const [loading, setLoading] = useState(true);
@@ -12,6 +15,11 @@ const AdminBadgeUpdate = () => {
     const { badgeId } = useParams();
     const navigate = useNavigate();
     const [originalData, setOriginalData] = useState(null); // Store original data for comparison
+    // const [scheduledMeeting, setScheduledMeeting] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [scheduledDate, setScheduledDate] = useState('');
+    const [scheduledTime, setScheduledTime] = useState('');
+    const [scheduleTitle, setScheduleTitle] = useState('');
 
     const {
         register,
@@ -22,49 +30,52 @@ const AdminBadgeUpdate = () => {
         reset,
     } = useForm();
 
-    useEffect(() => {
-        const fetchBadgeData = async () => {
-            try {
-                const response = await api.get(`badges/${badgeId}/`);
-                const badgeData = response.data;
-                console.log('badgeData:', badgeData)
-                // Store original data for comparison
-                setOriginalData(badgeData);
-                
-                // Set form values
-                setValue("title", badgeData.title);
-                setValue("description", badgeData.description);
-                setValue("totalQuestions", badgeData.total_questions);
-                setValue("passMark", badgeData.pass_mark);
-                setValue("community", badgeData.community);
-                setValue("is_active", badgeData.is_active)
-                setTotalQuestions(badgeData.total_questions);
+    const fetchBadgeData = async () => {
+        try {
+            const response = await api.get(`badges/${badgeId}/`);
+            const badgeData = response.data;
+            console.log('badgeData:', badgeData)
+            // Store original data for comparison
+            setOriginalData(badgeData);
+            
+            // Set form values
+            setValue("title", badgeData.title);
+            setValue("description", badgeData.description);
+            setValue("totalQuestions", badgeData.total_questions);
+            setValue("passMark", badgeData.pass_mark);
+            setValue("community", badgeData.community);
+            setValue("is_active", badgeData.is_active)
+            setTotalQuestions(badgeData.total_questions);
 
-                if (badgeData.image_url) {
-                    setImagePreview(badgeData.image_url);
-                }
-
-                badgeData.questions.forEach((q, index) => {
-                    setValue(`question_${index + 1}`, q.question);
-                    q.answers.forEach((answer) => {
-                        setValue(
-                            `answer_${index + 1}_${answer.options}`,
-                            answer.answer
-                        );
-                        if (answer.is_correct) {
-                            setValue(`correct_${index + 1}`, answer.options);
-                        }
-                    });
-                });
-
-                setLoading(false);
-            } catch (error) {
-                console.error("Error fetching badge:", error);
-                toast.error("Failed to load badge data");
-                setLoading(false);
+            if (badgeData.image_url) {
+                setImagePreview(badgeData.image_url);
             }
-        };
+            // if (badgeData.scheduled_meeting) {
+            //     setScheduledMeeting(badgeData.scheduled_meeting);
+            // }
 
+            badgeData.questions.forEach((q, index) => {
+                setValue(`question_${index + 1}`, q.question);
+                q.answers.forEach((answer) => {
+                    setValue(
+                        `answer_${index + 1}_${answer.options}`,
+                        answer.answer
+                    );
+                    if (answer.is_correct) {
+                        setValue(`correct_${index + 1}`, answer.options);
+                    }
+                });
+            });
+
+            setLoading(false);
+        } catch (error) {
+            console.error("Error fetching badge:", error);
+            toast.error("Failed to load badge data");
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchBadgeData();
     }, [badgeId, setValue]);
 
@@ -167,26 +178,176 @@ const AdminBadgeUpdate = () => {
             });
 
             console.log("Badge updated:", response.data);
+            fetchBadgeData();
             toast.success("Badge updated successfully!");
         } catch (error) {
             console.error("Error updating badge:", error);
-            if (error.response?.data) {
-                toast.error(Object.values(error.response.data)?.[0]);
-            } else {
-                toast.error(
-                    error instanceof Error ? error.message : "Something went wrong"
-                );
-            }
+            handleError(error, "Failed to update badge")
         } finally {
             setLoading(false);
         }
     };
+
+    const handleScheduleClick = () => {
+        setIsModalOpen(true);
+        setScheduledDate('');
+        setScheduledTime('');
+        setScheduleTitle('');
+    };
+
+    const handleSubmitSchedule = async (e) => {
+        e.preventDefault();
+        
+        if (!scheduledDate || !scheduledTime) {
+            return; // Form validation
+        }
+        
+        try {
+            // setLoadingScheduleButton(true)
+            const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+            console.log('scheduledDateTime:', scheduledDateTime);
+            
+            const now = new Date();
+
+            // Add 1 hour (in milliseconds) to the current time
+            const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+            // if (scheduledDateTime < oneHourFromNow) {
+            //     handleError(null, 'You must schedule a meeting at least one hour in advance');
+            //     return;
+            // }
+
+            const response = await adminUserApi.post(`meetings/community-meetings/`, {
+                title: scheduleTitle, 
+                badge: badgeId,
+                badge_name: originalData.title,
+                scheduled_time: scheduledDateTime.toISOString(),
+            });
+
+            console.log('response from video-sessions:', response)
+            setOriginalData((prev) => ({
+                ...prev,
+                meeting: response.data,
+            }));
+            toast.success('Meeting scheduled successfully!');
+
+            // Close modal
+            setIsModalOpen(false);
+        } catch (err) {
+            console.log('schedule meeting error', err)
+            handleError(err, 'Failed to schedule meeting');
+        } finally {
+            // setLoadingScheduleButton(false)
+        }
+    };
+
+    // const deactivateMeeting = async (e) => {
+    //     e.preventDefault();
+                
+    //     try {
+    //         const response = await adminUserApi.patch(`meetings/community-meetings/`, {
+    //             'id': originalData.meeting?.id,
+    //             'is_active': false
+    //         });
+
+    //         console.log('response from video-sessions:', response)
+    //         setOriginalData((prev) => ({
+    //             ...prev,
+    //             meeting: null,
+    //         }));
+    //         toast.info('Meeting deactivated!');
+    //     } catch (err) {
+    //         console.log('schedule meeting error', err)
+    //         handleError(err, 'Failed to schedule meeting');
+    //     } finally {
+    //         // setLoadingScheduleButton(false)
+    //     }
+    // };
+    
+    const updateMeeting = async (is_active, status) => {
+                
+        try {
+            const data = {
+                'id': originalData.meeting?.id,
+            } 
+
+            if (is_active !== undefined) data.is_active = is_active;
+            if (status) data.status = status;
+            const response = await adminUserApi.patch(`meetings/community-meetings/`, data);
+
+            setOriginalData((prev) => ({
+                ...prev,
+                meeting: response.data,
+            }));
+            console.log('response from video-sessions:', response)
+            toast.info('Meeting updated!');
+        } catch (err) {
+            console.log('schedule meeting error', err)
+            handleError(err, 'Failed to schedule meeting');
+        } finally {
+            // setLoadingScheduleButton(false)
+        }
+    };
+
+    const isRoomOpenToJoin = (schedule) => {
+        let scheduledTime = new Date(schedule);
+        scheduledTime.setMinutes(scheduledTime.getMinutes() - 5)
+        const currentTime = new Date();
+        return scheduledTime <= currentTime
+    };
+
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
             {loading && <LoadingSpinner />}
 
             <div className="p-6 w-full max-w-4xl">
-                <h2 className="text-2xl font-bold mb-4">Update Badge</h2>
+                <div className="flex flex-col gap-2 md:flex-row justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold">Update Badge</h2>
+
+                    {!originalData?.meeting || !originalData?.meeting?.is_active  ? 
+                        (<button 
+                            className="btn-secondary text-sm py-1.5 px-3"
+                            onClick={() => handleScheduleClick()}
+                        >
+                            Schedule Meeting
+                        </button>) 
+                        : 
+                        (<div className="btn-secondary text-sm py-1.5 px-3 flex flex-col gap-2">
+                            <h1 className="font-semibold truncate max-w-[30ch] overflow-hidden whitespace-nowrap">
+                                Meeting: <span className="font-extralight ">{originalData.meeting.title}</span>
+                            </h1>
+                            <h1 className="font-semibold">
+                                At: <span className="font-extralight">{new Date(originalData.meeting?.scheduled_time).toLocaleString()}</span>
+                            </h1>
+                            <div className="flex gap-2 justify-between items-center ">
+                                {/* <button onClick={() => {updateMeeting(false, isRoomOpenToJoin(originalData.meeting?.scheduled_time) ? 'completed' : 'cancelled')}} className="bg-white rounded-lg text-black px-3 py-1 hover:bg-gray-200 w-full">
+                                    {isRoomOpenToJoin(originalData.meeting?.scheduled_time) ? 'Complete' : 'Cancel'}
+                                </button> */}
+                                {originalData.meeting?.status == 'scheduled' && (<button onClick={() => {updateMeeting(false, 'cancelled')}} className="bg-destructive rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Cancel
+                                </button>)}
+                                {isRoomOpenToJoin(originalData.meeting?.scheduled_time) && originalData.meeting?.status == 'scheduled' && (<button onClick={() => {updateMeeting(undefined, 'in_progress')}} className="bg-success rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Start
+                                </button>)}
+                                {isRoomOpenToJoin(originalData.meeting?.scheduled_time) && originalData.meeting?.status == 'in_progress' && (<button onClick={() => {updateMeeting(false, 'completed')}} className="bg-white rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Complete
+                                </button>)}
+                                {/* <button onClick={() => {}} className="bg-success rounded-lg text-black px-3 py-1 hover:opacity-80 w-full">
+                                    Join
+                                </button> */}
+                                {isRoomOpenToJoin(originalData.meeting?.scheduled_time) && originalData.meeting?.status == 'in_progress' && (<a 
+                                    href={isRoomOpenToJoin(originalData.meeting?.scheduled_time) ? `/community-call?meeting_id=${originalData.meeting?.id}` : '#'}
+                                    target={isRoomOpenToJoin(originalData.meeting?.scheduled_time) ?  `_blank` : ''}
+                                    rel="noopener noreferrer"
+                                    className={`bg-success rounded-lg text-black px-3 py-1 hover:opacity-80 w-full`}
+                                >
+                                    Join
+                                </a>)}
+
+                            </div>
+                        </div>)
+                    }
+                </div>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                     {/* Badge Details Section */}
@@ -390,6 +551,96 @@ const AdminBadgeUpdate = () => {
                     </div>
                 </form>
             </div>
+
+            {/* Modal for scheduling */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+                    <div 
+                        className="bg-card rounded-lg p-6 max-w-md w-full shadow-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">Schedule Meeting</h3>
+                            <button 
+                                onClick={() => setIsModalOpen(false)}
+                                className="p-1 rounded-full hover:bg-secondary"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                                                
+                        <form onSubmit={handleSubmitSchedule}>
+                            <div className="space-y-4">
+                                {/* Title */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Title</label>
+                                    <div className="relative">
+                                        <FolderPen size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                                        <input 
+                                            type="text"
+                                            required
+                                            value={scheduleTitle}
+                                            placeholder="Enter meeting title"
+                                            onChange={(e) => setScheduleTitle(e.target.value)}
+                                            className="pl-10 pr-4 py-2 w-full bg-secondary rounded-md border border-input"
+                                        />
+                                    </div>
+                                </div>
+                                
+
+                                {/* Date */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Date</label>
+                                    <div className="relative">
+                                        <Calendar size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                                        <input 
+                                            type="date"
+                                            required
+                                            value={scheduledDate}
+                                            onChange={(e) => setScheduledDate(e.target.value)}
+                                            className="pl-10 pr-4 py-2 w-full bg-secondary rounded-md border border-input"
+                                            min={new Date().toISOString().split('T')[0]} // Prevent past dates
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Time */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Time (Your Local Time)</label>
+                                    <div className="relative">
+                                        <Clock size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                                        <input 
+                                            type="time"
+                                            required
+                                            value={scheduledTime}
+                                            onChange={(e) => setScheduledTime(e.target.value)}
+                                            className="pl-10 pr-4 py-2 w-full bg-secondary rounded-md border border-input"
+                                        />
+                                    </div>
+                                </div>
+                                                                
+                                {/* Actions */}
+                                <div className="flex justify-end space-x-3 pt-2">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="btn-outline"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        className="btn-primary flex items-center"
+                                    >
+                                        <Check size={18} className="mr-1" />
+                                        Approve & Schedule
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

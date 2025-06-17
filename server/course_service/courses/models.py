@@ -132,7 +132,19 @@ class SectionItem(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.item_type})"
-    
+
+class VideoUpload(models.Model):
+    upload_id = models.CharField(editable=False, unique=True)
+    file_name = models.CharField(max_length=255)
+    total_chunks = models.IntegerField()
+    chunks_uploaded = models.IntegerField(default=0)
+    file_path = models.CharField(max_length=255, blank=True)
+    cloudinary_url = models.URLField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.file_name} ({self.upload_id})"
+
 class Video(models.Model):
     section_item = models.OneToOneField(SectionItem, on_delete=models.CASCADE, related_name='video')
     video_url = models.URLField(blank=True, null=True)  # URL to video hosted in claudinary

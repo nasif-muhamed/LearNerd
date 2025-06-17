@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from mongoengine.errors import DoesNotExist
 from mongoengine.queryset.visitor import Q
-from .models import Room, Message, User
-from .serializers import MessageSerializer, UserRoomsSerializer
+from .models import Room, Message, User, Meeting
+from .serializers import MessageSerializer, UserRoomsSerializer, RoomSerializer, MeetingSerializer
 from .service import get_or_create_user, create_or_update_chat_room
 from channel_service.service_calls import UserServiceException
 from channel_service.permissions.permissions import IsUserAdmin
@@ -122,8 +122,15 @@ class RoomMessagesView(APIView):
                 return Response({"error": "User is not a participant in this room"}, status=status.HTTP_403_FORBIDDEN)
             
             messages = Message.objects(room=room).order_by('timestamp')
-            serializer = MessageSerializer(messages, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            message_serializer = MessageSerializer(messages, many=True)
+
+            meeting = Meeting.objects(
+                group=room,
+                status__nin=['cancelled', 'completed'],
+            ).order_by('-created_at').first()
+            meeting_serializer = MeetingSerializer(meeting)
+            print('meeting_serializer:', meeting_serializer.data)
+            return Response({'meeting': meeting_serializer.data if meeting else None, 'messages': message_serializer.data}, status=status.HTTP_200_OK)
         except Room.DoesNotExist:
             return Response({"error": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:

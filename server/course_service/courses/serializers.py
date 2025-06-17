@@ -1,4 +1,5 @@
-from datetime import timedelta
+import os
+# from datetime import timedelta
 from rest_framework import serializers
 import cloudinary.uploader
 from django.db import transaction
@@ -6,14 +7,13 @@ from django.db.models import Sum
 import json
 from .models import (
     Category, Course, LearningObjective, CourseRequirement, Section, SectionItem, Review, Report,
-    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion, VideoSession
+    Video, Assessment, Question, Choice, SupportingDocument, Purchase, SectionItemCompletion, VideoSession,
+    VideoUpload,
 )
 from .services import CallUserService, UserServiceException
 from banners.utils import get_ad_content
 
 from django.utils import timezone
-from dateutil import parser
-import pytz
 
 
 call_user_service = CallUserService()
@@ -203,26 +203,34 @@ class AssessmentSerializer(serializers.ModelSerializer):
         return assessment
 
 class VideoSerializer(serializers.ModelSerializer):
-    video_file = serializers.FileField(write_only=True, required=False)
+    # video_file = serializers.FileField(write_only=True, required=False)
     thumbnail_file = serializers.FileField(write_only=True, required=False)
     video_url = serializers.URLField(read_only=True)
+    video_id = serializers.CharField(write_only=True)
     
     class Meta:
         model = Video
-        fields = ['id', 'video_url', 'thumbnail', 'duration', 'video_file', 'thumbnail_file']
+        # fields = ['id', 'video_url', 'thumbnail', 'duration', 'video_file', 'thumbnail_file']
+        fields = ['id', 'video_url', 'thumbnail', 'duration', 'video_id', 'thumbnail_file']
 
     def create(self, validated_data):
-        video_file = validated_data.pop('video_file', None)
+        # video_file = validated_data.pop('video_file', None)
+        video_id = validated_data.pop('video_id', None)
         thumbnail_file = validated_data.pop('thumbnail_file', None)
 
-        if video_file:
+        if video_id:
+            video_uploaded = VideoUpload.objects.get(upload_id=video_id)
             # Upload to Cloudinary
             upload_result = cloudinary.uploader.upload(
-                video_file,
+                video_uploaded.file_path,
                 resource_type="video",
                 folder="course/videos/",
             )
             validated_data['video_url'] = upload_result['secure_url']
+            print('video_url:', validated_data['video_url'])
+            # Clean up the temporary file after upload
+            os.remove(video_uploaded.file_path)
+            video_uploaded.delete() 
         
         if thumbnail_file:
             thumbnail_result = cloudinary.uploader.upload(
@@ -241,7 +249,7 @@ class SectionItemSerializer(serializers.ModelSerializer):
     # video = VideoSerializer(required=False)
     # assessment = AssessmentSerializer(required=False)
 
-    video_file = serializers.FileField(write_only=True, required=False)
+    # video_file = serializers.FileField(write_only=True, required=False)
     thumbnail_file = serializers.FileField(write_only=True, required=False, allow_null=True)
     video_data = serializers.CharField(write_only=True, required=False)
     assessment_data = serializers.CharField(write_only=True, required=False)
@@ -250,7 +258,9 @@ class SectionItemSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = SectionItem
-        fields = ['id', 'section', 'title', 'order', 'item_type', 'thumbnail_file', 'video_file', 
+        # fields = ['id', 'section', 'title', 'order', 'item_type', 'thumbnail_file', 'video_file', 
+        #         'video_data', 'assessment_data', 'document_data', 'document_file']
+        fields = ['id', 'section', 'title', 'order', 'item_type', 'thumbnail_file',
                 'video_data', 'assessment_data', 'document_data', 'document_file']
         extra_kwargs = {
             'section': {'required': True}
@@ -260,13 +270,13 @@ class SectionItemSerializer(serializers.ModelSerializer):
         print('inside valid SectionItem')
         item_type = data.get('item_type')
         
-        if item_type == 'video' and 'video_file' not in data:
-            raise serializers.ValidationError("Video data is required for video item type")
+        # if item_type == 'video' and 'video_file' not in data:
+        #     raise serializers.ValidationError("Video data is required for video item type")
         if item_type == 'assessment' and 'assessment_data' not in data:
             raise serializers.ValidationError("Assessment data is required for assessment item type")
         if item_type == 'video' and 'assessment_data' in data:
             raise serializers.ValidationError("Assessment data should not be provided for video item type")
-        if item_type == 'assessment' and 'video_file' in data:
+        if item_type == 'assessment' and 'video_data' in data:
             raise serializers.ValidationError("Video data should not be provided for assessment item type")
         if 'document_data' in data and 'document_file' not in data:
             raise serializers.ValidationError("Document file is required when supporting document data is provided")
@@ -276,7 +286,7 @@ class SectionItemSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         print('inside create SectionItem')
         with transaction.atomic():
-            video_file = validated_data.pop('video_file', None)
+            # video_file = validated_data.pop('video_file', None)
             thumbnail_file = validated_data.pop('thumbnail_file', None)
             video_data = validated_data.pop('video_data', None)  # will contain duration
             assessment_json = validated_data.pop('assessment_data', None)
@@ -288,7 +298,7 @@ class SectionItemSerializer(serializers.ModelSerializer):
             if video_data:
                 video_data = json.loads(video_data)  # Parse the JSON string
                 video_data['section_item'] = section_item
-                video_data['video_file'] = video_file
+                # video_data['video_file'] = video_file
                 video_data['thumbnail_file'] = thumbnail_file
                 VideoSerializer().create(video_data)
 
@@ -846,36 +856,14 @@ class TutorVideoSessionSerializer(VideoSessionSerializer):
 
         return data
 
-# class VideoSessionScheduleSerializer(serializers.ModelSerializer):
-#     duration_minutes = serializers.IntegerField(min_value=15, max_value=240, required=True)
-    
-#     class Meta:
-#         model = VideoSession
-#         fields = ['scheduled_time', 'status', 'duration_minutes']
-    
-#     def validate_scheduled_time(self, value):
-#         """
-#         Validate that scheduled time is in the future.
-#         """
-#         now = timezone.now()
-        
-#         # If the datetime passed is naive (no timezone), assume it's in UTC
-#         if value.tzinfo is None:
-#             value = pytz.utc.localize(value)
-        
-#         if value <= now:
-#             raise serializers.ValidationError("Scheduled time must be in the future.")
-        
-#         return value
-    
-#     def validate(self, data):
-#         """
-#         Custom validation for scheduling.
-#         """
-#         # Check if status is being set to approved
-#         if data.get('status') != 'approved':
-#             raise serializers.ValidationError({
-#                 'status': "Status must be set to 'approved' when scheduling a session."
-#             })
-        
-#         return data
+class ChunkUploadSerializer(serializers.Serializer):
+    upload_id = serializers.CharField()
+    chunk_number = serializers.IntegerField()
+    total_chunks = serializers.IntegerField()
+    chunk = serializers.FileField()
+    file_name = serializers.CharField(max_length=255)
+
+class VideoUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VideoUpload
+        fields = ['upload_id', 'file_name', 'total_chunks', 'chunks_uploaded', 'file_path', 'cloudinary_url']

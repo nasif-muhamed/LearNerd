@@ -43,3 +43,17 @@ class Message(Document):
         'indexes': ['room', 'timestamp']
     }
 
+
+class Meeting(Document):
+    meeting_id = IntField(required=True)
+    group = ReferenceField(Room, required=True)
+    title = StringField(required=True)
+    scheduled_time = DateTimeField(default=datetime.utcnow, tz_aware=True)
+    status = StringField(choices=['scheduled', 'in_progress', 'completed', 'cancelled'], default='scheduled')
+    created_at = DateTimeField(default=datetime.utcnow, tz_aware=True)
+    
+    meta = {
+        'collection': 'meetings',
+        'ordering': ['-created_at'],
+    }
+

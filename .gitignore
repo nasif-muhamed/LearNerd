@@ -1,6 +1,11 @@
 .env
 
-kuber/
+environment-variables/
+configmap.yaml
+secret.yaml
+
+**/configmap.yaml
+**/secret.yaml
 
 **/.env
 **/venv/
