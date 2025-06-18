@@ -13,7 +13,7 @@ import StudyRoomLanding from "../pages/user/student/study_room/StudyRoomLanding"
 import StreamCourse from "../pages/user/student/study_room/StreamCourse";
 import ListTutorsLandingPage from "../pages/user/student/tutors/ListTutorsLandingPage";
 import TutorDetails from "../pages/user/student/tutors/TutorDetails";
-import PaymentSuccess from "../pages/user/student/courses/subscription_result/paymentSuccess";
+import PaymentSuccess from "../pages/user/student/courses/subscription_result/PaymentSuccess";
 import CheckoutFormPage from "../pages/user/student/courses/subscription_result/CheckoutFormPage";
 import StripeProvider from "../services/stripe/StripeProvider";
 

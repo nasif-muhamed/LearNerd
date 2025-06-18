@@ -1,0 +1,44 @@
+# admin-service-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-service
+  template:
+    metadata:
+      labels:
+        app: admin-service
+    spec:
+      containers:
+      - name: admin-service
+        image: muhdnasif/learnerds-admin_service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8002
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["sh", "-c", "python manage.py runserver 0.0.0.0:8002"]
+      restartPolicy: Always
+
+---
+# admin-service-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+spec:
+  ports:
+  - port: 8002
+    targetPort: 8002
+
+  selector:
+    app: admin-service
+  type: ClusterIP
+  

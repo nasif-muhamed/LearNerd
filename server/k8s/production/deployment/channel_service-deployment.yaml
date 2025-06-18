@@ -1,0 +1,52 @@
+# channel-service-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: channel-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: channel-service
+  template:
+    metadata:
+      labels:
+        app: channel-service
+    spec:
+      containers:
+      - name: channel-service
+        image: muhdnasif/learnerds-channel_service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8004
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+      - name: channel-service-rabbitmq-consumer
+        image: muhdnasif/learnerds-channel_service:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["python", "manage.py", "run_consumer"]
+      restartPolicy: Always
+
+---
+# channel-service-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: channel-service
+spec:
+  ports:
+  - port: 8004
+    targetPort: 8004
+    protocol: TCP
+  selector:
+    app: channel-service
+  type: ClusterIP
+  

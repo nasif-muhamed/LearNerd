@@ -1,0 +1,39 @@
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: learnerds-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/websocket-services: channel-service
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /api/
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8000
+      - path: /media/
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8000
+      - path: /ws/
+        pathType: Prefix
+        backend:
+          service:
+            name: channel-service
+            port:
+              number: 8004
+              
+# kubectl get ingress
+# kubectl get ingress learnerds-ingress
+# kubectl get svc -n ingress-nginx
+# kubectl get ingress learnerds-ingress -w

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service-supporting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service-supporting
+  template:
+    metadata:
+      labels:
+        app: user-service-supporting
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: user-service-celery-worker
+        image: muhdnasif/learnerds-user_service:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["celery", "-A", "user_service", "worker", "-l", "info"]
+      - name: user-service-rabbitmq-consumer
+        image: muhdnasif/learnerds-user_service:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["python", "manage.py", "run_consumer"]
+        
