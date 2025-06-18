@@ -184,7 +184,7 @@ from datetime import timedelta
 CELERY_BEAT_SCHEDULE = {
     'check-safety-period-daily': {
         'task': 'transactions.tasks.run_safe_period_check',
-        'schedule': crontab() # crontab(hour=1, minute=0), # Run daily at 1 AM #  crontab(), #for every one minute # crontab(minute='*/5'),  # Run every 5 minutes
+        'schedule': crontab(hour=1, minute=0), # Run daily at 1 AM #  crontab(), #for every one minute # crontab(minute='*/5'),  # Run every 5 minutes
     },
 }
 

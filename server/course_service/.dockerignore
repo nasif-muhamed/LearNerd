@@ -29,4 +29,5 @@ static/
 **/*.pyc
 **/*.pyo
 **/*.pyd
-**/migrations
+**/migrations/
+**/media/

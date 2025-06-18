@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: course-service-celery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: course-service-celery
+  template:
+    metadata:
+      labels:
+        app: course-service-celery
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: course-service-celery-worker
+        image: muhdnasif/learnerds-course_service:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["celery", "-A", "course_service", "worker", "-l", "info"]
+      - name: course-service-celery-beat
+        image: muhdnasif/learnerds-course_service:latest
+        imagePullPolicy: IfNotPresent
+        envFrom:
+          - secretRef:
+              name: learnerds-secrets
+          - configMapRef:
+              name: learnerds-config
+        command: ["celery", "-A", "course_service", "beat", "--loglevel=info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
