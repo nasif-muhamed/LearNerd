@@ -4,10 +4,16 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: learnerds-ingress
+  namespace: default
   annotations:
     nginx.ingress.kubernetes.io/websocket-services: channel-service
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+      - api.learnerds.online
+      secretName: learnerds-tls
   rules:
   - http:
       paths:
@@ -35,5 +41,6 @@ spec:
               
 # kubectl get ingress
 # kubectl get ingress learnerds-ingress
+# kubectl get pods -n ingress-nginx
 # kubectl get svc -n ingress-nginx
 # kubectl get ingress learnerds-ingress -w

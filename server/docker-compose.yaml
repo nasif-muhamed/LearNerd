@@ -26,7 +26,7 @@ services:
         ports:
             - "5432:5432"
         volumes:
-            - postgres_test_data10:/var/lib/postgresql/data
+            - postgres_data:/var/lib/postgresql/data
         networks:
             - learn_network
         healthcheck:
@@ -253,7 +253,7 @@ services:
             - learn_network
 
 volumes:
-    postgres_test_data10:
+    postgres_data:
     redis_data:
 
 networks:
