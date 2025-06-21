@@ -1,0 +1,44 @@
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sample-learnerds-ingress
+  namespace: default
+  annotations:
+    # This tells Google Cloud to associate the External Load Balancer with the static IP which we created earlier
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: my-certificate
+    kubernetes.io/ingress.allow-http: "true"
+spec:
+  rules:
+  - host: api.learnerds.online
+    http:
+      paths:
+      - path: /api/
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8000
+      - path: /media/
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8000
+      - path: /ws/
+        pathType: Prefix
+        backend:
+          service:
+            name: channel-service
+            port:
+              number: 8004
+              
+# kubectl get ingress
+# kubectl get ingress learnerds-ingress
+# kubectl get pods -n ingress-nginx
+# kubectl get svc -n ingress-nginx
+# kubectl get ingress learnerds-ingress -w

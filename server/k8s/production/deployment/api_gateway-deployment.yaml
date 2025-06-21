@@ -33,10 +33,10 @@ kind: Service
 metadata:
   name: api-gateway
 spec:
+  type: ClusterIP
+  selector:
+    app: api-gateway
   ports:
   - port: 8000
     targetPort: 8000
     protocol: TCP
-  selector:
-    app: api-gateway
-  type: ClusterIP

@@ -174,83 +174,83 @@ services:
         networks:
             - learn_network
 
-    course_service:
-        build:
-            context: ./course_service
-        container_name: course_service
-        environment:
-            - DB_NAME_COURSE=${DB_NAME_COURSE}
-            - DJANGO_SECRET_COURSE=${DJANGO_SECRET_COURSE}
-            - DB_ENGINE=${DB_ENGINE}
-            - DB_HOST=${DB_HOST}
-            - DB_USER=${DB_USER}
-            - DB_PASSWORD=${DB_PASSWORD}
-            - DB_PORT=${DB_PORT}
-            - DEBUG=${DEBUG}
-            - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
-            - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
-            - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
-            - RABBITMQ_HOST=${RABBITMQ_HOST}
-            - RABBITMQ_USER=${RABBITMQ_USER}
-            - RABBITMQ_PASS=${RABBITMQ_PASS}
-            - REDIS_HOST=${REDIS_HOST}
-            - REDIS_PORT=${REDIS_PORT}
-            - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-            - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-            - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-            - ZEGO_APP_ID=${ZEGO_APP_ID}
-            - ZEGO_SERVER_SECRET=${ZEGO_SERVER_SECRET}
-            - USER_SERVICE_URL=${USER_SERVICE_URL}
-            - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
-        ports:
-            - "8003:8003"
-        volumes:
-            - ./course_service:/app
-        command: >
-            sh -c "python manage.py makemigrations &&
-                   python manage.py migrate &&
-                   python manage.py runserver 0.0.0.0:8003"
-        depends_on:
-            - user_service
-        networks:
-            - learn_network
+    # course_service:
+    #     build:
+    #         context: ./course_service
+    #     container_name: course_service
+    #     environment:
+    #         - DB_NAME_COURSE=${DB_NAME_COURSE}
+    #         - DJANGO_SECRET_COURSE=${DJANGO_SECRET_COURSE}
+    #         - DB_ENGINE=${DB_ENGINE}
+    #         - DB_HOST=${DB_HOST}
+    #         - DB_USER=${DB_USER}
+    #         - DB_PASSWORD=${DB_PASSWORD}
+    #         - DB_PORT=${DB_PORT}
+    #         - DEBUG=${DEBUG}
+    #         - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+    #         - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+    #         - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+    #         - RABBITMQ_HOST=${RABBITMQ_HOST}
+    #         - RABBITMQ_USER=${RABBITMQ_USER}
+    #         - RABBITMQ_PASS=${RABBITMQ_PASS}
+    #         - REDIS_HOST=${REDIS_HOST}
+    #         - REDIS_PORT=${REDIS_PORT}
+    #         - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    #         - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+    #         - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    #         - ZEGO_APP_ID=${ZEGO_APP_ID}
+    #         - ZEGO_SERVER_SECRET=${ZEGO_SERVER_SECRET}
+    #         - USER_SERVICE_URL=${USER_SERVICE_URL}
+    #         - ADMIN_SERVICE_URL=${ADMIN_SERVICE_URL}
+    #     ports:
+    #         - "8003:8003"
+    #     volumes:
+    #         - ./course_service:/app
+    #     command: >
+    #         sh -c "python manage.py makemigrations &&
+    #                python manage.py migrate &&
+    #                python manage.py runserver 0.0.0.0:8003"
+    #     depends_on:
+    #         - user_service
+    #     networks:
+    #         - learn_network
 
-    channel_service:
-        build:
-            context: ./channel_service
-        container_name: channel_service
-        environment:
-            - DB_NAME_CHANNEL=${DB_NAME_CHANNEL}
-            - DJANGO_SECRET_CHANNEL=${DJANGO_SECRET_CHANNEL}
-            - DB_ENGINE=${DB_ENGINE}
-            - DB_HOST=${DB_HOST}
-            - DB_USER=${DB_USER}
-            - DB_PASSWORD=${DB_PASSWORD}
-            - DB_PORT=${DB_PORT}
-            - DEBUG=${DEBUG}
-            - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
-            - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
-            - RABBITMQ_HOST=${RABBITMQ_HOST}
-            - RABBITMQ_USER=${RABBITMQ_USER}
-            - RABBITMQ_PASS=${RABBITMQ_PASS}
-            - REDIS_HOST=${REDIS_HOST}
-            - REDIS_PORT=${REDIS_PORT}
-            - MONGODB_DATABASENAME=${MONGODB_DATABASENAME}
-            - MONGODB_URI=${MONGODB_URI}
-            - MONGODB_USERNAME=${MONGODB_USERNAME}
-            - MONGODB_PASSWORD=${MONGODB_PASSWORD}
-            - USER_SERVICE_URL=${USER_SERVICE_URL}
-        ports:
-            - "8004:8004"
-        volumes:
-            - ./channel_service:/app
-        command: >
-            sh -c "daphne -b 0.0.0.0 -p 8004 channel_service.asgi:application &
-                   python manage.py run_consumer"
-        depends_on:
-            - user_service
-        networks:
-            - learn_network
+    # channel_service:
+    #     build:
+    #         context: ./channel_service
+    #     container_name: channel_service
+    #     environment:
+    #         - DB_NAME_CHANNEL=${DB_NAME_CHANNEL}
+    #         - DJANGO_SECRET_CHANNEL=${DJANGO_SECRET_CHANNEL}
+    #         - DB_ENGINE=${DB_ENGINE}
+    #         - DB_HOST=${DB_HOST}
+    #         - DB_USER=${DB_USER}
+    #         - DB_PASSWORD=${DB_PASSWORD}
+    #         - DB_PORT=${DB_PORT}
+    #         - DEBUG=${DEBUG}
+    #         - JWT_SECRET_KEY_USER=${JWT_SECRET_KEY_USER}
+    #         - JWT_ALGORITHM_USER=${JWT_ALGORITHM_USER}
+    #         - RABBITMQ_HOST=${RABBITMQ_HOST}
+    #         - RABBITMQ_USER=${RABBITMQ_USER}
+    #         - RABBITMQ_PASS=${RABBITMQ_PASS}
+    #         - REDIS_HOST=${REDIS_HOST}
+    #         - REDIS_PORT=${REDIS_PORT}
+    #         - MONGODB_DATABASENAME=${MONGODB_DATABASENAME}
+    #         - MONGODB_URI=${MONGODB_URI}
+    #         - MONGODB_USERNAME=${MONGODB_USERNAME}
+    #         - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+    #         - USER_SERVICE_URL=${USER_SERVICE_URL}
+    #     ports:
+    #         - "8004:8004"
+    #     volumes:
+    #         - ./channel_service:/app
+    #     command: >
+    #         sh -c "daphne -b 0.0.0.0 -p 8004 channel_service.asgi:application &
+    #                python manage.py run_consumer"
+    #     depends_on:
+    #         - user_service
+    #     networks:
+    #         - learn_network
 
 volumes:
     postgres_data:

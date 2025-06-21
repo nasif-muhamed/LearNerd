@@ -42,11 +42,11 @@ kind: Service
 metadata:
   name: channel-service
 spec:
+  type: ClusterIP
+  selector:
+    app: channel-service
   ports:
   - port: 8004
     targetPort: 8004
     protocol: TCP
-  selector:
-    app: channel-service
-  type: ClusterIP
   

@@ -1,36 +1,26 @@
-# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: learnerds-ingress
   namespace: default
   annotations:
-    nginx.ingress.kubernetes.io/websocket-services: channel-service
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "channel-service"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
 spec:
   ingressClassName: nginx
   tls:
-    - hosts:
-      - api.learnerds.online
-      secretName: learnerds-tls
+  - hosts:
+    - api.learnerds.online
+    secretName: learnerds-cert-tls
   rules:
-  - http:
+  - host: api.learnerds.online
+    http:
       paths:
-      - path: /api/
-        pathType: Prefix
-        backend:
-          service:
-            name: api-gateway
-            port:
-              number: 8000
-      - path: /media/
-        pathType: Prefix
-        backend:
-          service:
-            name: api-gateway
-            port:
-              number: 8000
       - path: /ws/
         pathType: Prefix
         backend:
@@ -38,9 +28,10 @@ spec:
             name: channel-service
             port:
               number: 8004
-              
-# kubectl get ingress
-# kubectl get ingress learnerds-ingress
-# kubectl get pods -n ingress-nginx
-# kubectl get svc -n ingress-nginx
-# kubectl get ingress learnerds-ingress -w
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8000
