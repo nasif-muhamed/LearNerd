@@ -6,6 +6,7 @@ import useAccessToken from '../../hooks/useAccessToken';
 // import useWebSocket from '../../hooks/useWebSocket';
 
 const NotificationHandler = () => {
+    const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8004'; // WebSocket base URL
     const role = useSelector((state) => state.auth?.role);
     const token = useAccessToken();
     const authUserId = useSelector((state) => state.auth?.user?.id);
@@ -17,7 +18,7 @@ const NotificationHandler = () => {
     useEffect(() => {
         if ((!token && role == 'admin') || !role) return;
         // Establish WebSocket connection
-        const websocket = new WebSocket(`ws://localhost:8004/ws/notifications/?token=${token}`);
+        const websocket = new WebSocket(`${WS_BASE_URL}/ws/notifications/?token=${token}`);
         // const websocket = useWebSocket('/ws/notifications/');
         
         websocket.onopen = () => {
