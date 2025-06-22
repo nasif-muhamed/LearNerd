@@ -25,7 +25,7 @@ const SectionItemForm = ({
         { text: "", choices: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }, { text: "", isCorrect: false }]},
     ]);
     const [errors, setErrors] = useState({});
-    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadProgress, setUploadProgress] = useState(null);
     const [uploadId, setUploadId] = useState(null);
 
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
@@ -159,6 +159,7 @@ const SectionItemForm = ({
         if (!validateForm()) return;
         // setLoading(true)
         try {
+            setUploadProgress(0);
             const formData = new FormData();
             formData.append('section', section.id);
             formData.append('title', title);
@@ -203,7 +204,7 @@ const SectionItemForm = ({
             handleError(error, "Failed to create section item.");
         }finally{
             // setLoading(false)
-            setUploadProgress(0)
+            setUploadProgress(null)
         }
     };
     console.log('videoFile:', videoFile)
@@ -211,7 +212,7 @@ const SectionItemForm = ({
     // Render form (same as original, omitting itemToEdit checks)
     return (
         <>  
-            {uploadProgress > 0 && <ProgressCircle progress={uploadProgress} />}
+            {uploadProgress !== null && <ProgressCircle progress={uploadProgress} />}
             <form onSubmit={handleSubmit} className="bg-card border border-border rounded-lg shadow-lg p-6 animate-fade-in">
                 <div className="mb-6">
                     <h3 className="text-lg font-medium mb-4">New Section Item</h3>
