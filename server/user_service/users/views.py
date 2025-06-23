@@ -49,7 +49,7 @@ class RegisterView(APIView):
             
             subject = 'Your One Time Password (OTP) for LearNerds'
             message = f'Your OTP code is {otp}'
-            # print(message)
+            print(message)
             recipient_list = [email]
             send_otp_email.delay(subject, message, recipient_list)
             cache_data = {
@@ -152,7 +152,7 @@ class GoogleLoginView(APIView):
 
     def post(self, request):
         token = request.data.get('token')  # Firebase ID token from frontend
-        print('token:', token)
+        # print('token:', token)
         if not token:
             return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
 
