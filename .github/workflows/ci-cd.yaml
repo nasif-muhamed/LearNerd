@@ -68,6 +68,7 @@ jobs:
         id: changes
         uses: dorny/paths-filter@v3
         with:
+          base: HEAD~1  # comment once merged to main. Only for comparing the commit with last commit, otherwise it comparing with the main branch even from another branches.
           filters: |
             changed:
               - '${{ matrix.service.path }}/**'
