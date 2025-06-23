@@ -49,7 +49,7 @@ class RegisterView(APIView):
             
             subject = 'Your One Time Password (OTP) for LearNerds'
             message = f'Your OTP code is {otp}'
-            print(message)
+            # print(message)
             recipient_list = [email]
             send_otp_email.delay(subject, message, recipient_list)
             cache_data = {

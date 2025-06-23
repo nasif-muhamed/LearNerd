@@ -310,7 +310,7 @@ class AdminListReportsAPIView(APIView):
             
             reports_response = course_service_response.json()
             reports = reports_response.get('results', [])
-            print('reports:', reports)
+            # print('reports:', reports)
             ids = set()
             for report in reports:
                 student = report['user']
