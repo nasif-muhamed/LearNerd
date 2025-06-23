@@ -111,9 +111,7 @@ class UserCategoryView(APIView):
     def get(self, request):
         try:
             categories = Category.objects.all().order_by('-created_at')
-            print(categories.values())
             serializer = CategorySerializerUser(categories, many=True)
-            print(serializer)
             return Response(serializer.data)
         except Category.DoesNotExist:
             return Response({'detail': 'Categories not found'}, status=status.HTTP_404_NOT_FOUND)

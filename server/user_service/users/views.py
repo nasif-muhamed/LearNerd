@@ -316,7 +316,6 @@ class UserView(APIView):
                 response_data['access'] = str(access_token)
             return Response(response_data, status=status.HTTP_200_OK)
         
-        print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
