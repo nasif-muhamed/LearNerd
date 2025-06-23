@@ -63,7 +63,6 @@ class HomeView(APIView):
         course_serializer = CourseSerializer(courses, many=True)
 
         ad_details = get_home_banner()
-        print('ad_details:', ad_details)
         banner_details = ad_details.get('home_banner')
         return Response({'my_courses': my_course_serializer.data, 'courses': course_serializer.data, 'banner_details': banner_details}, status=status.HTTP_200_OK)
 

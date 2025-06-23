@@ -314,7 +314,6 @@ class UserView(APIView):
                 access_token = refresh.access_token
                 response_data['refresh'] = str(refresh)
                 response_data['access'] = str(access_token)
-            print('serializer.data +++++++++++:', response_data)
             return Response(response_data, status=status.HTTP_200_OK)
         
         print("Serializer Errors:", serializer.errors)  # Debugging
