@@ -3,7 +3,7 @@ name: CI/CD Pipeline for Django Microservices
 on:
   push:
     branches:
-      - main
+      - test_workflow
     paths:
       - 'server/api_gateway_django/**'
       - 'server/user_service/**'
@@ -57,14 +57,15 @@ jobs:
           password: ${{ env.DOCKER_PASSWORD }}
 
       - name: Check for changes in ${{ matrix.service.name }}
-        id: dorny/paths-filter@v3
+        id: changes
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             changed:
               - '${{ matrix.service.path }}/**'
 
       - name: Build and push image
-        if: steps.paths-filter.outputs.changed == 'true'
+        if: steps.changes.outputs.changed == 'true'
         run: |
           docker build -t ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_SERVICE_PREFIX_NAME }}-${{ matrix.service.name }}:${{ env.DOCKER_IMAGE_TAG }} ${{ matrix.service.path }}
           docker push ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_SERVICE_PREFIX_NAME }}-${{ matrix.service.name }}:${{ env.DOCKER_IMAGE_TAG }}
