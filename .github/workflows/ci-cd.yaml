@@ -15,7 +15,9 @@ env:
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   DOCKER_SERVICE_PREFIX_NAME: ${{ vars.DOCKER_SERVICE_PREFIX_NAME }}
   DOCKER_IMAGE_TAG: ${{ vars.DOCKER_IMAGE_TAG }}
-
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_ZONE: ${{ secrets.GCP_ZONE }}
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -26,22 +28,27 @@ jobs:
           - name: api_gateway_django
             path: server/api_gateway_django
             deployment: api_gateway-deployment.yaml
+            deployment_name: api-gateway
             port: 8000
           - name: user_service
             path: server/user_service
             deployment: user_service-deployment.yaml
+            deployment_name: user-service
             port: 8001
           - name: admin_service
             path: server/admin_service
             deployment: admin_service-deployment.yaml
+            deployment_name: admin-service
             port: 8002
           - name: course_service
             path: server/course_service
             deployment: course_service-deployment.yaml
+            deployment_name: course-service
             port: 8003
           - name: channel_service
             path: server/channel_service
             deployment: channel_service-deployment.yaml
+            deployment_name: channel-service
             port: 8004
     steps:
       - name: Checkout code
@@ -69,3 +76,21 @@ jobs:
         run: |
           docker build -t ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_SERVICE_PREFIX_NAME }}-${{ matrix.service.name }}:${{ env.DOCKER_IMAGE_TAG }} ${{ matrix.service.path }}
           docker push ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_SERVICE_PREFIX_NAME }}-${{ matrix.service.name }}:${{ env.DOCKER_IMAGE_TAG }}
+
+      - name: Set up Google Cloud SDK
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          service_account_key: ${{ env.GCP_SA_KEY }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Configure kubectl
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          gcloud container clusters get-credentials learnerds-cluster --zone ${{ env.GCP_ZONE }} --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          kubectl rollout restart deployment ${{ matrix.service.deployment_name }} -n default
+          kubectl rollout status deployment/${{ matrix.service.deployment_name }} -n default
