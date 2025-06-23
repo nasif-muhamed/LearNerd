@@ -81,9 +81,9 @@ def proxy_to_user_service(request):
     if query_params:
         url = f"{url}?{query_params}"  # Append the query parameters to the URL
 
-    print('url: ', url) 
-    print("Received Data:", request.data)
-    print("files:", request.FILES)
+    # print('url: ', url) 
+    # print("Received Data:", request.data)
+    # print("files:", request.FILES)
 
     response = requests.request(
         method=request.method,
