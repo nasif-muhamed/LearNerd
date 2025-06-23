@@ -3,7 +3,7 @@ name: CI/CD Pipeline for Django Microservices
 on:
   push:
     branches:
-      - server
+      - main
     paths:
       - 'server/api_gateway_django/**'
       - 'server/user_service/**'
