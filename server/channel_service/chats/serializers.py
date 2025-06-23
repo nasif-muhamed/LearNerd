@@ -52,7 +52,6 @@ class RoomSerializer(serializers.Serializer):
 
     def get_participants(self, obj):
         # Get the requesting user_id from context
-        print("Context in RoomSerializer:", self.context)
         user_id = self.context.get('user_id')
         if user_id:
             # Filter out the requesting user from participants
@@ -79,7 +78,6 @@ class RoomSerializer(serializers.Serializer):
         key = f'online_users:{str(obj.id)}'
         user_ids = redis.smembers(key)
         user_ids_list = [int(uid.decode()) for uid in user_ids]
-        print('user_ids_list:', user_ids_list)
         return len(user_ids_list)
     
     def get_meeting(self, obj):

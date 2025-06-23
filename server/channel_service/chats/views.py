@@ -12,8 +12,6 @@ from channel_service.permissions.permissions import IsUserAdmin
 
 class UserRoomsView(APIView):
     def get(self, request):
-        print('user_payload:', request.user_payload) 
-        
         try:
             user_id = request.user_payload.get('user_id')
             if not user_id:
@@ -56,16 +54,13 @@ class RoomMessagesView(APIView):
             
             # Fetch or create user
             user, _ = get_or_create_user(int(user_id))
-            print('user_+++++++++:', user)
 
             # Fetch room and verify user is a participant
             room = Room.objects.get(id=room_id)
-            print('room_+++++++++:', room)
             if user not in room.participants:
                 return Response({"error": "User is not a participant in this room"}, status=status.HTTP_403_FORBIDDEN)
             
             # Validate request data
-            print('request.data:', request.data)
             content = request.data.get('content')
             message_type = request.data.get('message_type')
             
@@ -90,7 +85,6 @@ class RoomMessagesView(APIView):
             
             # Serialize and return the new message
             serializer = MessageSerializer(message)
-            print('serializer:', serializer.data)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except ValueError:
@@ -129,7 +123,6 @@ class RoomMessagesView(APIView):
                 status__nin=['cancelled', 'completed'],
             ).order_by('-created_at').first()
             meeting_serializer = MeetingSerializer(meeting)
-            print('meeting_serializer:', meeting_serializer.data)
             return Response({'meeting': meeting_serializer.data if meeting else None, 'messages': message_serializer.data}, status=status.HTTP_200_OK)
         except Room.DoesNotExist:
             return Response({"error": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -241,7 +234,6 @@ class AdminFetchRoomIdView(APIView):
                 room_type='one-to-one',
                 participants__all=[user, participant],
             ).first()
-            print('room:', room)
             if room is None:
                 new_room = Room(
                     room_type="one-to-one",
