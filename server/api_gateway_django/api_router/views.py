@@ -32,15 +32,15 @@ class UserProfileGateway(APIView):
         }
         try:
             response = requests.get(url, headers=headers)
-            print('response: ', response)
-            print('response.content: ', response.content)
+            # print('response: ', response)
+            # print('response.content: ', response.content)
 
             response.raise_for_status()  # Raise exception for 4xx/5xx
             json_data = response.json() 
-            print('debug::', request.build_absolute_uri('/'), request.build_absolute_uri(''), json_data['image'])
+            # print('debug::', request.build_absolute_uri('/'), request.build_absolute_uri(''), json_data['image'])
             if json_data.get('image'):
                 json_data['image'] = request.build_absolute_uri('/')[:-1] + json_data['image']
-            print('debug2:', json_data['image'])
+            # print('debug2:', json_data['image'])
             return Response(json_data, status=response.status_code)
 
         except requests.exceptions.RequestException as e:
