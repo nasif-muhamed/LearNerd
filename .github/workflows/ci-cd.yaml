@@ -90,6 +90,13 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
+      - name: Install gke-gcloud-auth-plugin
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          gcloud components install gke-gcloud-auth-plugin -q
+          gcloud components update -q
+          which gke-gcloud-auth-plugin || echo "Plugin not found in PATH"
+
       - name: Configure kubectl
         if: steps.changes.outputs.changed == 'true'
         run: |
@@ -98,5 +105,5 @@ jobs:
       - name: Deploy to GKE
         if: steps.changes.outputs.changed == 'true'
         run: |
-          kubectl rollout restart deployment ${{ matrix.service.deployment_name }} -n default
+          kubectl rollout restart deployment/${{ matrix.service.deployment_name }} -n default
           kubectl rollout status deployment/${{ matrix.service.deployment_name }} -n default
