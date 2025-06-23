@@ -18,10 +18,8 @@ def create_or_update_user(user_id, email, first_name, last_name, image_url):
 
         try:
             user = User.objects.get(user_id=user_id)
-            print('user found:', user)
             created = False
         except DoesNotExist:
-            print('user not found:')
             user = User(user_id=user_id, email=email)
             created = True
 
@@ -54,21 +52,16 @@ def create_or_update_user(user_id, email, first_name, last_name, image_url):
         return None, False
     
 def get_or_create_user(user_id):
-    print(f"get_or_create_user: user_id={user_id}")
     try:
-        print("Querying user...")
         user = User.objects.get(user_id=user_id)
-        print(f"User found: {user.to_json()}")
         return user, False
     except DoesNotExist:
         print("User does not exist, creating...")
         try:
             response_user_service = call_user_service.get_user_details(user_id)
-            print(f"User service response: {response_user_service.text}")
             if response_user_service.status_code != 200:
                 raise UserServiceException(f"User service error: {response_user_service.text}")
             user_data = response_user_service.json()
-            print(f"User data: {user_data}")
             user_id = int(user_data['id'])
             email = user_data['email']
             first_name = user_data['first_name']
@@ -76,9 +69,7 @@ def get_or_create_user(user_id):
             image_url = user_data['image']
             full_name = f"{first_name} {last_name}".strip()
             user = User(user_id=user_id, full_name=full_name, email=email, image=image_url)
-            print(f"Attempting to save user: {user.to_json()}")
             user.save()
-            print("User saved successfully")
             return user, True
         except UserServiceException as e:
             raise
@@ -90,7 +81,6 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None
         student_id = int(student_id)
         tutor_id = int(tutor_id)
         expiry_dt = datetime.fromisoformat(expiry_date.replace('Z', '+00:00')) if expiry_date is not None else None
-        print('create_or_update_chat_room:', student_id, tutor_id, expiry_dt, temporary)
         if expiry_dt is not None and expiry_dt <= datetime.now(timezone.utc):
             raise UserServiceException("Expiry date must be in the future")
 
@@ -101,7 +91,6 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None
                 room_type="one-to-one",
                 participants__all=[student, tutor]
             ).get()
-            print('Chat room found:')
 
             created = False
             if expiry_date is not None and room.expires_at:
@@ -113,13 +102,10 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None
 
             if temporary is not None:
                 room.temp_chat = temporary
-                room.save()
-            print('Chat room found:', room.to_json())
-                
+                room.save()                
 
         except DoesNotExist:
             # Create a new channel
-            print('Creating new chat room...')
             room = Room(
                 room_type="one-to-one",
                 participants=[student, tutor],
@@ -129,7 +115,6 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None
                 room.temp_chat = temporary
             room.save()
             created = True
-            print(f"Chat room created: {room.to_json()}")
         return room, created
     
     except UserServiceException as e:
@@ -150,14 +135,12 @@ def create_or_update_group_chat_room(name, image, admin):
         image_url = admin['image']
         full_name = f"{first_name} {last_name}".strip()
         user = User(user_id=admin_id, full_name=full_name, email=email, image=image_url)
-        print(f"Attempting to save user: {user.to_json()}")
         user.save()
     try:
         room = Room.objects(
             room_type="group",
             name=name,
         ).get()
-        print('Group room found:', room.to_json())
         created = False
         changed = False
         if name is not None and room.name != name:
@@ -171,7 +154,6 @@ def create_or_update_group_chat_room(name, image, admin):
 
     except DoesNotExist:
         # Create a new channel
-        print('Creating new group chat room...')
         room = Room(
             room_type="group",
             name=name,
@@ -180,7 +162,6 @@ def create_or_update_group_chat_room(name, image, admin):
         )
         room.save()
         created = True
-        print(f"Chat room created: {room.to_json()}")
 
     except Exception as e:
         raise Exception(f"Unexpected error in group chat room operation: {str(e)}")
@@ -190,14 +171,11 @@ def create_or_update_group_chat_room(name, image, admin):
 def add_to_group_chat(user_id, badge_title):
     try:
         user_id = int(user_id)
-        print('add_to_group_chat:', user_id)
         user, _ = get_or_create_user(user_id)
-        print('user fount in add_to_group_chat:', user)
         room = Room.objects(
             room_type="group",
             name=badge_title
         ).get()
-        print('Chat room found:', room.to_json())
         added = False
         if user not in room.participants:
             room.update(
@@ -223,22 +201,16 @@ def update_group_chat_name(old_title, new_title):
             room_type="group",
             name=old_title
         ).get()
-        print('Group room found:', room.to_json())
         if room.name != new_title:
             room.name = new_title
             room.save()
-            print(f"Group chat name updated from {old_title} to {new_title}")
-        else:
-            print(f"No change in group chat name: {old_title} remains the same.")
         return room
     except DoesNotExist:
         raise UserServiceException(f"Group chat with title '{old_title}' does not exist.")
 
 def create_group_meeting(meeting_id, badge_name, title, scheduled_time, status='scheduled'):
     try:
-        print('create_group_meeting::')
         scheduled_time = datetime.fromisoformat(scheduled_time.replace('Z', '+00:00'))
-        print('scheduled_time :', scheduled_time)
         if django_timezone.is_naive(scheduled_time):
             scheduled_time = django_timezone.make_aware(scheduled_time, timezone=timezone.utc)
 
@@ -258,7 +230,6 @@ def create_group_meeting(meeting_id, badge_name, title, scheduled_time, status='
             status=status,
         )
         meeting.save()
-        print(f"Group meeting created: {meeting.to_json()}")
 
         notification_message = f"{room.name} scheduled a meeting {title} at {scheduled_time.strftime('%Y-%m-%d %H:%M:%S')}"
         channel_layer = get_channel_layer()
@@ -274,7 +245,6 @@ def create_group_meeting(meeting_id, badge_name, title, scheduled_time, status='
             )
             
         meeting_serialized_data = MeetingSerializer(meeting).data
-        print('meeting_serialized_data:', meeting_serialized_data)
         async_to_sync(channel_layer.group_send)(
             f"chat_{str(room.id)}",
             {
@@ -300,7 +270,6 @@ def delete_group_meeting(meeting_id, badge_name, title, status):
             meeting_id=meeting_id
         )
         
-        print('meetings:', meetings)
         if status == 'cancelled' or status == 'completed':
             notification_message = f"{room.name} meeting '{title}' has been cancelled." if status == 'cancelled' else f"{room.name} meeting '{title}' has ended."
             channel_layer = get_channel_layer()
@@ -316,9 +285,7 @@ def delete_group_meeting(meeting_id, badge_name, title, status):
                 )
             for meeting in meetings:
                 meeting.delete()
-            print(f"Group meeting '{title}' cancelled and deleted.")
 
-            print('meeting_serialized_data:', None)
             async_to_sync(channel_layer.group_send)(
                 f"chat_{str(room.id)}",
                 {
@@ -352,7 +319,6 @@ def update_group_meeting(meeting_id, badge_name, title, status):
 
         meeting.status = status
         meeting.save()
-        print(f"Group meeting '{meeting.title}' updated to status '{status}'.")
 
         if status == 'in_progress':
             notification_message = f"{room.name} meeting '{title}' is started."
@@ -369,7 +335,6 @@ def update_group_meeting(meeting_id, badge_name, title, status):
                 )
 
             meeting_serialized_data = MeetingSerializer(meeting).data
-            print('meeting_serialized_data:', meeting_serialized_data)
             async_to_sync(channel_layer.group_send)(
                 f"chat_{str(room.id)}",
                 {
