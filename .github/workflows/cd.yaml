@@ -1,12 +1,12 @@
 name: CD Pipeline for Django Microservices
 
 on:
-  workflow_dispatch:  # we have to manually deploy after the CI is completed
+  # workflow_dispatch:  # we have to manually deploy after the CI is completed
   # Or use workflow_run if we want auto-deployment after CI
-  # workflow_run:
-  #   workflows: ["CI Pipeline for Django Microservices"]
-  #   types:
-  #     - completed
+  workflow_run:
+    workflows: ["CI Pipeline for Django Microservices"]
+    types:
+      - completed
 
 env:
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
