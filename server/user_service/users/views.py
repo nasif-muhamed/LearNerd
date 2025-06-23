@@ -159,7 +159,7 @@ class GoogleLoginView(APIView):
         try:
             # Verify the Firebase token
             decoded_token = firebase_auth.verify_id_token(token)
-            print('google:', decoded_token)
+            # print('google:', decoded_token)
             email = decoded_token.get('email')
             if not email:
                 return Response({'error': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
