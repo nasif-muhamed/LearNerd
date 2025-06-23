@@ -53,13 +53,13 @@ class UserProfileGateway(APIView):
         }
         # Forward files and data
         files = request.FILES
-        print("files:", request.FILES)
+        # print("files:", request.FILES)
         data = request.POST if files else request.data
 
         try:
             response = requests.patch(url, headers=headers, data=data, files=files)
-            print('response: ', response)
-            print('response.content: ', response.content)
+            # print('response: ', response)
+            # print('response.content: ', response.content)
             response.raise_for_status()  # Raise exception for 4xx/5xx
 
             # return Response({'message': 'user updated successfully'}, status=response.status_code)
