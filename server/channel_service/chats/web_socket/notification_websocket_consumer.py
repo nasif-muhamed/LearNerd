@@ -4,8 +4,6 @@ from channels.db import database_sync_to_async
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
-        print('inside connect -----------------')
-        # self.user_id = self.scope['url_route']['kwargs']['user_id']
         user_payload = self.scope.get('user_payload')
         if not user_payload or not user_payload.get('user_id'):
             # Close connection if not authenticated
@@ -22,20 +20,15 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
 
+    # Leave user-specific group
     async def disconnect(self, close_code):
-        # Leave user-specific group
         await self.channel_layer.group_discard(
             self.user_group_name,
             self.channel_name
         )
 
-    async def receive(self, text_data):
-        # Handle incoming messages (if needed)
-        pass
-
+    # Send notification to WebSocket client
     async def send_notification(self, event):
-        print('sending notification inside websocket 0000000000000000000')
-        # Send notification to WebSocket client
         await self.send(text_data=json.dumps({
             'notification_type': event['notification_type'],
             'message': event['message'],
