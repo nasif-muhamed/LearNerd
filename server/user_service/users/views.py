@@ -300,7 +300,7 @@ class UserView(APIView):
         try:
             profile = request.user
             is_profile_completed = profile.is_profile_completed
-            print("Received Data:", request.data)
+            # print("Received Data:", request.data)
 
         except Profile.DoesNotExist:
             return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
