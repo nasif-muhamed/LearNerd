@@ -331,7 +331,6 @@ class MultipleTutorDetailsView(APIView):
     def get(self, request):
         # Get the user_ids from query parameters
         user_ids = request.data.get('ids', None)
-        print('user_ids:', user_ids)
         if not user_ids:
             return Response(
                 {"error": "Please provide user IDs"},

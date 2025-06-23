@@ -139,7 +139,6 @@ class CourseCreateAPIView(APIView):
         # Search functionality
         search_query = request.query_params.get('search', None)
         if search_query:
-            print('inside search')
             courses = courses.filter(
                 Q(title__icontains=search_query) |
                 Q(description__icontains=search_query)

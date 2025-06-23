@@ -53,6 +53,7 @@ jobs:
             deployment: channel_service-deployment.yaml
             deployment_name: channel-service
             port: 8004
+            
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
