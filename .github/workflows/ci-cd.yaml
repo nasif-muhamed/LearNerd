@@ -1,0 +1,114 @@
+name: CI/CD Pipeline for Django Microservices
+
+on:
+  push:
+    branches:
+      - test_workflow
+    paths:
+      - 'server/api_gateway_django/**'
+      - 'server/user_service/**'
+      - 'server/admin_service/**'
+      - 'server/course_service/**'
+      - 'server/channel_service/**'
+      
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  DOCKER_SERVICE_PREFIX_NAME: ${{ vars.DOCKER_SERVICE_PREFIX_NAME }}
+  DOCKER_IMAGE_TAG: ${{ vars.DOCKER_IMAGE_TAG }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_ZONE: ${{ secrets.GCP_ZONE }}
+  GKE_CLUSTER_NAME: ${{ vars.GKE_CLUSTER_NAME }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service:
+          - name: api_gateway_django
+            path: server/api_gateway_django
+            deployment: api_gateway-deployment.yaml
+            deployment_name: api-gateway
+            port: 8000
+          - name: user_service
+            path: server/user_service
+            deployment: user_service-deployment.yaml
+            deployment_name: user-service
+            port: 8001
+          - name: admin_service
+            path: server/admin_service
+            deployment: admin_service-deployment.yaml
+            deployment_name: admin-service
+            port: 8002
+          - name: course_service
+            path: server/course_service
+            deployment: course_service-deployment.yaml
+            deployment_name: course-service
+            port: 8003
+          - name: channel_service
+            path: server/channel_service
+            deployment: channel_service-deployment.yaml
+            deployment_name: channel-service
+            port: 8004
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for changes in ${{ matrix.service.name }}
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event.before }}  # comment once merged to main. Only for comparing the commit with last commit, otherwise it comparing with the main branch even from another branches.
+          filters: |
+            changed:
+              - '${{ matrix.service.path }}/**'
+
+      - name: Set up Docker Buildx
+        if: steps.changes.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        if: steps.changes.outputs.changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: Build and push image
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          docker build -t ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_SERVICE_PREFIX_NAME }}-${{ matrix.service.name }}:${{ env.DOCKER_IMAGE_TAG }} ${{ matrix.service.path }}
+          docker push ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_SERVICE_PREFIX_NAME }}-${{ matrix.service.name }}:${{ env.DOCKER_IMAGE_TAG }}
+
+      - name: Authenticate to Google Cloud
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ env.GCP_SA_KEY }}"
+
+      - name: Set up Google Cloud SDK
+        if: steps.changes.outputs.changed == 'true'
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Install gke-gcloud-auth-plugin
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          gcloud components install gke-gcloud-auth-plugin -q
+          gcloud components update -q
+          which gke-gcloud-auth-plugin || echo "Plugin not found in PATH"
+
+      - name: Configure kubectl
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER_NAME }} --zone ${{ env.GCP_ZONE }} --project ${{ env.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          kubectl rollout restart deployment/${{ matrix.service.deployment_name }} -n default
+          kubectl rollout status deployment/${{ matrix.service.deployment_name }} -n default
