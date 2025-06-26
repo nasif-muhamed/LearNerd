@@ -139,6 +139,7 @@ class CourseCreateAPIView(APIView):
         # Search functionality
         search_query = request.query_params.get('search', None)
         if search_query:
+            print('inside search')
             courses = courses.filter(
                 Q(title__icontains=search_query) |
                 Q(description__icontains=search_query)
@@ -1738,127 +1739,6 @@ class TutorVideoSessionsView(APIView):
         
         except Exception as e:
             return Response({'detail': f'Error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# from .models import VideoSession
-# from .serializers import VideoSessionSerializer, VideoSessionScheduleSerializer
-# from dateutil import parser
-
-# class TutorSessionViewSet(viewsets.ModelViewSet):
-#     """
-#     ViewSet for tutors to manage their teaching sessions.
-#     Includes filtering by status, pagination, and scheduling functionality.
-#     """
-#     serializer_class = VideoSessionSerializer
-#     permission_classes = [IsUser]
-#     filter_backends = [filters.OrderingFilter]
-#     ordering_fields = ['created_at', 'scheduled_time', 'status']
-#     ordering = ['-created_at']
-    
-#     def get_queryset(self):
-#         """
-#         Return sessions where the current user is the tutor.
-#         Filter by status if provided in query params.
-#         """
-#         user_id = self.request.user_payload['user_id']
-#         queryset = VideoSession.objects.filter(tutor=user_id)
-        
-#         # Filter by status if provided
-#         status_filter = self.request.query_params.get('status', None)
-#         if status_filter and status_filter != 'all':
-#             queryset = queryset.filter(status=status_filter)
-            
-#         return queryset
-    
-#     def update(self, request, *args, **kwargs):
-#         """
-#         Override update to handle scheduling logic when approving sessions.
-#         """
-#         try:
-#             instance = self.get_object()
-#             print(f"Retrieved instance: {instance}")
-#             # Check if the user is the tutor for this session
-#             if instance.tutor != request.user_payload['user_id']:
-#                 return Response(
-#                     {"detail": "You don't have permission to update this session."},
-#                     status=status.HTTP_403_FORBIDDEN
-#                 )
-            
-#             print('request data:', request.data)
-#             status = request.data['status']
-#             scheduled_time = request.data['scheduled_time']
-#             duration_minutes = request.data['duration_minutes']
-#             formated_time = parser.parse(scheduled_time)
-#             end_time = formated_time + timedelta(minutes=int(duration_minutes))
-
-#             print('formated_time:', formated_time, end_time)
-
-#             # If we're updating status to approved and there's scheduling data
-#             # if 'scheduled_time' in request.data and request.data.get('status') == 'approved':
-#             #     # Use a separate serializer for scheduling validation
-#             #     schedule_serializer = VideoSessionScheduleSerializer(instance, data=request.data, context={'request': request})
-#             #     schedule_serializer.is_valid(raise_exception=True)
-                
-#             #     # Parse scheduled time from frontend (assuming ISO format)
-#             #     try:
-#             #         # Convert the string to datetime object
-#             #         scheduled_time_str = request.data.get('scheduled_time')
-#             #         duration_minutes = int(request.data.get('duration_minutes', 60))
-                    
-#             #         # Parse the datetime string
-#             #         scheduled_time = parser.parse(scheduled_time_str)
-                    
-#             #         # If the datetime is naive (no timezone info), assume it's in the user's timezone
-#             #         if scheduled_time.tzinfo is None:
-#             #             # Get the timezone from settings
-#             #             asia_kolkata = pytz.timezone('Asia/Kolkata')
-#             #             scheduled_time = asia_kolkata.localize(scheduled_time)
-                    
-#             #         # Convert to UTC for storage
-#             #         scheduled_time_utc = scheduled_time.astimezone(pytz.UTC)
-                    
-#             #         # Calculate ending time
-#             #         ending_time_utc = scheduled_time_utc + timedelta(minutes=duration_minutes)
-                    
-#             #         # Update the request data
-#             #         request.data['scheduled_time'] = scheduled_time_utc
-#             #         request.data['ending_time'] = ending_time_utc
-                    
-#         except (ValueError, TypeError) as e:
-#             return Response(
-#                 {"detail": f"Invalid date format: {str(e)}"},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-                
-#         return super().update(request, *args, **kwargs)
-    
-#     @action(detail=True, methods=['post'])
-#     def mark_completed(self, request, pk=None):
-#         """
-#         Custom action to mark a session as completed.
-#         """
-#         session = self.get_object()
-        
-#         # Check if the user is the tutor for this session
-#         if session.tutor != request.user_payload['user_id']:
-#             return Response(
-#                 {"detail": "You don't have permission to update this session."},
-#                 status=status.HTTP_403_FORBIDDEN
-#             )
-            
-#         # Check if the session is eligible to be marked as completed
-#         if session.status != 'approved':
-#             return Response(
-#                 {"detail": "Only approved sessions can be marked as completed."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
-            
-#         # Update the session status
-#         session.status = 'completed'
-#         session.save()
-        
-#         serializer = self.get_serializer(session)
-#         return Response(serializer.data)
     
 class VideoSessionUpdateView(APIView):
     def get_object(self, pk):
@@ -1888,7 +1768,6 @@ class GetSessionTokenView(APIView):
 
     def post(self, request):
         session_id = request.data.get("session_id")
-        print('session_id', session_id)
         try:
             user_id = request.user_payload['user_id']
             session = VideoSession.objects.get(id=session_id, is_active=True)
@@ -1900,11 +1779,9 @@ class GetSessionTokenView(APIView):
             # Check if session is within a valid time window (e.g., 1 minutes before to end of session)
             now = timezone.now()
             session_end = session.scheduled_time + timezone.timedelta(minutes=session.duration_minutes)
-            print('before if')
             if now < session.scheduled_time - timezone.timedelta(minutes=5) or now > session_end:
                 return Response({"error": "Session not active"}, status=status.HTTP_400_BAD_REQUEST)
 
-            print('before generate_zego_token')
             payload = {
                 "room_id": session.room_id, # Room ID
                 "privilege": {
@@ -1917,7 +1794,6 @@ class GetSessionTokenView(APIView):
             token_info = generate_token04(app_id=int(settings.ZEGO_APP_ID), user_id=str(user_id), secret=settings.ZEGO_SERVER_SECRET, 
                                      effective_time_in_seconds=effective_time_in_seconds, payload=json.dumps(payload))
             
-            print([token_info.token, token_info.error_code, token_info.error_message])
             return Response({
                 "token": token_info.token,
                 "app_id": int(settings.ZEGO_APP_ID),
