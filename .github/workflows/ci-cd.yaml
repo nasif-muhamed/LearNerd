@@ -3,7 +3,7 @@ name: CI/CD Pipeline for Django Microservices
 on:
   push:
     branches:
-      - test_workflow
+      - main
     paths:
       - 'server/api_gateway_django/**'
       - 'server/user_service/**'
@@ -69,7 +69,7 @@ jobs:
         id: changes
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event.before }}  # comment once merged to main. Only for comparing the commit with last commit, otherwise it comparing with the main branch even from another branches.
+          # base: ${{ github.event.before }}  # comment once merged to main. Only for comparing the commit with last commit, otherwise it comparing with the main branch even from another branches.
           filters: |
             changed:
               - '${{ matrix.service.path }}/**'
