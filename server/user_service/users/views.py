@@ -704,26 +704,6 @@ class WalletBalanceView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-# class AdminListAllReportsView(APIView):
-#     permission_classes = [AllowAny]
-
-#     def get(self, request):
-#         print('inside get ::::')
-#         user =  request.user
-#         if not is_admin(user):
-#             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
-
-#         try:
-#             reports_response = call_course_service.get_all_reports()
-#             reports = reports_response.json()
-#             return Response(reports, status=status.HTTP_200_OK)
-
-#         except CourseServiceException as e:
-#             return Response({"error": str(e)}, status=503)
-        
-#         except Exception as e:
-#             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
-
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
