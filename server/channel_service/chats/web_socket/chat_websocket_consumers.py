@@ -53,7 +53,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # change read status if un read message exist.
         readed_msg_count = await self.mark_messages_read()
-        print('readed_msg_count:', readed_msg_count)
         if readed_msg_count > 0:
             await self.channel_layer.group_send(
                 self.room_group_name,

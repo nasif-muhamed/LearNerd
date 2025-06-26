@@ -17,7 +17,7 @@ spec:
       containers:
       - name: user-service-celery-worker
         image: muhdnasif/learnerds-user_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         envFrom:
           - secretRef:
               name: learnerds-secrets
@@ -26,7 +26,7 @@ spec:
         command: ["celery", "-A", "user_service", "worker", "-l", "info"]
       - name: user-service-rabbitmq-consumer
         image: muhdnasif/learnerds-user_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         envFrom:
           - secretRef:
               name: learnerds-secrets

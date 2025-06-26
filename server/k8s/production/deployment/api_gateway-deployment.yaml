@@ -16,7 +16,7 @@ spec:
       containers:
       - name: api-gateway
         image: muhdnasif/learnerds-api_gateway_django:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
         envFrom:

@@ -152,14 +152,14 @@ class GoogleLoginView(APIView):
 
     def post(self, request):
         token = request.data.get('token')  # Firebase ID token from frontend
-        print('token:', token)
+        # print('token:', token)
         if not token:
             return Response({'error': 'Token is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Verify the Firebase token
             decoded_token = firebase_auth.verify_id_token(token)
-            print('google:', decoded_token)
+            # print('google:', decoded_token)
             email = decoded_token.get('email')
             if not email:
                 return Response({'error': 'Email not found in token'}, status=status.HTTP_400_BAD_REQUEST)
@@ -300,7 +300,7 @@ class UserView(APIView):
         try:
             profile = request.user
             is_profile_completed = profile.is_profile_completed
-            print("Received Data:", request.data)
+            # print("Received Data:", request.data)
 
         except Profile.DoesNotExist:
             return Response({"detail": "Profile not found."}, status=status.HTTP_404_NOT_FOUND)
@@ -314,10 +314,8 @@ class UserView(APIView):
                 access_token = refresh.access_token
                 response_data['refresh'] = str(refresh)
                 response_data['access'] = str(access_token)
-            print('serializer.data +++++++++++:', response_data)
             return Response(response_data, status=status.HTTP_200_OK)
         
-        print("Serializer Errors:", serializer.errors)  # Debugging
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserDetailsView(RetrieveAPIView):  # for anyone to see the profile details
@@ -333,7 +331,6 @@ class MultipleTutorDetailsView(APIView):
     def get(self, request):
         # Get the user_ids from query parameters
         user_ids = request.data.get('ids', None)
-        print('user_ids:', user_ids)
         if not user_ids:
             return Response(
                 {"error": "Please provide user IDs"},
@@ -706,26 +703,6 @@ class WalletBalanceView(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-# class AdminListAllReportsView(APIView):
-#     permission_classes = [AllowAny]
-
-#     def get(self, request):
-#         print('inside get ::::')
-#         user =  request.user
-#         if not is_admin(user):
-#             return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
-
-#         try:
-#             reports_response = call_course_service.get_all_reports()
-#             reports = reports_response.json()
-#             return Response(reports, status=status.HTTP_200_OK)
-
-#         except CourseServiceException as e:
-#             return Response({"error": str(e)}, status=503)
-        
-#         except Exception as e:
-#             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
 class AdminDashboardView(APIView):
     permission_classes = [IsAuthenticated]

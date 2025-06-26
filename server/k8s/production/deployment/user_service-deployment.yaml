@@ -16,7 +16,7 @@ spec:
       containers:
       - name: user-service
         image: muhdnasif/learnerds-user_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8001
         envFrom:
