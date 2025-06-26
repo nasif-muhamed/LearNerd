@@ -16,7 +16,7 @@ spec:
       containers:
       - name: course-service
         image: muhdnasif/learnerds-course_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8003
         envFrom:

@@ -17,19 +17,34 @@ spec:
       containers:
       - name: course-service-celery-worker
         image: muhdnasif/learnerds-course_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        command: ["celery", "-A", "course_service", "worker", "-l", "info"]
         envFrom:
           - secretRef:
               name: learnerds-secrets
           - configMapRef:
               name: learnerds-config
-        command: ["celery", "-A", "course_service", "worker", "-l", "info"]
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "400Mi"
+            cpu: "300m"
+            
       - name: course-service-celery-beat
         image: muhdnasif/learnerds-course_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        command: ["celery", "-A", "course_service", "beat", "--loglevel=info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
         envFrom:
           - secretRef:
               name: learnerds-secrets
           - configMapRef:
               name: learnerds-config
-        command: ["celery", "-A", "course_service", "beat", "--loglevel=info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+        resources:
+          requests:
+            memory: "150Mi"
+            cpu: "100m"
+          limits:
+            memory: "300Mi"
+            cpu: "200m"

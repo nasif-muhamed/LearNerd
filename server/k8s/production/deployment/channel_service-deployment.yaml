@@ -16,7 +16,7 @@ spec:
       containers:
       - name: channel-service
         image: muhdnasif/learnerds-channel_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8004
         envFrom:
@@ -26,7 +26,7 @@ spec:
               name: learnerds-config
       - name: channel-service-rabbitmq-consumer
         image: muhdnasif/learnerds-channel_service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         envFrom:
           - secretRef:
               name: learnerds-secrets
