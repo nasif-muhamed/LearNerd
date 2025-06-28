@@ -80,7 +80,7 @@ const ChatArea = ({ selectedChat, setSelectedChat, activeTab, setActiveTab, isMo
             {selectedChat ? (
                 <>
                     <ChatHeader selectedChat={selectedChat} activeTab={activeTab} />
-                    <MessageList activeTyper={activeTyper} messages={messages} loading={loading} activeTab={activeTab} />
+                    <MessageList activeTyper={activeTyper} messages={messages} loading={loading} activeTab={activeTab} selectedChat={selectedChat} />
                     
                     {expired && !selectedChat.temp_chat ? (
                         <ExpiredChatNotice expiryDate={selectedChat.expires_at} />

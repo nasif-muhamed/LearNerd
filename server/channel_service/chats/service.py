@@ -14,8 +14,8 @@ call_user_service = CallUserService()
 def create_or_update_user(user_id, email, first_name, last_name, image_url):
     try:
         user_id = int(user_id)
-        full_name = f"{first_name} {last_name}".strip()
-
+        full_name = f"{first_name} {last_name}".strip() if first_name else None
+        print('full_name::', full_name)
         try:
             user = User.objects.get(user_id=user_id)
             created = False
@@ -67,7 +67,7 @@ def get_or_create_user(user_id):
             first_name = user_data['first_name']
             last_name = user_data['last_name']
             image_url = user_data['image']
-            full_name = f"{first_name} {last_name}".strip()
+            full_name = f"{first_name} {last_name}".strip() if first_name else None
             user = User(user_id=user_id, full_name=full_name, email=email, image=image_url)
             user.save()
             return user, True

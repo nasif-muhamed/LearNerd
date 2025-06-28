@@ -141,7 +141,7 @@ services:
             context: ./admin_service
         container_name: admin_service
         environment:
-            - DB_NAME_ADMIN=${DB_NAME_ADMIN}
+            # - DB_NAME_ADMIN=${DB_NAME_ADMIN}
             - DJANGO_SECRET_ADMIN=${DJANGO_SECRET_ADMIN}
             - DB_ENGINE=${DB_ENGINE}
             - DB_HOST=${DB_HOST}
