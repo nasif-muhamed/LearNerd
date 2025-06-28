@@ -10,7 +10,6 @@ const MessageList = ({ messages, loading, activeTyper, selectedChat }) => {
     const user = useUser()
     const userId = user?.id
     const BASE_URL = import.meta.env.VITE_BASE_URL;
-    console.log('activeTyper +++++++++:', activeTyper)
     useEffect(() => {
         messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
