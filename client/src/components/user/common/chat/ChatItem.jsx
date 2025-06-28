@@ -59,7 +59,7 @@ const ChatItem = ({ selectedDefault, chat, unReadMessages, isSelected, onSelect,
                     <span className="text-xs text-muted-foreground">{formatTimeAgo(chat.updated_at)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground truncate">{chat.last_message? chat.last_message.content : "start a new chat"}</p>
+                    <p className="text-sm text-muted-foreground truncate">{chat.last_message? `${chat.last_message.message_type == 'text' ? chat.last_message.content : chat.last_message.message_type}` : "start a new chat"}</p>
                     
                     {isCommunity && chat.room_type == "group" &&(
                         <span className="text-xs bg-muted rounded-full px-2 py-0.5 flex items-center">

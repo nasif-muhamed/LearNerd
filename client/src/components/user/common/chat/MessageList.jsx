@@ -41,10 +41,18 @@ const MessageList = ({ messages, loading, activeTyper, activeTab }) => {
                                 )
                             }
                             <div className={`max-w-[75%] ${msg.sender?.user_id == userId ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'} rounded-2xl px-4 py-2`}>
-                            {!msg.sender?.user_id == userId && (
-                                <div className="font-medium text-xs mb-1">{msg.sender.full_name}</div>
-                            )}
-                                <p>{msg.content}</p>
+                                {!msg.sender?.user_id == userId && (
+                                    <div className="font-medium text-xs mb-1">{msg.sender.full_name}</div>
+                                )}
+                                {msg.message_type === 'text' ? (
+                                    <p className='break-words'>{msg.content}</p>
+                                ) : msg.message_type === 'image' ? (
+                                    <img 
+                                        src={msg.content} 
+                                        alt="Shared image" 
+                                        className="max-w-full h-auto rounded-lg max-h-64 object-contain"
+                                    />
+                                ) : null}
                                 <div className="text-xs opacity-70 text-right mt-1 flex items-center justify-end gap-1">
                                     {chatTime(msg.timestamp)}
                                     {activeTab !== 'community' && msg.sender?.user_id === userId && (
