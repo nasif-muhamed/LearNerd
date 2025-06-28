@@ -92,8 +92,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         if message_type == 'message':
             message = data['message']
+            msg_type = data.get('message_type', 'text')
             # Save message to database and get serialized data to send back
-            serialized_message  = await self.save_message(message)
+            serialized_message = await self.save_message(message, msg_type)
             print('serialized_message:', serialized_message)
             if serialized_message:
                 await self.channel_layer.group_send(
@@ -237,7 +238,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return False
 
     @database_sync_to_async
-    def save_message(self, message):
+    def save_message(self, message, message_type):
         user = User.objects.get(user_id=self.user_id)
         room = Room.objects.get(id=self.room_id)
         print('now > expiry:', room.room_type, room.room_type == 'one-to-one' and not room.temp_chat and datetime.utcnow() > room.expires_at, datetime.utcnow(), room.expires_at)
@@ -247,7 +248,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             room=room,
             sender=user,
             content=message,
-            message_type='text',
+            message_type=message_type,
         )
         msg.save()
 
