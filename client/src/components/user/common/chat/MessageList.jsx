@@ -73,7 +73,8 @@ const MessageList = ({ messages, loading, activeTyper, selectedChat }) => {
                                     <div className='mr-2'>
                                         <RoundedImage
                                             style={`w-10 h-10 bg-primary/20`}
-                                            source={`${BASE_URL}${activeTyper.user?.image}`} 
+                                            // source={`${BASE_URL}${activeTyper.user?.image}`} 
+                                            source={msg.sender?.image ? `${BASE_URL}${msg.sender?.image}`: null} 
                                             alternative={activeTyper.user?.full_name}
                                             userName={activeTyper.user?.full_name}
                                         />
