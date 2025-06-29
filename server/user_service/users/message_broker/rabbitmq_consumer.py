@@ -1,19 +1,20 @@
 import pika
 import json
 import os
+import logging
 from decimal import Decimal
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from ..models import Notification, AdminUser, Wallet
 
 Profile = get_user_model()
+logger = logging.getLogger(__name__)
 
 def notification_callback(ch, method, properties, body):
     message = json.loads(body)
     routing_key = method.routing_key
     routing_key_arr = routing_key.split('.')
     event_type = '.'.join(routing_key_arr[2:])  # e.g., 'purchase' from 'notification.course.purchase' and 'report.refund' incase of 'notification.course.report.refund'
-    print('inside callback user_service:', message, routing_key)
     try:
         student_id = message['student_id']
         student = Profile.objects.get(id=student_id)
@@ -71,7 +72,7 @@ def notification_callback(ch, method, properties, body):
 
 
         if config is None:
-            print(f" [x] Unknown event type: {event_type}")
+            logger.warning("[x] Unknown event type: %s", event_type)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
@@ -115,17 +116,16 @@ def notification_callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except User.DoesNotExist:
-        print(f" [x] User {student_id} not found")
+        logger.warning("[x] User with ID %s not found", student_id)
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
-    except Exception as e:
-        print(f" [x] Error: {e}")
+    except Exception:
+        logger.exception("[x] Unexpected error while processing notification event")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 def transaction_callback(ch, method, properties, body):
     message = json.loads(body)
     routing_key = method.routing_key
     event_type = routing_key.split('.')[-1]  # e.g., 'purchase' from 'notification.course.purchase'
-    print('inside callback transaction:', message, routing_key)
     try:
         user_id = message['user_id']
         amount = message['amount']
@@ -144,7 +144,7 @@ def transaction_callback(ch, method, properties, body):
             wallet.debit_balance(Decimal(amount))
 
         else:
-            print(f" [x] Unknown event type: {event_type}")
+            logger.warning("[x] Unknown event type: %s", event_type)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             return
 
@@ -152,10 +152,10 @@ def transaction_callback(ch, method, properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     except User.DoesNotExist:
-        print(f" [x] User {user_id} not found")
+        logger.warning("[x] User with ID %s not found", user_id)
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
     except Exception as e:
-        print(f" [x] Error: {e}")
+        logger.exception("[x] Unexpected error while processing transaction event")
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
@@ -163,7 +163,6 @@ def start_consumer():
     rabbitmq_host = os.getenv('RABBITMQ_HOST', 'localhost')
     rabbitmq_user = os.getenv('RABBITMQ_USER', 'guest')
     rabbitmq_pass = os.getenv('RABBITMQ_PASS', 'guest')
-    print('rabbitmq, creds++++++++++++++++++++++:', rabbitmq_host, rabbitmq_user, rabbitmq_pass)
 
     credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
     connection = pika.BlockingConnection(
@@ -189,5 +188,5 @@ def start_consumer():
     channel.basic_consume(queue=notification_queue, on_message_callback=notification_callback)
     channel.basic_consume(queue=transaction_queue, on_message_callback=transaction_callback)
 
-    print(' [*] Waiting for notification events...')
+    logger.info(' [*] user service rabbimq consumer Waiting for events...')
     channel.start_consuming()

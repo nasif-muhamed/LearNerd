@@ -15,8 +15,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['email', 'password']
         extra_kwargs = {'password': {'write_only': True}, 'email': {'write_only': True}}
 
-    def validate_password(self, value):
-        # validation for password strength.
+    def validate_password(self, value):  # validation for password strength.
         if len(value) < 8:
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         if not any(char.isdigit() for char in value):
@@ -38,7 +37,6 @@ class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        # Check if the user exists
         if not Profile.objects.filter(email=value).exists():
             raise serializers.ValidationError("No user is associated with this email.")
         return value
@@ -53,7 +51,6 @@ class ForgotPasswordResetSerializer(serializers.Serializer):
 
     def validate(self, data):
         value = data['password']
-        # validation for password strength.
         if len(value) < 8:
             raise serializers.ValidationError("Password must be at least 8 characters long.")
         if not any(char.isdigit() for char in value):
@@ -65,12 +62,11 @@ class ForgotPasswordResetSerializer(serializers.Serializer):
         return data
     
 class ProfileSerializer(serializers.ModelSerializer):
-    # badges_aquired = BadgesAquiredSerializer(many=True, read_only=True)
     unread_notifications = serializers.IntegerField(read_only=True)
     class Meta:
         model = Profile
-        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'unread_notifications']  # 'badges_aquired'
-        read_only_fields = ['id', 'email', 'is_tutor', 'is_active', 'created_at'] # 'badges_aquired'
+        fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'unread_notifications']
+        read_only_fields = ['id', 'email', 'is_tutor', 'is_active', 'created_at']
 
 class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to see the profile details
     class Meta:
@@ -85,17 +81,12 @@ class UserActionSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'is_profile_completed']
         read_only_fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'created_at']
 
-    # def get_is_profile_completed(self, obj):
-    #     # Check if first_name, last_name, and biography are non-empty and not-None
-    #     return bool(obj.first_name and obj.last_name and obj.biography)
-
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
 
         # Add custom claims to the token payload
-        # token['is_active'] = user.is_active
         token['is_tutor'] = user.is_tutor
         token['is_profile_completed'] = user.is_profile_completed
         token['is_admin'] = is_admin(user)
@@ -103,10 +94,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
     
     def validate(self, attrs):
-        # Call the parent validate method to authenticate the user
         data = super().validate(attrs)
 
-        # Check if the user is active
         if not self.user.is_active:
             raise exceptions.AuthenticationFailed(
                 _("User is blocked"), code="user_blocked"
