@@ -1,6 +1,9 @@
 import pika
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def publish_notification_event(event_type, data):
     rabbitmq_host = os.getenv('RABBITMQ_HOST', 'localhost')
@@ -26,7 +29,7 @@ def publish_notification_event(event_type, data):
         properties=pika.BasicProperties(delivery_mode=2)  # Persistent
     )
 
-    print(f" [x] Sent notification event {routing_key}: {message}")
+    logger.info(f" [x] Sent notification event {routing_key}: {message}")
     connection.close()
 
 def publish_chat_event(event_type, data):
@@ -53,5 +56,5 @@ def publish_chat_event(event_type, data):
         properties=pika.BasicProperties(delivery_mode=2)  # Persistent
     )
 
-    print(f" [x] Sent chat event {routing_key}: {message}")
+    logger.info(f" [x] Sent chat event {routing_key}: {message}")
     connection.close()

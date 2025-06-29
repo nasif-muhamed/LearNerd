@@ -1,3 +1,4 @@
+import logging
 import time
 import os
 import requests
@@ -27,6 +28,7 @@ from .services import CallCourseService, CourseServiceException
 from .message_broker.rabbitmq_publisher import publish_chat_event
 from .utils import is_admin, generate_and_send_otp, verify_otp, handle_otp_resend, send_forgot_password_otp, get_cache_key, CustomPagination
 
+logger = logging.getLogger(__name__)
 Profile = get_user_model()
 ADMIN_SERVICE_URL = os.getenv('ADMIN_SERVICE_URL')
 call_course_service = CallCourseService()
@@ -46,6 +48,8 @@ class RegisterView(APIView):
             }
             cache.set(email, cache_data, timeout=180)  # 3 minutes expiry
             return Response({'message': 'OTP sent successfully'}, status=status.HTTP_200_OK)
+        
+        logger.warning("RegisterView: Invalid registration data: %s", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class VerifyOTPView(APIView):
@@ -81,7 +85,7 @@ class ResendOTPView(APIView):
 
         cache_data, error = handle_otp_resend(email, flow)
         if error:
-            # log cache_data
+            logger.warning("ResendOTPView: Error resending OTP for %s, flow=%s, cache_data=%s", email, flow, cache_data)
             return Response({'detail': error}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'New OTP sent successfully'}, status=status.HTTP_200_OK)
@@ -116,6 +120,7 @@ class GoogleLoginView(APIView):
             }, status=status.HTTP_200_OK)
         
         except Exception as e:
+            logger.error("GoogleLoginView: Invalid Firebase token for request: %s", str(e), exc_info=True)
             return Response({'error': f'Invalid token: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ForgotPasswordView(APIView):
@@ -160,6 +165,7 @@ class ForgotPasswordResetView(APIView):
             cache_data = cache.get(cache_key)
 
             if not cache_data or not cache_data.get('otp_verified'):
+                logger.warning("ForgotPasswordResetView: OTP not verified for %s", email)
                 return Response({'detail': 'OTP verification required. Please verify OTP first.'}, status=status.HTTP_400_BAD_REQUEST)
 
             user = Profile.objects.get(email=email)
@@ -179,6 +185,7 @@ class UserView(APIView):
 
     def get(self, request):
         try:
+            logger.info(f'user logger tester: {request.user.email}')
             profile = request.user
             serializer = ProfileSerializer(profile)
             return Response(serializer.data)
@@ -256,6 +263,7 @@ class SingleTutorDetailsView(APIView):
         except Profile.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         except CourseServiceException as e:
+            logger.error("SingleTutorDetailsView: Course service failed for tutor %s: %s", pk, str(e))
             return Response({"error": str(e)}, status=503)
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
@@ -284,10 +292,10 @@ class UserActionView(APIView):  # Admin specific view.
         try:
             user_to_modify = Profile.objects.get(pk=pk)
             if is_admin(user_to_modify):
+                logger.warning("UserActionView: Attempted to block admin by user %s", request.user.id)
                 return Response({'error': 'You should not block admin'}, status=status.HTTP_403_FORBIDDEN)
         except Profile.DoesNotExist:
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-        print('user_to_modify', user_to_modify)
         user_to_modify.is_active = not user_to_modify.is_active
         user_to_modify.save()
 
@@ -359,6 +367,7 @@ class UsersView(APIView):
             )
         
         except Exception as e:
+            logger.exception("UsersView: Unexpected error while fetching users")
             return Response(
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -390,6 +399,7 @@ class SubmitQuizView(APIView):
             response.raise_for_status()
             result = response.json()
         except requests.RequestException as e:
+            logger.error("SubmitQuizView: Failed to connect to admin_service: %s", str(e), exc_info=True)
             return Response(
                 {"error": f"Failed to evaluate quiz: {str(e)}"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE

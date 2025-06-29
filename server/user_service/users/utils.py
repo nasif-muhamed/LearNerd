@@ -22,7 +22,6 @@ def generate_and_send_otp(email, flow='register'):
         subject = 'Your One Time Password (OTP) for Password Reset'
         message = f'Your OTP code for password reset is {otp}'
 
-    print(message)
     recipient_list = [email]
     send_otp_email.delay(subject, message, recipient_list)
 
@@ -62,7 +61,6 @@ def send_forgot_password_otp(email):
     otp = random.randint(100000, 999999)
     subject = 'Your One Time Password (OTP) for Password Reset'
     message = f'Your OTP code for password reset is {otp}'
-    print(message)
     send_mail(subject, message, settings.EMAIL_HOST_USER, [email], fail_silently=False)
 
     cache_data = {

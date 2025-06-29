@@ -6,7 +6,6 @@ from .message_broker.rabbitmq_publisher import publish_notification_event, publi
 @receiver(post_save, sender=Notification)
 def handle_notification_created(sender, instance, created, **kwargs):
     if created:
-        print(f"Signals +++++ New notification ({instance.notification_type}) for {instance.user.first_name}: {instance.message}")
         publish_notification_event(
             event_type='send',
             data={
@@ -20,16 +19,12 @@ def handle_notification_created(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Profile)
 def wallet_creation_on_user_join(sender, instance, created, **kwargs):
     if created:
-        print(f"new profile created {instance.email}")
         Wallet.objects.create(user=instance, balance=0.00)
-        print('Wallet created')
 
 @receiver(post_save, sender=Profile)
 def handle_profile_update(sender, instance, created, **kwargs):
-    print('inside post_save profile update')
     # Only continue if the profile is completed in the new version
     if instance.is_profile_completed:
-        print(f"Profile being updated: Publishing chat event for user {instance.email}")
         publish_chat_event(
             event_type='profile_updated',
             data={

@@ -112,11 +112,6 @@ class Notification(models.Model):
     message = models.TextField(
         help_text='Human-readable notification message'
     )
-    # data = JSONBField(
-    #     default=dict,
-    #     blank=True,
-    #     help_text='Additional metadata for the notification (e.g., course_id, amount)'
-    # )
     is_read = models.BooleanField(
         default=False,
         help_text='Whether the notification has been read'
@@ -151,15 +146,6 @@ class Wallet(models.Model):
 
     def __str__(self):
         return f"Wallet for {self.user.full_name_or_email}"
-    
-    # @property
-    # def pending_balance(self):
-    #     pending_transactions = Transaction.objects.filter(
-    #         wallet=self,
-    #         status='pending',
-    #         transaction_type='course_sale'
-    #     )
-    #     return sum(transaction.amount for transaction in pending_transactions)
     
     def credit_balance(self, amount):
         self.balance += Decimal(amount)

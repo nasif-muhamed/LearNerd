@@ -39,7 +39,6 @@ class CallCourseService:
 
         try:
             response = self._make_request("GET", path=path)
-            print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
@@ -52,22 +51,3 @@ class CallCourseService:
 
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
-
-    # def get_all_reports(self):
-    #     print('get_all_reports called')
-    #     path = "api/v1/courses/admin/all-reports/"
-    #     try:
-    #         response = self._make_request("GET", path=path)
-    #         print('response.ok:', response.ok)
-    #         if response.status_code != 200:
-    #             raise CourseServiceException(
-    #                 f"Request failed with status {response.status_code}: {response.text}"
-    #             )
-
-    #         return response
-
-    #     except CourseServiceException as e:
-    #         raise
-
-    #     except Exception as e:
-    #         raise CourseServiceException(f"Unexpected error: {str(e)}")

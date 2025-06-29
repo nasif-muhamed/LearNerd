@@ -11,7 +11,7 @@ urlpatterns = [
     path('resend-otp/', ResendOTPView.as_view(), name='resend_otp'), # used for both register and forgot password
     path('token/', LoginView.as_view(), name='get_token'),
     path('token/refresh/', TokenRefreshView.as_view(), name='refresh_token'),
-    path('google-login/', GoogleLoginView.as_view(), name='google_login'),  # New endpoint
+    path('google-login/', GoogleLoginView.as_view(), name='google_login'),
     path('forgot-password/', ForgotPasswordView.as_view(), name='forgot_password'),
     path('forgot-password/verify-otp/', ForgotPasswordOTPVerifyView.as_view(), name='forgot_password_verify_otp'),
     path('forgot-password/reset/', ForgotPasswordResetView.as_view(), name='forgot_password_reset'),
@@ -23,7 +23,6 @@ urlpatterns = [
     path('user-detail/<int:pk>/', UserDetailsView.as_view(), name='user-details'), # for getting user details e.g. tutor
     path('user-action/<int:pk>/', UserActionView.as_view(), name='user-block'),
 
-    # path('check_admin/', CheckIsAdmin.as_view(), name='is_admin'),
     path('badges/', MyBadgesView.as_view(), name='badge-list'),
     path('quiz/submit/', SubmitQuizView.as_view(), name='submit_quiz'),
     path('user-badge-exist/', DoesBadgeExistView.as_view(), name='badge-exists'),
@@ -35,8 +34,6 @@ urlpatterns = [
     path('user-wallet/<int:id>/', WalletBalanceView.as_view(), name='wallet-balance'),
 
     # fetch all reports list.
-    # path('admin/all-reports/', AdminListAllReportsView.as_view(), name='list-reports-admin'),
     path('admin-details/', AdminUserView.as_view(), name='admin-details'),
     path('dashboard/admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard-data'),
-
 ]
