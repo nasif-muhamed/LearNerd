@@ -65,7 +65,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         # Remove from Redis online users set. For changing the status to offline.
-        print('insied disconnect')
         redis = get_redis_connection("default")
         await sync_to_async(redis.srem)(f'online_users:{self.room_id}', self.user_id)
 
@@ -87,15 +86,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         message_type = data.get('type', 'message')
-        print('data:', data, self.user_id)
-
 
         if message_type == 'message':
             message = data['message']
             msg_type = data.get('message_type', 'text')
-            # Save message to database and get serialized data to send back
             serialized_message = await self.save_message(message, msg_type)
-            print('serialized_message:', serialized_message)
             if serialized_message:
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -105,8 +100,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'message': serialized_message,
                     }
                 )
-
-                # Send notification to other users in the room
                 await self.send_message_notification_to_others(serialized_message, self.user_id)
             else:
                 await self.channel_layer.group_send(
@@ -119,9 +112,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
-        
         elif message_type == 'typing':
-            print('inside typing')
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
@@ -132,7 +123,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         
         elif message_type == 'read_receipt':
-            print('inside read reciept')
             await self.mark_message_read(data['message'])
             await self.channel_layer.group_send(
                 self.room_group_name,
@@ -144,13 +134,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
 
     async def chat_message(self, event):
-        # Send message to all clients inside a socket, including the sender.
         new_message = event['message']
         await self.send(text_data=json.dumps({
             'type': 'message',
             'message': new_message
         }))
-        print('new_message:', new_message)
 
         # # to send notification to those who are in the group - it's only sending to those who are on online.
         # if event['sender_id'] != self.user_id:
@@ -165,13 +153,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
         #     )
 
     async def typing_indicator(self, event):
-        print('inside typing indicator', event['sender_id'], self.user_id)
-        # if event['sender_id'] != self.user_id:  # for not sending to the typing user
-        if event['sender_id'] == self.user_id:
+        if event['sender_id'] == self.user_id:  # for not sending to the typing user
             return
 
         user_details = await self.get_user(event['sender_id'])
-
         await self.send(text_data=json.dumps({
             'type': 'typing',
             'user': user_details,
@@ -209,7 +194,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         online_users = await self.get_online_users()
 
         for user in other_user_ids:
-            print(user)
             uid = user.id
             if uid not in online_users and uid != current_user_id:
                 await self.channel_layer.group_send(
@@ -223,7 +207,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
 
     async def group_meeting_status(self, event):
-        print('inside group_meeting_status:', event)
         await self.send(text_data=json.dumps({
             'type': 'group_meeting_status',
             'meeting': event['data']
@@ -241,7 +224,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def save_message(self, message, message_type):
         user = User.objects.get(user_id=self.user_id)
         room = Room.objects.get(id=self.room_id)
-        print('now > expiry:', room.room_type, room.room_type == 'one-to-one' and not room.temp_chat and datetime.utcnow() > room.expires_at, datetime.utcnow(), room.expires_at)
         if room.room_type == 'one-to-one' and not room.temp_chat and datetime.utcnow() > room.expires_at:
             return
         msg = Message(
@@ -251,11 +233,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             message_type=message_type,
         )
         msg.save()
-
         room.last_message = msg
         room.updated_at = datetime.utcnow()
         room.save()
-
         return MessageSerializer(msg).data
     
     @database_sync_to_async
@@ -263,7 +243,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             user = User.objects.get(user_id=user_id)
             serializer = UserSerializer(user)
-            print('serializer get_user:', serializer.data)
             return {
                 'user_id': serializer.data['user_id'],
                 'full_name': serializer.data['full_name'],
@@ -302,11 +281,4 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def get_other_users_in_room(self):
         room = Room.objects.get(id=self.room_id)
         other_users = room.participants
-        print('other_users:', other_users)
         return other_users
-
-    # @database_sync_to_async
-    # def get_user_name(self, user_id):
-    #     user = User.objects.get(id=user_id)
-    #     return user.full_name  # Adjust based on your User model
-

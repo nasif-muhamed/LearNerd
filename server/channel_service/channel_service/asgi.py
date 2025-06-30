@@ -15,7 +15,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'channel_service.settings')
 django.setup()  # Explicitly initialize Django settings
-from .middlewares.ws_jwt_auth import JWTAuthMiddleware
+from .middlewares.ws_jwt_auth import JWTAuthMiddleware  # Custom JWT authentication middleware
 from .web_socket.websocket_routing import websocket_urlpatterns
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'channel_service.settings')

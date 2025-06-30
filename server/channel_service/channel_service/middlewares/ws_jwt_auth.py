@@ -1,7 +1,10 @@
 # middleware/jwt_auth.py
+import logging
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from channels.middleware import BaseMiddleware
+
+logger = logging.getLogger(__name__)
 
 class JWTAuthMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
@@ -25,8 +28,6 @@ class JWTAuthMiddleware(BaseMiddleware):
                 # scope['user'] = await self.get_user(payload['user_id'])
             except InvalidToken as e:
                 scope['user_payload'] = None
-                # scope['user'] = AnonymousUser()
-                # Send close message with code and reason
                 await send({
                     'type': 'websocket.close',
                     'code': 4001,
@@ -35,7 +36,7 @@ class JWTAuthMiddleware(BaseMiddleware):
                 return
             except TokenError as e:
                 scope['user_payload'] = None
-                # scope['user'] = AnonymousUser()
+                logger.error(f"Token error: {e}")
                 await send({
                     'type': 'websocket.close',
                     'code': 4001,
@@ -44,7 +45,7 @@ class JWTAuthMiddleware(BaseMiddleware):
                 return
         else:
             scope['user_payload'] = None
-            # scope['user'] = AnonymousUser()
+            logger.warning("WebSocket connection attempt without token")
             await send({
                 'type': 'websocket.close',
                 'code': 4001,

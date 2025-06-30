@@ -39,8 +39,7 @@ class RequestPopulatorMiddleware:
                 request.user_payload = user_payload
                 # logger.debug(f"User Payload successfully parsed: {request.user_payload}")
             except (ValueError, SyntaxError) as e:
-                # Handle invalid payload gracefully
-                # logger.warning(f"Failed to parse user payload: {user_payload_str}. Error: {e}")
+                logger.warning(f"Failed to parse user payload: {user_payload_str}. Error: {e}")
                 request.user_payload = None
         
         # Proceed to the next middleware or view

@@ -61,10 +61,9 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # CORS middleware
+    'corsheaders.middleware.CorsMiddleware', # CORS middleware, because the service is directly exposed for WS.
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    # 'channel_service.middlewares.token_validation.TokenValidationMiddleware', # Custom middleware for token validation, not needed anymore
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -133,17 +132,6 @@ MONGODB_DATABASES = {
         "authentication_source": "admin",
     }
 }
-
-
-# print('MONGODB_SETTINGS:', MONGODB_SETTINGS)
-# # Connect to MongoDB
-# connect(
-#     name=MONGODB_SETTINGS['name'],
-#     host=MONGODB_SETTINGS['host'],
-#     username=MONGODB_SETTINGS['username'],
-#     password=MONGODB_SETTINGS['password'],
-#     authentication_source=MONGODB_SETTINGS['authentication_source']
-# )
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -221,4 +209,3 @@ CHANNEL_LAYERS = {
     },
 }
 
-print('REDIS_HOST:', REDIS_HOST, REDIS_PORT)
