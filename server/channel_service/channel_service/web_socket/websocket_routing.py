@@ -1,6 +1,4 @@
-# channel_service/websocket_routing.py
 from django.urls import re_path
-# from notifications.web_socket import websocket_consumers
 from chats.web_socket import chat_websocket_consumers, notification_websocket_consumer
 
 websocket_urlpatterns = [

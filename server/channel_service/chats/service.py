@@ -1,3 +1,4 @@
+import logging
 from mongoengine.errors import DoesNotExist, ValidationError
 from mongoengine import Q
 from .models import User, Room, Meeting
@@ -10,12 +11,12 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
 call_user_service = CallUserService()
+logger = logging.getLogger(__name__)
 
 def create_or_update_user(user_id, email, first_name, last_name, image_url):
     try:
         user_id = int(user_id)
         full_name = f"{first_name} {last_name}".strip() if first_name else None
-        print('full_name::', full_name)
         try:
             user = User.objects.get(user_id=user_id)
             created = False
@@ -23,7 +24,6 @@ def create_or_update_user(user_id, email, first_name, last_name, image_url):
             user = User(user_id=user_id, email=email)
             created = True
 
-        # Check for changes
         change = False
         if user.full_name != full_name:
             user.full_name = full_name
@@ -32,7 +32,6 @@ def create_or_update_user(user_id, email, first_name, last_name, image_url):
             user.image = image_url
             change = True
 
-        # Save if there are changes or if it's a new user
         if change or created:
             try:
                 user.save()
@@ -42,13 +41,13 @@ def create_or_update_user(user_id, email, first_name, last_name, image_url):
         return user, created
 
     except ValidationError as e:
-        print(f"Validation error getting or creating user: {e}")
+        logger.warning(f"Validation error getting or creating user: {e}")
         return None, False
     except ValueError as e:
-        print(f"Value error (likely invalid user_id): {e}")
+        logger.warning(f"Invalid user_id: {e}")
         return None, False
     except Exception as e:
-        print(f"Error getting or creating user: {e}")
+        logger.error(f"Unhandled error in create_or_update_user: {e}", exc_info=True)
         return None, False
     
 def get_or_create_user(user_id):
@@ -56,7 +55,6 @@ def get_or_create_user(user_id):
         user = User.objects.get(user_id=user_id)
         return user, False
     except DoesNotExist:
-        print("User does not exist, creating...")
         try:
             response_user_service = call_user_service.get_user_details(user_id)
             if response_user_service.status_code != 200:
@@ -72,8 +70,10 @@ def get_or_create_user(user_id):
             user.save()
             return user, True
         except UserServiceException as e:
+            logger.warning(f"User service error while creating user {user_id}: {e}")
             raise
         except Exception as e:
+            logger.exception(f"Unexpected error while creating user {user_id}")
             raise UserServiceException(f"Unexpected error while creating user: {str(e)}")
                 
 def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None):
@@ -105,7 +105,6 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None
                 room.save()                
 
         except DoesNotExist:
-            # Create a new channel
             room = Room(
                 room_type="one-to-one",
                 participants=[student, tutor],
@@ -118,10 +117,12 @@ def create_or_update_chat_room(student_id, tutor_id, expiry_date, temporary=None
         return room, created
     
     except UserServiceException as e:
-        raise  # Re-raise user service errors
+        raise
     except DatabaseError as e:
+        logger.error(f"Database error creating/updating chat room: {e}", exc_info=True)
         raise UserServiceException(f"Database error while managing chat room: {str(e)}")
     except Exception as e:
+        logger.exception(f"Unexpected error in create_or_update_chat_room for student {student_id} and tutor {tutor_id}")
         raise UserServiceException(f"Unexpected error in chat room operation: {str(e)}")
 
 def create_or_update_group_chat_room(name, image, admin):
@@ -153,7 +154,6 @@ def create_or_update_group_chat_room(name, image, admin):
             room.save()
 
     except DoesNotExist:
-        # Create a new channel
         room = Room(
             room_type="group",
             name=name,
@@ -164,6 +164,7 @@ def create_or_update_group_chat_room(name, image, admin):
         created = True
 
     except Exception as e:
+        logger.exception(f"Group chat creation failed for admin {admin_id}")
         raise Exception(f"Unexpected error in group chat room operation: {str(e)}")
     
     return room, created
@@ -187,12 +188,16 @@ def add_to_group_chat(user_id, badge_title):
         return room, added
 
     except DoesNotExist:
+        logger.warning(f"Group chat with title '{badge_title}' does not exist.")
         raise 
     except UserServiceException as e:
-        raise  # Re-raise user service errors
+        logger.error(f"User service error while adding to group chat: {e}", exc_info=True)
+        raise
     except DatabaseError as e:
+        logger.error(f"Database error while managing chat room: {e}", exc_info=True)
         raise Exception(f"Database error while managing chat room: {str(e)}")
     except Exception as e:
+        logger.exception(f"Unexpected error while chat room operation")
         raise Exception(f"Unexpected error in chat room operation: {str(e)}")
 
 def update_group_chat_name(old_title, new_title):
@@ -206,6 +211,7 @@ def update_group_chat_name(old_title, new_title):
             room.save()
         return room
     except DoesNotExist:
+        logger.warning(f"Group chat with title '{old_title}' does not exist.")
         raise UserServiceException(f"Group chat with title '{old_title}' does not exist.")
 
 def create_group_meeting(meeting_id, badge_name, title, scheduled_time, status='scheduled'):
@@ -256,6 +262,7 @@ def create_group_meeting(meeting_id, badge_name, title, scheduled_time, status='
         return meeting
     
     except Exception as e:
+        logger.exception(f"Group meeting creation failed for {meeting_id} in badge {badge_name}")
         raise e
     
 def delete_group_meeting(meeting_id, badge_name, title, status):
@@ -293,12 +300,12 @@ def delete_group_meeting(meeting_id, badge_name, title, status):
                     "data": None
                 }
             )
-        else:
-            print(f"Group meeting '{title}' not cancelled, no action taken.")
         
     except DoesNotExist:
+        logger.warning(f"Group or meeting not found for badge: {badge_name}")
         raise UserServiceException(f"Meeting with title '{title}' does not exist for badge '{badge_name}'.")
     except Exception as e:
+        logger.exception(f"Unexpected error updating group meeting {meeting_id}")
         raise e
     
 def update_group_meeting(meeting_id, badge_name, title, status):
@@ -343,7 +350,9 @@ def update_group_meeting(meeting_id, badge_name, title, status):
                 }
             )
     except DoesNotExist:
+        logger.warning(f"Group or meeting not found for badge: {badge_name}")
         raise UserServiceException(f"Badge '{badge_name}' does not exist.")
     except Exception as e:
+        logger.exception(f"Unexpected error updating group meeting {meeting_id}")
         raise e
     

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -10,26 +11,22 @@ from .service import get_or_create_user, create_or_update_chat_room
 from channel_service.service_calls import UserServiceException
 from channel_service.permissions.permissions import IsUserAdmin
 
+logger = logging.getLogger(__name__)
+
 class UserRoomsView(APIView):
     def get(self, request):
         try:
             user_id = request.user_payload.get('user_id')
             if not user_id:
                 return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
             user_id = int(user_id)
-            # fetch or create user
-            user, _ = get_or_create_user(user_id)
-            
-            # Fetch rooms and split by type
+            user, _ = get_or_create_user(user_id)            
             one_to_one_rooms = Room.objects(participants=user, room_type='one-to-one').order_by('-updated_at')
             group_rooms = Room.objects(participants=user, room_type='group').order_by('-updated_at')
-            
             data = {
                 'one_to_one': one_to_one_rooms,
                 'group': group_rooms
             }
-            
             serializer = UserRoomsSerializer(
                 data, 
                 context={'user_id': user_id}
@@ -42,34 +39,27 @@ class UserRoomsView(APIView):
         except UserServiceException as e:
             return Response({"error": str(e)}, status=503)
         except Exception as e:
+            logger.exception("Unhandled exception in UserRoomsView GET")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class RoomMessagesView(APIView):
     def post(self, request, room_id):
         try:
-            # Get user_id from payload
             user_id = request.user_payload.get('user_id')
             if not user_id:
-                return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Fetch or create user
+                return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)            
             user, _ = get_or_create_user(int(user_id))
-
-            # Fetch room and verify user is a participant
             room = Room.objects.get(id=room_id)
             if user not in room.participants:
-                return Response({"error": "User is not a participant in this room"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "User is not a participant in this room"}, status=status.HTTP_403_FORBIDDEN)            
             
-            # Validate request data
             content = request.data.get('content')
-            message_type = request.data.get('message_type')
-            
+            message_type = request.data.get('message_type') 
             if not content:
                 return Response({"error": "Content is required"}, status=status.HTTP_400_BAD_REQUEST)
             if not message_type or message_type not in ['text', 'image', 'video']:
                 return Response({"error": "Invalid message type"}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Create new message
             message = Message(
                 sender=user,
                 content=content,
@@ -77,13 +67,9 @@ class RoomMessagesView(APIView):
                 room=room
             )
             message.save()
-            
-            # Update room's last_message and updated_at
             room.last_message = message
             room.updated_at = datetime.utcnow()
             room.save()
-            
-            # Serialize and return the new message
             serializer = MessageSerializer(message)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
@@ -96,28 +82,21 @@ class RoomMessagesView(APIView):
         except UserServiceException as e:
             return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except Exception as e:
+            logger.exception(f"Unexpected error in RoomMessagesView POST for room {room_id}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request, room_id):
         try:
-            # Get user_id from payload
             user_id = request.user_payload.get('user_id')
             if not user_id:
                 return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Fetch or create user
             user, _ = get_or_create_user(int(user_id))
-
-            # Fetch room to verify it exists
             room = Room.objects.get(id=room_id)
-
-            # Error response if user not in participants
             if user not in room.participants:
                 return Response({"error": "User is not a participant in this room"}, status=status.HTTP_403_FORBIDDEN)
             
             messages = Message.objects(room=room).order_by('timestamp')
             message_serializer = MessageSerializer(messages, many=True)
-
             meeting = Meeting.objects(
                 group=room,
                 status__nin=['cancelled', 'completed'],
@@ -127,41 +106,7 @@ class RoomMessagesView(APIView):
         except Room.DoesNotExist:
             return Response({"error": "Room not found"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-# not using yet. can delete.
-class MarkMessagesReadView(APIView):
-
-    def post(self, request, room_id):
-        try:
-            user_id = request.user_payload.get('user_id')
-            if not user_id:
-                return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Fetch or create user
-            user, _ = get_or_create_user(int(user_id))
-            room = Room.objects.get(id=room_id)
-
-            if room.room_type != 'one-to-one':
-                return Response({"error": "Marking messages as read is only supported for one-to-one rooms"}, status=status.HTTP_400_BAD_REQUEST)
-
-            if user not in room.participants:
-                return Response({"error": "User is not a participant in this room"}, status=status.HTTP_403_FORBIDDEN)
-
-            messages_to_update = Message.objects(
-                room=room,
-                is_read='no',
-                sender__ne=user
-            )
-
-            serializer = MessageSerializer(messages_to_update, many=True)
-
-            messages_to_update.update(set__is_read='yes')
-
-            return Response(status=200)
-        except Room.DoesNotExist:
-            return Response({'error': 'Room not found'}, status=404)
-        except Exception as e:
+            logger.exception(f"Unexpected error in RoomMessagesView GET for room {room_id}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class UnreadMeassageCountView(APIView):
@@ -171,20 +116,16 @@ class UnreadMeassageCountView(APIView):
             if not user_id:
                 return Response({'error': 'Unauthorized Request'}, status=status.HTTP_401_UNAUTHORIZED)
             user, _ = get_or_create_user(int(user_id))
-
             rooms = Room.objects(participants=user)
             unread_counts = {}
-
             for room in rooms:
                 unread_count = Message.objects(
                     Q(room=room) &
                     Q(is_read='no') &
                     Q(sender__ne=user)
                 ).count()
-
                 if unread_count > 0:
                     unread_counts[str(room.id)] = unread_count
-
             return Response(unread_counts)
 
         except ValueError:
@@ -194,6 +135,7 @@ class UnreadMeassageCountView(APIView):
         except UserServiceException as e:
             return Response({"error": str(e)}, status=503)
         except Exception as e:
+            logger.exception("Unexpected error in UnreadMessageCountView")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class FetchRoomIdView(APIView):
@@ -218,6 +160,7 @@ class FetchRoomIdView(APIView):
         except UserServiceException as e:
             return Response({"error": str(e)}, status=503)
         except Exception as e:
+            logger.exception(f"Unexpected error in FetchRoomIdView for participant_id={participant_id}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AdminFetchRoomIdView(APIView):
@@ -249,4 +192,5 @@ class AdminFetchRoomIdView(APIView):
         except UserServiceException as e:
             return Response({"error": str(e)}, status=503)
         except Exception as e:
+            logger.exception(f"Unexpected error in AdminFetchRoomIdView for participant_id={participant_id}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

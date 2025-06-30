@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -61,10 +62,9 @@ SIMPLE_JWT = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware', # CORS middleware
+    'corsheaders.middleware.CorsMiddleware', # CORS middleware, because the service is directly exposed for WS.
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    # 'channel_service.middlewares.token_validation.TokenValidationMiddleware', # Custom middleware for token validation, not needed anymore
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -134,17 +134,6 @@ MONGODB_DATABASES = {
     }
 }
 
-
-# print('MONGODB_SETTINGS:', MONGODB_SETTINGS)
-# # Connect to MongoDB
-# connect(
-#     name=MONGODB_SETTINGS['name'],
-#     host=MONGODB_SETTINGS['host'],
-#     username=MONGODB_SETTINGS['username'],
-#     password=MONGODB_SETTINGS['password'],
-#     authentication_source=MONGODB_SETTINGS['authentication_source']
-# )
-
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
@@ -176,6 +165,43 @@ USE_I18N = True
 
 USE_TZ = True
 
+# logger setup
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'pythonjsonlogger.jsonlogger.JsonFormatter',
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
+        'standard': {
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'stream': sys.stdout,
+            'formatter': 'json'  # or 'standard'
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'user_service': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -221,4 +247,3 @@ CHANNEL_LAYERS = {
     },
 }
 
-print('REDIS_HOST:', REDIS_HOST, REDIS_PORT)

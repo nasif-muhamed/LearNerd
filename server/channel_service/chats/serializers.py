@@ -1,8 +1,11 @@
+import logging
 from rest_framework import serializers
 from .models import User, Room, Message, Meeting
 from urllib.parse import urlparse
 from django_redis import get_redis_connection
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 class UserSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
@@ -95,24 +98,9 @@ class RoomSerializer(serializers.Serializer):
             # if scheduled_time > now:
             return MeetingSerializer(meeting).data
         except Exception as e:
-            print(f"Error fetching meeting for room {obj.id}: {e}")
+            logger.exception("[x] Unexpected error while processing meeting data: %s", str(e))
         return None
 
 class UserRoomsSerializer(serializers.Serializer):
     one_to_one = RoomSerializer(many=True)
     group = RoomSerializer(many=True)
-
-
-# class UnreadMsgCountSerializer(serializers.Serializer):
-#     un_read_messages = serializers.SerializerMethodField()
-
-#     def get_un_read_messages(self, obj):
-#         user_id = self.context.get('user_id')
-#         user = User.objects.get(user_id = user_id)
-#         un_read_messages_count = Message.objects(
-#             room=obj,
-#             is_read='no',
-#             sender__ne=user,
-#         ).count()
-#         return un_read_messages_count
-
