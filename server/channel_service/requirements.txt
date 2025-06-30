@@ -32,6 +32,7 @@ PyJWT==2.9.0
 pymongo==4.12.1
 pyOpenSSL==25.0.0
 python-dotenv==1.1.0
+python-json-logger==3.3.0
 redis==5.2.1
 requests==2.32.3
 service-identity==24.2.0
