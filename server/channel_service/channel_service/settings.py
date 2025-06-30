@@ -195,7 +195,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'user_service': {
+        'channel_service': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
