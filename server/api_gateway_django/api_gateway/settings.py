@@ -152,7 +152,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'user_service': {
+        'api_gateway': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,
