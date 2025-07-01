@@ -15,7 +15,7 @@ const BadgeList = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const pageSize = 3; // Matches your backend response (3 items per page)
+    const pageSize = 9; // Matches your backend response (3 items per page)
 
     const fetchBadges = useCallback(async () => {
         setLoading(true);

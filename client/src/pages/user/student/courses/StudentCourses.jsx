@@ -16,18 +16,18 @@ const StudentCourses = () => {
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState(location.state?.searchQuery || "");
     const [tutorId, setTutorId] = useState(location.state?.tutorId || null);
-    console.log('location.state', location.state)
+    // console.log('location.state', location.state)
     // const queryParams = new URLSearchParams(search);
     // const tutorId = queryParams.get('tutor');
-    const pageSize = 3;
+    const pageSize = 9;
 
-    console.log('search query course list:', searchQuery)
+    // console.log('search query course list:', searchQuery)
     useEffect(() => {
         const stateSearchQuery = location.state?.searchQuery;
         if (stateSearchQuery !== searchQuery) {
             setSearchQuery(stateSearchQuery);
             setCurrentPage(1)
-            console.log('search query course list location state:', searchQuery)
+            // console.log('search query course list location state:', searchQuery)
         }
     }, [location.state, setSearchQuery]);
 
@@ -35,7 +35,7 @@ const StudentCourses = () => {
         try{
             setLoading(true)
             setError(null);
-            console.log("CURRENT PAge:", currentPage, pageSize)
+            // console.log("CURRENT PAge:", currentPage, pageSize)
             const params = {
                 page: currentPage,
                 page_size: pageSize,
@@ -47,14 +47,14 @@ const StudentCourses = () => {
             const response = await api.get('courses/', {
                 params: params
             })
-            console.log('My Course response:', response)
+            // console.log('My Course response:', response)
             const result = response.data?.results
             setCourses(result)
             setTotalCount(response.data?.count);
             setNextPage(response.data?.next);
             setPrevPage(response.data?.previous);
         }catch (error) {
-            console.log('Couses Error:', error)
+            // console.log('Couses Error:', error)
             handleError(error, "Error fetching Couses")
             setError("Failed to fetch courses.");
         }finally{
@@ -136,7 +136,6 @@ const StudentCourses = () => {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <p className="font-bold">
-
                                             {course.subscription_amount && formatPrice(course.subscription_amount)}
                                         </p>
                                         {course.freemium && (

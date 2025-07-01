@@ -3,7 +3,7 @@ import {
     ListCollapse,
     Search,
     Bell,
-    Heart,
+    // Heart,
     UserRound,
     CircleX,
     Users,
@@ -84,7 +84,7 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
                         <ListCollapse />
                     </button>
                     {/* Logo and brand in navbar */}
-                    <Link to="/student/home">
+                    <Link to="/">
                         <div className="flex items-center mr-6">
                             <img
                                 src={NerdOwl}
@@ -181,9 +181,9 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
                             )}
                         </Link>
                         
-                        <button className="text-foreground text-2xl hover:text-accent transition-colors duration-300">
+                        {/* <button className="text-foreground text-2xl hover:text-accent transition-colors duration-300">
                             <Heart />
-                        </button>
+                        </button> */}
 
                         {/* Profile dropdown - desktop */}
                         <div className="relative" ref={profileDropdownRef}>
@@ -295,7 +295,7 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
                                     </span>
                                     Notifications
                                 </Link>
-                                <Link
+                                {/* <Link
                                     href="#"
                                     className="flex px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300"
                                 >
@@ -303,7 +303,7 @@ const HeaderAuth = ({ toggleSidebar, role }) => {
                                         <Heart />
                                     </span>
                                     Wishlist
-                                </Link>
+                                </Link> */}
                                 <button
                                     onClick={handleSwitchRole}
                                     className="flex px-4 py-2 text-foreground hover:bg-secondary transition-colors duration-300 w-full"

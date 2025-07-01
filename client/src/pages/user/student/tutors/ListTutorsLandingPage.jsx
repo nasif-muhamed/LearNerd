@@ -16,7 +16,7 @@ const ListTutorsLandingPage = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const pageSize = 1; // Matches your backend response (3 items per page)
+    const pageSize = 9; // Matches your backend response (3 items per page)
 
     const fetchUsers = useCallback(async () => {
         setLoading(true);
