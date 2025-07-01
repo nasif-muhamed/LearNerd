@@ -17,36 +17,27 @@ call_user_service = CallUserService()
 
 class ScheduleCommunityMeetingView(APIView):
     permission_classes = [IsUserAdmin]
-
     def post(self, request):
         admin_id = request.user_payload['user_id']
         request.data['scheduler'] = admin_id
-        print('request data;', request.data)
-
         serializer = CommunityVideoMeetingSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        print('errors:', serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def patch(self, request):
         id = request.data.get('id')
         meeting = get_object_or_404(CommunityVideoMeeting, id=id)
-        print('request data;', request.data)
         serializer = CommunityVideoMeetingSerializer(meeting, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        
-        print('errors:', serializer.errors)
+        logger.error(f'errors: {serializer.errors}')
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class AdminCommunityMeetingView(APIView):
     permission_classes = [IsAdminUserCustom]
-
     def get(self, request, badge_id):
         try:
             meeting = CommunityVideoMeeting.objects.filter(badge=badge_id, is_active=True).first()
@@ -60,7 +51,6 @@ class AdminCommunityMeetingView(APIView):
 
 class GetCommunityMeetingTokenView(APIView):
     permission_classes = [IsUser]
-
     def post(self, request):
         meeting_id = request.data.get("meeting_id")
         logger.debug(f'session_id {meeting_id}')
@@ -73,7 +63,6 @@ class GetCommunityMeetingTokenView(APIView):
                 user_data = user_service_responce.json()
                 if user_data.get('exists', False) is False:
                     return Response({"error": "User does not have access to this meeting"}, status=status.HTTP_403_FORBIDDEN)
-
             payload = {
                 "room_id": meeting.room_id, # Room ID
                 "privilege": {
@@ -85,8 +74,6 @@ class GetCommunityMeetingTokenView(APIView):
             effective_time_in_seconds = 60 * 60 # 1 hour
             token_info = generate_token04(app_id=int(settings.ZEGO_APP_ID), user_id=str(user_id), secret=settings.ZEGO_SERVER_SECRET, 
                                      effective_time_in_seconds=effective_time_in_seconds, payload=json.dumps(payload))
-            
-            print([token_info.token, token_info.error_code, token_info.error_message])
             return Response({
                 "token": token_info.token,
                 "app_id": int(settings.ZEGO_APP_ID),
@@ -99,5 +86,3 @@ class GetCommunityMeetingTokenView(APIView):
             return Response({"error": str(e)}, status=503)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-

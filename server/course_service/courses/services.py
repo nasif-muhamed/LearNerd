@@ -32,7 +32,6 @@ class CallUserService:
             raise UserServiceException(f"Request failed: {str(e)}")
 
     def get_user_details(self, pk):
-        # print('here in get_user_details', pk)
         if not pk:
             raise ValueError("user identifier is required")
 
@@ -40,7 +39,6 @@ class CallUserService:
 
         try:
             response = self._make_request("GET", path=path)
-            # print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
@@ -55,7 +53,6 @@ class CallUserService:
             raise UserServiceException(f"Unexpected error: {str(e)}")
 
     def get_users_details(self, ids):
-        # print('here in get_tutor_detail', ids)
         if not ids:
             raise ValueError("user identifiers are required")
 
@@ -83,7 +80,6 @@ class CallUserService:
         path = f"api/v1/users/user-wallet/{id}/"
         try:
             response = self._make_request("GET", path=path)
-            # print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"

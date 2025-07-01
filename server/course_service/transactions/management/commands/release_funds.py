@@ -1,4 +1,4 @@
-
+import logging
 from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -6,6 +6,8 @@ from django.db.models import F, ExpressionWrapper, DateTimeField
 from courses.models import Purchase, Report
 from transactions.models import Transaction
 from ...utils import record_platform_fee_collect
+
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Check for purchases with expired safe periods and update transactions and wallets'
@@ -27,9 +29,8 @@ class Command(BaseCommand):
         ).filter(
             safe_period_end__lt=timezone.now()
         )
-        print('expired:', pending_transactions)
         for transaction in pending_transactions:
-            print('pending_transaction:', transaction)
+            logger.info(f'pending_transaction: {transaction}')
             # Check if there are any unresolved reports for the course and user
             # if Report.objects.filter(course=transaction.purchase.course, user=transaction.user, status='resolved').exists():
             #     self.stdout.write(self.style.WARNING(
@@ -37,7 +38,7 @@ class Command(BaseCommand):
             #     ))
             #     continue
             # Update transaction status to 'credited'. Create a new transaction for deducting the commition for user and gaining commision for admin.
-            print('expiration:', transaction.purchase.safe_period, transaction.purchase.purchased_at)
+            logger.info(f'expiration: {transaction.purchase.safe_period, transaction.purchase.purchased_at}')
             record_platform_fee_collect(transaction)
             self.stdout.write(self.style.SUCCESS(
                 f'Processed purchase {transaction.purchase.id}: Credited {transaction.amount} to {transaction.user}'

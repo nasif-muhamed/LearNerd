@@ -2,10 +2,10 @@ import ast
 import logging
 
 # Configure logging to show messages in the console
-logging.basicConfig(
-    level=logging.DEBUG,  # Set to DEBUG to see all messages
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# logging.basicConfig(
+#     level=logging.DEBUG,  # Set to DEBUG to see all messages
+#     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+# )
 
 logger = logging.getLogger(__name__)
 

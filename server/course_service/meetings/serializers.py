@@ -14,9 +14,7 @@ class CommunityVideoMeetingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Scheduled meeting exists.")            
         now = timezone.now()
         # Check for overlapping sessions if scheduled_time or duration_minutes is provided
-        print('data::', data)
         scheduled_time = data.get('scheduled_time')
-        print('scheduled_time::', scheduled_time)
         if scheduled_time and scheduled_time < now:
             raise serializers.ValidationError("Scheduled time cannot be in the past.")
         return data
