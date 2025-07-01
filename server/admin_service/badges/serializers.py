@@ -51,7 +51,6 @@ class BadgeSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         questions_raw = data.pop('questions_raw', None)
-        print('questions_raw:', questions_raw)
         if questions_raw:
             try:
                 questions = json.loads(questions_raw)
@@ -60,7 +59,6 @@ class BadgeSerializer(serializers.ModelSerializer):
         else:
             questions = data.get('questions', [])  # Fallback to empty list if no raw data
 
-        print('questions:', questions)
         # Add parsed questions back to data for nested serializer
         data['questions'] = questions
 
@@ -69,9 +67,7 @@ class BadgeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         total_questions = validated_data.get('total_questions')
         pass_mark = validated_data.get('pass_mark')
-        print('validated_data', validated_data)
         questions_data = validated_data.pop('questions')
-        print('questions_data:', questions_data)
 
         # Ensure total_questions and the number of questions match
         if len(questions_data) != total_questions:
@@ -105,7 +101,6 @@ class BadgeSerializer(serializers.ModelSerializer):
 
         # Update only changed fields
         for attr, value in validated_data.items():
-            print('attr',getattr(instance, attr) != value, getattr(instance, attr), value)
             if getattr(instance, attr) != value:
                 setattr(instance, attr, value)
 

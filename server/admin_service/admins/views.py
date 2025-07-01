@@ -1,72 +1,33 @@
-import requests
-import json
-import random
-
-from django.contrib.auth import authenticate
-from django.core.mail import send_mail
-from django.conf import settings
-from django.core.cache import cache
+import logging
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
-from rest_framework_simplejwt.tokens import RefreshToken
-# from rest_framework_simplejwt.views import TokenObtainPairView
 
-from . models import AdminUser, UserServiceToken
+from . models import AdminUser
 from . serializers import AdminUserSerializer
 from . utils import CallUserService, UserServiceException, CallCourseService, CourseServiceException
+from . auth_utils import generate_and_send_otp, verify_otp_and_generate_tokens
 
-
+logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
 call_course_service = CallCourseService()
 
-
 class LoginView(APIView):
     permission_classes = [AllowAny]
-    
     def post(self, request):
         try:
             username = request.data.get('username')
-            # password = request.data.get('password') 
-            
             if not username:
                 return Response(
-                    {'error': 'Username and password are required'},
+                    {'error': 'Username is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # user = authenticate(request, username=username, password=password)
             user = AdminUser.objects.get(username=username)
             if user is not None and user.is_superuser:
-                # Generate 4-digit OTP
-                otp = ''.join([str(random.randint(0, 9)) for _ in range(4)])
-                print('otp:', otp)
-                # Store OTP and username in cache with 2 minute timeout
-                cache_key = f"otp_{username}"
-                cache.set(cache_key, otp, timeout=120)
-
-                # try:
-                #     send_mail(
-                #         subject='Your OTP Code',
-                #         message=f'Your OTP is {otp}. It will expire in 1 minute.',
-                #         from_email=settings.DEFAULT_FROM_EMAIL,
-                #         recipient_list=[user.email],
-                #         fail_silently=False,
-                #     )
-
-                # except Exception as email_error:
-                #     return Response(
-                #         {'error': f'Failed to send OTP: {str(email_error)}'},
-                #         status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                #     )
-                
-                return Response(
-                    {'message': 'OTP sent to your email'},
-                    status=status.HTTP_200_OK
-                )
-
+                return generate_and_send_otp(user, username)
             else:
                 return Response(
                     {'error': 'Invalid credentials'},
@@ -74,6 +35,7 @@ class LoginView(APIView):
                 )
 
         except Exception as e:
+            logger.exception(f"Unexpected error during login for username '{request.data.get('username')}': {e}")
             return Response(
                 {'error': f'An error occurred: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -81,7 +43,6 @@ class LoginView(APIView):
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
-    
     def post(self, request):
         try:
             username = request.data.get('username')
@@ -89,78 +50,14 @@ class VerifyOTPView(APIView):
             otp = request.data.get('otp')
             if not username or not otp or not password:
                 return Response(
-                    {'error': 'OTP and Password are required '},
+                    {'error': 'OTP, username, and password are required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Get stored OTP from cache
-            cache_key = f"otp_{username}"
-            stored_otp = cache.get(cache_key)
-            if stored_otp is None:
-                return Response(
-                    {'error': 'OTP has expired'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            if stored_otp == otp:
-                # OTP is valid, get user and generate tokens
-                user = authenticate(request, username=username, password=password)
-                if user is not None and user.is_superuser:
-                    refresh = RefreshToken.for_user(user)
-                    # Clear OTP from cache after successful verification
-                    cache.delete(cache_key)
-
-                    method = request.method 
-                    data = {
-                        'email': user.email,
-                        'password': password
-                    }
-                    # user_response = call_user_service.get_tokens(method, data)
-
-                    try:
-                        user_response = call_user_service.get_tokens(method, data)
-
-                        user_data = user_response.json()
-                        UserServiceToken.objects.update_or_create(
-                            admin=user,
-                            defaults={
-                                "access_token": user_data.get('access'),
-                                "refresh_token": user_data.get('refresh')
-                            }
-                        )
-
-                        return Response({
-                            'refresh': str(refresh),
-                            'access': str(refresh.access_token),
-                            'user_access': user_data.get('access'),
-                            'user_refresh': user_data.get('refresh'),
-                            'message': 'Login successful'
-                        }, status=status.HTTP_200_OK)
-
-                    except UserServiceException as e:
-                        return Response(
-                            {'error': f'User service error: {str(e)}'},
-                            status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
-                        )
-                    
-                    except Exception as e:
-                        return Response(
-                            {'error': f'An unexpected error occurred: {str(e)}'},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                        )
-
-                else:
-                    return Response(
-                        {'error': 'User not found'},
-                        status=status.HTTP_401_UNAUTHORIZED
-                    )
-            else:
-                return Response(
-                    {'error': 'Invalid OTP'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            return verify_otp_and_generate_tokens(request, username, password, otp)
 
         except Exception as e:
+            logger.exception(f"OTP verification failed for username '{request.data.get('username')}': {e}")
             return Response(
                 {'error': f'An error occurred: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -168,7 +65,6 @@ class VerifyOTPView(APIView):
 
 class AdminView(APIView):
     permission_classes = [IsAuthenticated]
-    
     def get(self, request, pk):
         try:
             user = AdminUser.objects.get(pk=pk)
@@ -176,11 +72,11 @@ class AdminView(APIView):
             return Response(serializer.data)
         
         except AdminUser.DoesNotExist:
+            logger.error(f"Admin user with ID {pk} not found.")
             return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class AdminUserActionView(APIView):
     permission_classes = [IsAdminUser]
-
     def get(self, request, pk):
         try:
             response = call_user_service.get_user(
@@ -194,12 +90,14 @@ class AdminUserActionView(APIView):
             )
 
         except UserServiceException as e:
+            logger.error(f"Error fetching user with ID {pk}: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
         except Exception as e:
+            logger.exception(f"Unexpected error fetching user with ID {pk}: {e}")
             return Response(
                 {"error": "An unexpected error occurred while fetching users"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -222,11 +120,13 @@ class AdminUserActionView(APIView):
             )
 
         except UserServiceException as e:
+            logger.error(f"Error blocking user with ID {pk}: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
+            logger.exception(f"Unexpected error blocking user with ID {pk}: {e}")
             return Response(
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -234,11 +134,10 @@ class AdminUserActionView(APIView):
 
 class UserListView(APIView):
     permission_classes = [IsAdminUser]
-    
     def get(self, request):
         """
         Fetch list of users
-        Supports query parameters for filtering/pagination if provided
+        Supports query parameters for filtering/pagination if given
         """
         try:
             # Get query parameters from request
@@ -254,12 +153,14 @@ class UserListView(APIView):
             )
 
         except UserServiceException as e:
+            logger.error(f"Error fetching users: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
         except Exception as e:
+            logger.exception(f"Unexpected error fetching users: {e}")
             return Response(
                 {"error": "An unexpected error occurred while fetching users"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -268,7 +169,6 @@ class UserListView(APIView):
 # to get all notification related to the admin
 class AdminNotificationView(APIView):
     permission_classes = [IsAdminUser]
-    
     def get(self, request):
         try:
             # Get query parameters from request
@@ -284,24 +184,23 @@ class AdminNotificationView(APIView):
             )
 
         except UserServiceException as e:
+            logger.error(f"Error fetching notifications: {e}")            
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
         except Exception as e:
+            logger.exception(f"Unexpected error fetching notifications: {e}")            
             return Response(
-                {"error": "An unexpected error occurred while fetching users"},
+                {"error": "An unexpected error occurred while fetching notifications"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 class AdminListReportsAPIView(APIView):
     permission_classes = [IsAdminUser]
-
     def get(self, request):
         try:
-            print('AdminListReportsPIView')
-            # Get query parameters from request
             query_params = request.GET.urlencode()
             course_service_response = call_course_service.get_all_reports(
                 request= request,
@@ -310,7 +209,6 @@ class AdminListReportsAPIView(APIView):
             
             reports_response = course_service_response.json()
             reports = reports_response.get('results', [])
-            # print('reports:', reports)
             ids = set()
             for report in reports:
                 student = report['user']
@@ -326,7 +224,6 @@ class AdminListReportsAPIView(APIView):
             for report in reports:
                 student = report['user']
                 instructor = report['instructor']
-                print('instructor:', instructor)
                 report['user'] = users_dict.get(student, {})
                 report['instructor'] = users_dict.get(instructor, {})
 
@@ -338,18 +235,21 @@ class AdminListReportsAPIView(APIView):
             )
 
         except CourseServiceException as e:
+            logger.error(f"Course Service Error fetching reports: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
         except UserServiceException as e:
+            logger.error(f"User Service Error fetching users: {e}")
             return Response(
                 {'error': f'User service error: {str(e)}'},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
 
         except Exception as e:
+            logger.exception(f"Unexpected error fetching users: {e}")
             return Response(
                 {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -373,12 +273,14 @@ class AdminReportActionAPIView(APIView):
             )
 
         except CourseServiceException as e:
+            logger.error(f"Course Service Error updating report with ID {pk}: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
         except Exception as e:
+            logger.exception(f"Unexpected error updating report with ID {pk}: {e}")
             return Response(
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -401,7 +303,6 @@ class AdminDashboardView(APIView):
                 query_params=query_params if query_params else None
             )
             users_data = users_response.json()
-            print('users_sata;', users_data)
             courses_response = call_course_service.get_dashboard_data(
                 request=request,
                 query_params=query_params if query_params else None
@@ -411,20 +312,23 @@ class AdminDashboardView(APIView):
             return Response({**users_data, **courses_data}, status=status.HTTP_200_OK )
 
         except CourseServiceException as e:
+            logger.error(f"Course Service Error fetching dashboard data: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
         except UserServiceException as e:
+            logger.error(f"User Service Error fetching dashboard data: {e}")
             return Response(
                 {'error': f'User service error: {str(e)}'},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
 
         except Exception as e:
+            logger.exception(f"Unexpected error fetching dashboard data: {e}")
             return Response(
-                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                {"error": f"An unexpected error occurred while fetching dashboard data: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -439,24 +343,19 @@ class AdminDashboardChartView(APIView):
                 query_params=query_params if query_params else None
             )
             courses_data = courses_response.json()
-
             return Response(courses_data, status=status.HTTP_200_OK )
 
         except CourseServiceException as e:
+            logger.error(f"Course Service Error fetching dashboard chart data: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
-        except UserServiceException as e:
-            return Response(
-                {'error': f'User service error: {str(e)}'},
-                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
-            )
-
         except Exception as e:
+            logger.exception(f"Unexpected error fetching dashboard chart data: {e}")
             return Response(
-                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                {"error": f"An unexpected error occurred while fetching dashboard chart data: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -471,23 +370,18 @@ class AdminTransactionsView(APIView):
                 query_params=query_params if query_params else None
             )
             transactions_data = transactions_response.json()
-
             return Response(transactions_data, status=status.HTTP_200_OK)
 
         except CourseServiceException as e:
+            logger.error(f"Course Service Error fetching transactions: {e}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         
-        except UserServiceException as e:
-            return Response(
-                {'error': f'User service error: {str(e)}'},
-                status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
-            )
-
         except Exception as e:
+            logger.exception(f"Unexpected error fetching transactions: {e}")
             return Response(
-                {"error": f"An unexpected error occurred while fetching users: {str(e)}"},
+                {"error": f"An unexpected error occurred while fetching transactions: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

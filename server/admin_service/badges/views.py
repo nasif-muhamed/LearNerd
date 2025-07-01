@@ -1,6 +1,4 @@
-import json
-
-from django.db.models import Q
+import logging
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import AnonymousUser
 
@@ -9,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from rest_framework.permissions import  AllowAny, IsAdminUser
 
 from .models import Badges, Questions, Answers
 from .serializers import BadgeSerializer, SimplifiedBadgeSerializer
@@ -18,6 +16,7 @@ from admins.utils import CallUserService, UserServiceException, CallCourseServic
 
 call_user_service = CallUserService()
 call_course_service = CallCourseService()
+logger = logging.getLogger(__name__)
 
 class CustomPagination(PageNumberPagination):
     page_size = 3  # Default items per page
@@ -86,12 +85,14 @@ class BadgesView(APIView):
             return paginator.get_paginated_response(serializer.data)
         
         except Badges.DoesNotExist:
+            logger.error("Badges not found in database")
             return Response(
                 {'error': 'Badges not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
         
         except Exception as e:
+            logger.error(f"Unexpected error in BadgesView.get: error={str(e)}")
             return Response(
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -99,19 +100,14 @@ class BadgesView(APIView):
 
     def post(self, request):
         user = request.user
-        print('BadgesView user: ', user)
-
         try:
             response = call_user_service.get_admin_user_details(
                 admin=user
             )
             admin = response.json()
-            print('admin badge view:', admin)
             serializer = BadgeSerializer(data=request.data, context={'request': request})
             if serializer.is_valid():
-                print('Validated data:', serializer.validated_data)
                 serializer.save()
-                print('BadgesView serializer data:', serializer.data)
                 if serializer.data['community']:
                     publish_chat_event(
                         event_type='create_group_chat_room',
@@ -123,51 +119,54 @@ class BadgesView(APIView):
                     )
 
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
-            print('Serializer errors:', serializer.errors)
+            logger.warning(f"Badge creation failed: errors={serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         except UserServiceException as e:
+            logger.error(f"UserServiceException in BadgesView.post: user_id={user.id}, error={str(e)}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
             )
         except Exception as e:
+            logger.error(f"Unexpected error in BadgesView.post: user_id={user.id}, error={str(e)}")
             return Response(
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )        
-
-
+            )
 
 class BadgeView(APIView):
-    # permission_classes = [AllowAny]
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     def get_permissions(self):
         if self.request.method == 'PATCH':
             return [IsAdminUser()]
         return [AllowAny()]
     
-
     def get(self, request, id):
         try:
             user = request.user
-            print('BadgeView user:', user, type(user))
             badge = Badges.objects.get(id=id)
-            print('badge:', badge)
             serializer = BadgeSerializer(badge)
             serializer_data = serializer.data
             if not isinstance(user, AnonymousUser) and user.is_staff:
                 course_response = call_course_service.get_community_scheduled_meeting(request, badge.id)
+                logger.info(f"Course service called for meeting: badge_id={id}, user_id={user.id}")
                 meeting = course_response.json()
                 serializer_data['meeting'] = meeting if meeting else None
-                print('meeting:', meeting)
             return Response(serializer_data)
         except Badges.DoesNotExist:
+            logger.error(f"Badge not found: badge_id={id}")
             return Response({'detail': 'Badge not found'}, status=status.HTTP_404_NOT_FOUND)
         except CourseServiceException as e:
+            logger.error(f"CourseServiceException in BadgeView.get: badge_id={id}, user_id={user.id}, error={str(e)}")
             return Response(
                 {"error": str(e.detail)},
                 status=e.status_code if hasattr(e, 'status_code') else status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error in BadgeView.get: badge_id={id}, user_id={user.id}, error={str(e)}")
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
     def patch(self, request, id):
@@ -177,6 +176,7 @@ class BadgeView(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
+        logger.warning(f"Badge update failed: badge_id={id}, errors={serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -185,7 +185,6 @@ class EvaluateQuizView(APIView):
     def post(self, request):
         badge_id = request.data.get('badge_id')
         user_answers = request.data.get('answers') 
-        print('here evaluadt______________=====')
         try:
             badge = Badges.objects.get(id=badge_id)
             questions = Questions.objects.filter(badge_id=badge_id)
@@ -203,10 +202,7 @@ class EvaluateQuizView(APIView):
                     )
                     if int(user_answer_id) == correct_answer.id:
                         correct_answers += 1
-            print('came up here1')
             serializer = BadgeSerializer(badge)
-            print('came up here')
-            print(serializer.data['image_url'])
             # Prepare response
             result = {
                 'image': serializer.data['image_url'],
@@ -218,17 +214,17 @@ class EvaluateQuizView(APIView):
                 'is_passed': correct_answers >= pass_mark,
                 'community': badge.community, 
             }
-            print('result:', result)
             return Response(result, status=status.HTTP_200_OK)
 
         except Badges.DoesNotExist:
+            logger.error(f"Badge not found in EvaluateQuizView: badge_id={badge_id}")
             return Response(
                 {"error": "Badge not found"}, 
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
+            logger.error(f"Unexpected error in EvaluateQuizView: badge_id={badge_id}, error={str(e)}")
             return Response(
                 {"error": str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
