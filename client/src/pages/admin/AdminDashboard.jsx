@@ -15,55 +15,6 @@ const AdminDashboard = () => {
     const [barChartData, setBarChartData] = useState([]);
     const [totalSubscriptions, setTotalSubscriptions] = useState(0);
     const [totalFreemium, setTotalFreemium] = useState(0);
-    // Sample data for the chart
-    // const chartData = [
-    //     { name: "Jan", subscribed: 70, freemium: 45 },
-    //     { name: "Feb", subscribed: 85, freemium: 35 },
-    //     { name: "Mar", subscribed: 45, freemium: 110 },
-    //     { name: "Apr", subscribed: 60, freemium: 100 },
-    //     { name: "May", subscribed: 75, freemium: 45 },
-    //     { name: "Jun", subscribed: 30, freemium: 60 },
-    //     { name: "Jul", subscribed: 55, freemium: 50 },
-    //     { name: "Aug", subscribed: 100, freemium: 45 },
-    //     { name: "Sep", subscribed: 45, freemium: 55 },
-    //     { name: "Oct", subscribed: 50, freemium: 80 },
-    //     { name: "Nov", subscribed: 35, freemium: 45 },
-    //     { name: "Dec", subscribed: 60, freemium: 75 },
-    // ];
-
-    // Sample user data
-    // const users = [
-    //     {
-    //         id: "#1234",
-    //         name: "Samantha Melon",
-    //         img: "/api/placeholder/40/40",
-    //         trend: "up",
-    //     },
-    //     {
-    //         id: "#1234",
-    //         name: "Jimmy Changa",
-    //         img: "/api/placeholder/40/40",
-    //         trend: "down",
-    //     },
-    //     {
-    //         id: "#1234",
-    //         name: "Gabe Lackmen",
-    //         img: "/api/placeholder/40/40",
-    //         trend: "up",
-    //     },
-    //     {
-    //         id: "#1234",
-    //         name: "Manuel Labor",
-    //         img: "/api/placeholder/40/40",
-    //         trend: "down",
-    //     },
-    //     {
-    //         id: "#1234",
-    //         name: "Sharon Needles",
-    //         img: "/api/placeholder/40/40",
-    //         trend: "up",
-    //     },
-    // ];
 
     const fetchUsers = async () => {
         try {

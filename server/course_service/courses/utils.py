@@ -4,9 +4,12 @@ import os
 import cloudinary.uploader
 from django.conf import settings
 from django.utils import timezone
+from rest_framework.response import Response
 from .models import SectionItem, VideoUpload
+from .services import CallUserService, UserServiceException
 
 # logger = logging.getLogger(__name__)
+call_user_service = CallUserService()
 
 def mark_purchase_completed(purchase):
     course = purchase.course
@@ -81,3 +84,30 @@ def handle_chunk_upload(upload_id, chunk_number, total_chunks, chunk, file_name)
         'chunks_uploaded': video_upload.chunks_uploaded
     }
 
+def get_tutor_details(users):
+    user_ids = [user['instructor'] for user in users]
+    try:
+        response_user_service = call_user_service.get_users_details(user_ids)
+    except UserServiceException as e:
+        return None, Response({"error": str(e)}, status=503)
+    except Exception as e:
+        return None, Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+
+    users_data = response_user_service.json()
+    # Validate that the number of tutor details matches the number of tutors
+    if len(users_data) != len(users):
+        return None, Response(
+            {"error": "Mismatch between number of tutors and tutor details returned."},
+            status=500
+        )
+
+    result = [
+        {
+            'tutor_id': user['instructor'],
+            'course_count': user['total_courses'],
+            'enrollment_count': user['total_enrollments'],
+            'tutor_details': details
+        }
+        for user, details in zip(users, users_data)
+    ]
+    return result, None

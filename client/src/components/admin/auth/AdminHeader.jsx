@@ -92,7 +92,7 @@ const AdminHeader = ({ toggleSidebar }) => {
                             {" "}
                             <Bell />{" "}
                         </Link>
-                        <Link
+                        {/* <Link
                             to="admin/profile"
                             className="text-white text-2xl"
                         >
@@ -107,7 +107,7 @@ const AdminHeader = ({ toggleSidebar }) => {
                             ) : (
                                 <UserRound />
                             )}
-                        </Link>
+                        </Link> */}
                         <Link
                             to={'/admin/logout'}
                             title="logout"

@@ -475,7 +475,7 @@ const StudentCourseDetails = () => {
                                 <div className="mt-6 border-t border-navy-light pt-4 text-sm">
                                     <p className="text-red-400 font-medium">
                                         Note: Course Duration is{" "}
-                                        {course.safe_period} days
+                                        {course?.safe_period} days
                                     </p>
                                     <p className="text-gray-400 mt-1">
                                         If you have any complaints and need
@@ -494,7 +494,7 @@ const StudentCourseDetails = () => {
                             />
                         </CoursePanel>
 
-                        <CoursePanel>
+                        {/* <CoursePanel>
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center">
                                     <svg
@@ -561,9 +561,9 @@ const StudentCourseDetails = () => {
                                     </svg>
                                 </button>
                             </div>
-                        </CoursePanel>
+                        </CoursePanel> */}
 
-                        <div className="mt-8">
+                        {/* <div className="mt-8">
                             <h2 className="text-xl font-semibold mb-4">
                                 Similar Courses
                             </h2>
@@ -577,7 +577,7 @@ const StudentCourseDetails = () => {
                                     )
                                 )}
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

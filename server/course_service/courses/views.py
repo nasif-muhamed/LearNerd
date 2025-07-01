@@ -40,7 +40,8 @@ from .rabbitmq_publisher import publish_notification_event
 from banners.utils import get_home_banner
 from transactions.utils import record_course_purchase, record_course_refund, record_transaction_reported, change_transaction_status_back_to_pending
 from course_service.zego_cloud.token04 import generate_token04
-from .utils import mark_purchase_completed, handle_thumbnail_upload, handle_chunk_upload
+from .utils import mark_purchase_completed, handle_thumbnail_upload, handle_chunk_upload, get_tutor_details
+from .db_service import top_tutors, tutor_course_stats
 
 logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
@@ -802,53 +803,59 @@ class StudentFetchTopTutorsView(APIView):
     def get(self, request):
         try:
             # Fetch top tutors based on course enrollments or ratings. Previously used the above method but giving wrong results for total_courses & total_enrollments.
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT 
-                        c.instructor, 
-                        COUNT(DISTINCT c.id) AS total_courses, 
-                        COUNT(p.id) AS total_enrollments 
-                    FROM courses_course c 
-                    LEFT JOIN courses_purchase p ON p.course_id = c.id 
-                    WHERE c.is_available = TRUE 
-                    GROUP BY c.instructor 
-                    ORDER BY total_enrollments DESC;
-                """)
-                # Fetch all rows and convert to list of dicts
-                columns = ['instructor', 'total_courses', 'total_enrollments']
-                rows = cursor.fetchall()
-                tutors = [dict(zip(columns, row)) for row in rows]
+            # with connection.cursor() as cursor:
+            #     cursor.execute("""
+            #         SELECT 
+            #             c.instructor, 
+            #             COUNT(DISTINCT c.id) AS total_courses, 
+            #             COUNT(p.id) AS total_enrollments 
+            #         FROM courses_course c 
+            #         LEFT JOIN courses_purchase p ON p.course_id = c.id 
+            #         WHERE c.is_available = TRUE 
+            #         GROUP BY c.instructor 
+            #         ORDER BY total_enrollments DESC;
+            #     """)
+            #     # Fetch all rows and convert to list of dicts
+            #     columns = ['instructor', 'total_courses', 'total_enrollments']
+            #     rows = cursor.fetchall()
+            rows=top_tutors()
+            columns = ['instructor', 'total_courses', 'total_enrollments']
+            tutors = [dict(zip(columns, row)) for row in rows]
 
             if not tutors:
                 return Response({"message": "No tutors found."}, status=404)
             paginator = self.pagination_class()
             paginated_tutors = paginator.paginate_queryset(tutors, request)
-            # Fetch tutor details from user service using the IDs
-            tutor_ids = [tutor['instructor'] for tutor in paginated_tutors]
-            try:
-                response_user_service = call_user_service.get_users_details(tutor_ids)
-            except UserServiceException as e:
-                return Response({"error": str(e)}, status=503)
-            except Exception as e:
-                return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
+            result, error = get_tutor_details(paginated_tutors)
+            if error:
+                return error
+            # logger.info('paginted tutors:', paginated_tutors) 
+            # # Fetch tutor details from user service using the IDs
+            # tutor_ids = [tutor['instructor'] for tutor in paginated_tutors]
+            # try:
+            #     response_user_service = call_user_service.get_users_details(tutor_ids)
+            # except UserServiceException as e:
+            #     return Response({"error": str(e)}, status=503)
+            # except Exception as e:
+            #     return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
 
-            tutors_data = response_user_service.json()
-            # Validate that the number of tutor details matches the number of tutors
-            if len(tutors_data) != len(paginated_tutors):
-                return Response(
-                    {"error": "Mismatch between number of tutors and tutor details returned."},
-                    status=500
-                )
+            # tutors_data = response_user_service.json()
+            # # Validate that the number of tutor details matches the number of tutors
+            # if len(tutors_data) != len(paginated_tutors):
+            #     return Response(
+            #         {"error": "Mismatch between number of tutors and tutor details returned."},
+            #         status=500
+            #     )
 
-            result = [
-                {
-                    'tutor_id': tutor['instructor'],
-                    'course_count': tutor['total_courses'],
-                    'enrollment_count': tutor['total_enrollments'],
-                    'tutor_details': details
-                }
-                for tutor, details in zip(paginated_tutors, tutors_data)
-            ]
+            # result = [
+            #     {
+            #         'tutor_id': tutor['instructor'],
+            #         'course_count': tutor['total_courses'],
+            #         'enrollment_count': tutor['total_enrollments'],
+            #         'tutor_details': details
+            #     }
+            #     for tutor, details in zip(paginated_tutors, tutors_data)
+            # ]
             return paginator.get_paginated_response(result)
 
         except DatabaseError as db_error:
@@ -864,16 +871,17 @@ class StudentTutorAnalysisView(APIView):
     def get(self, request, id):
         try:
             # Count the number of courses uploaded by the tutor. Previously used the above method but giving wrong results for total_courses & total_enrollments. 
-            with connection.cursor() as cursor:
-                cursor.execute("""
-                    SELECT 
-                        COUNT(DISTINCT c.id) AS total_courses,
-                        COUNT(p.id) AS total_enrollments
-                    FROM courses_course c
-                    LEFT JOIN courses_purchase p ON p.course_id = c.id
-                    WHERE c.instructor = %s AND c.is_available = TRUE;
-                """, [id])
-                row = cursor.fetchone()  # returns tuple
+            # with connection.cursor() as cursor:
+            #     cursor.execute("""
+            #         SELECT 
+            #             COUNT(DISTINCT c.id) AS total_courses,
+            #             COUNT(p.id) AS total_enrollments
+            #         FROM courses_course c
+            #         LEFT JOIN courses_purchase p ON p.course_id = c.id
+            #         WHERE c.instructor = %s AND c.is_available = TRUE;
+            #     """, [id])
+            #     row = cursor.fetchone()  # returns tuple
+            row = tutor_course_stats(id)
             total_courses, total_enrollments = row
 
             logger.debug(f"instructor: {id}, total_courses: {total_courses}, total_enrollments: {total_enrollments}")
@@ -1247,3 +1255,32 @@ class GetSessionTokenView(APIView):
             })
         except VideoSession.DoesNotExist:
             return Response({"error": "Session not found"}, status=status.HTTP_404_NOT_FOUND)
+
+class LandingPageView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request):
+        rows=top_tutors()
+        columns = ['instructor', 'total_courses', 'total_enrollments']
+        tutors = [dict(zip(columns, row)) for row in rows[:4]]
+        tutors_result, tutors_error = get_tutor_details(tutors)
+        if tutors_error:
+            return tutors_error
+        courses_query = Course.objects.filter(is_available=True, is_blocked=False)
+        total_courses = courses_query.count()
+        total_instructors = courses_query.values('instructor').distinct().count()
+        purchases = Purchase.objects.all()
+        total_purchases = purchases.count() 
+        completed_courses = purchases.filter(completed=True).count()
+        total_students = purchases.values('user').distinct().count()
+        courses_result = {
+            "total_courses": total_courses,
+            "total_instructors": total_instructors,
+            "total_purchases": total_purchases,
+            "total_students": total_students,
+            "completed_courses": completed_courses,
+        }
+        most_purchased_courses = Course.objects.annotate(
+            total_purchases=Count('purchases')
+        ).order_by('-total_purchases')[:3]
+        serializer = CourseSerializer(most_purchased_courses, many=True)
+        return Response({"tutors": tutors_result, 'course_details': courses_result, 'courses': serializer.data}, status=status.HTTP_200_OK)
