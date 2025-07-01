@@ -12,6 +12,7 @@ pillow==11.1.0
 psycopg2-binary==2.9.10
 PyJWT==2.10.1
 python-dotenv==1.0.1
+python-json-logger==3.3.0
 requests==2.32.3
 six==1.17.0
 sqlparse==0.5.3

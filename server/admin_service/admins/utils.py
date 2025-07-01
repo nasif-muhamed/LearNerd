@@ -18,10 +18,8 @@ class CallUserService:
 
     # Helper method to make HTTP requests with proper timeout
     def _make_request(self, method, headers, path=None, data=None, url=None):
-        print('inside make reqeust')
         if not url:
             url = self.USER_SERVICE_URL + path
-        print('urls:', url, headers, data)
         try:
             return requests.request(
                 method,
@@ -96,12 +94,10 @@ class CallUserService:
                 headers["Authorization"] = f"Bearer {new_token['access']}"
                 response = self._make_request("GET", headers, path)
 
-            print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
 
         except UserServiceException as e:
@@ -136,12 +132,10 @@ class CallUserService:
                 headers["Authorization"] = f"Bearer {new_token['access']}"
                 response = self._make_request(method, headers, path, data)
 
-            print(response.ok)
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
 
         except UserServiceException as e:
@@ -152,21 +146,17 @@ class CallUserService:
         
     # method to fetch users, supports filters. For Admin only, lists all users
     def get_users(self, admin, query_params=None):
-        print('HEre,', query_params)
         if not admin:
             raise ValueError("Admin parameter is required")
-
         try:
             token_obj = UserServiceToken.objects.get(admin=admin)
         except UserServiceToken.DoesNotExist:
             raise UserServiceException("Token not found for admin")
-
         path = "api/v1/users/"
         url = f"{self.USER_SERVICE_URL}{path}"
         if query_params:
             url = f"{url}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
         headers = {"Authorization": f"Bearer {token_obj.access_token}"}
-
         try:
             response = self._make_request("GET", headers=headers, url=url)
             
@@ -176,14 +166,11 @@ class CallUserService:
                 token_obj.save()
                 headers["Authorization"] = f"Bearer {new_tokens['access']}"
                 response = self._make_request("GET", headers=headers, url=url)
-
             if not response.ok:
                 raise UserServiceException(
                     f"Failed to fetch users with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except UserServiceException as e:
             raise
         except Exception as e:
@@ -191,78 +178,60 @@ class CallUserService:
         
     # to get all notifications for admin
     def get_my_notifications(self, admin, query_params=None):
-        print('Here in get_my_notifications:', query_params)
         if not admin:
             raise ValueError("Admin parameter is required")
-
         try:
             token_obj = UserServiceToken.objects.get(admin=admin)
         except UserServiceToken.DoesNotExist:
             raise UserServiceException("Token not found for admin")
-
         path = "api/v1/users/notifications/"
         url = f"{self.USER_SERVICE_URL}{path}"
         if query_params:
             url = f"{url}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
         headers = {"Authorization": f"Bearer {token_obj.access_token}"}
-
         try:
             response = self._make_request("GET", headers=headers, url=url)
-            
             if response.status_code == status.HTTP_401_UNAUTHORIZED:
                 new_tokens = self._refresh_token(token_obj)
                 token_obj.access_token = new_tokens["access"]
                 token_obj.save()
                 headers["Authorization"] = f"Bearer {new_tokens['access']}"
                 response = self._make_request("GET", headers=headers, url=url)
-
             if not response.ok:
                 raise UserServiceException(
                     f"Failed to fetch users with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except UserServiceException as e:
             raise
         except Exception as e:
             raise UserServiceException(f"Unexpected error fetching users: {str(e)}")
 
-    # accessed by 
     def get_users_details(self, ids):
-        # print('here in get_tutor_detail', ids)
         if not ids:
             raise ValueError("user identifiers are required")
-
         path = "api/v1/users/tutor-details/"
-        print('paht::', path)
         try:
             response = self._make_request("GET", headers=None, path=path, data={"ids": ids})
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except UserServiceException as e:
             raise
-
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
 
     def get_admin_user_details(self, admin):
         if not admin:
             raise ValueError("Admin parameter is required")
-
         try:
             token_obj = UserServiceToken.objects.get(admin=admin)
         except UserServiceToken.DoesNotExist:
             raise UserServiceException("Token not found for admin")
-
         path = f"api/v1/users/admin-details/"
         headers = {"Authorization": f"Bearer {token_obj.access_token}"}
-
         try:
             response = self._make_request('GET', headers, path)
             
@@ -275,18 +244,13 @@ class CallUserService:
                 # Retry with new access token
                 headers["Authorization"] = f"Bearer {new_token['access']}"
                 response = self._make_request('GET', headers, path)
-
-            print(response.ok)
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except UserServiceException as e:
             raise
-
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
 
@@ -295,11 +259,8 @@ class CallUserService:
             token_obj = UserServiceToken.objects.get(admin=admin)
         except UserServiceToken.DoesNotExist:
             raise UserServiceException("Token not found for admin")
-
         headers = {"Authorization": f"Bearer {token_obj.access_token}"}
-
         path = f"api/v1/users/dashboard/admin-dashboard/"
-        print('path get_dashboard_data: ', path)
         if query_params:
             path = f"{path}?{query_params}" # f"{url}?{requests.utils.urlencode(query_params)}"
         try:
@@ -310,20 +271,15 @@ class CallUserService:
                 token_obj.save()
                 headers["Authorization"] = f"Bearer {new_token['access']}"
                 response = self._make_request('GET', headers, path)
-
             if response.status_code != 200:
                 raise UserServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except UserServiceException as e:
             raise
-
         except Exception as e:
             raise UserServiceException(f"Unexpected error: {str(e)}")
-
 
 class CourseServiceException(APIException):
     """Custom exception for course service related errors"""
@@ -339,10 +295,8 @@ class CallCourseService:
 
     # Helper method to make HTTP requests with proper timeout
     def _make_request(self, method, headers, path=None, data=None, url=None):
-        print('inside make reqeust')
         if not url:
             url = self.COURSE_SERVICE_URL + path
-        print('urls:', url)
         try:
             return requests.request(
                 method,
@@ -360,23 +314,15 @@ class CallCourseService:
         headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
         if query_params:
             path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
-        print('path:', path)
-        print('headers:', headers)
         try:
-            response = self._make_request("GET", headers, path)
-            
-            print('response:', response.json())
-            print('response.ok:', response.ok)
+            response = self._make_request("GET", headers, path)            
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except CourseServiceException as e:
             raise
-
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
 
@@ -385,17 +331,13 @@ class CallCourseService:
         headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
         try:
             response = self._make_request(method, headers, path, data)
-            
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except CourseServiceException as e:
             raise
-
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
         
@@ -404,23 +346,15 @@ class CallCourseService:
         headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
         if query_params:
             path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
-        print('path:', path)
-        print('headers:', headers)
         try:
             response = self._make_request("GET", headers, path)
-            
-            print('response:', response.json())
-            print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except CourseServiceException as e:
             raise
-
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
 
@@ -429,23 +363,15 @@ class CallCourseService:
         headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
         if query_params:
             path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
-        print('path:', path)
-        print('headers:', headers)
         try:
             response = self._make_request("GET", headers, path)
-            
-            print('response:', response.json())
-            print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except CourseServiceException as e:
             raise
-
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
 
@@ -454,44 +380,29 @@ class CallCourseService:
         headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
         if query_params:
             path = f"{path}?{query_params}"# f"{url}?{requests.utils.urlencode(query_params)}"
-        print('path:', path)
-        print('headers:', headers)
         try:
             response = self._make_request("GET", headers, path)
-            
-            print('response:', response.json())
-            print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except CourseServiceException as e:
             raise
-
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
 
     def get_community_scheduled_meeting(self, request, badge_id):
         path = f"api/v1/meetings/admin/community-meeting/{badge_id}/"
         headers = {"Authorization": request.META.get('HTTP_AUTHORIZATION')}
-        print('get_community_scheduled_meeting badge_id:', badge_id)
         try:
             response = self._make_request("GET", headers, path)
-            
-            print('response:', response.json())
-            print('response.ok:', response.ok)
             if response.status_code != 200:
                 raise CourseServiceException(
                     f"Request failed with status {response.status_code}: {response.text}"
                 )
-
             return response
-
         except CourseServiceException as e:
             raise
-
         except Exception as e:
             raise CourseServiceException(f"Unexpected error: {str(e)}")
