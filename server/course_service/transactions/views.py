@@ -1,3 +1,4 @@
+import logging
 import io
 from decimal import Decimal
 from datetime import timedelta
@@ -22,6 +23,7 @@ from courses.permissions import IsAdminUserCustom, IsUser, IsProfileCompleted
 from courses.services import CallUserService, UserServiceException
 from courses.views import CustomPagination
 
+logger = logging.getLogger(__name__)
 call_user_service = CallUserService()
 
 class TransactionViewSet(APIView):
@@ -37,10 +39,8 @@ class TransactionViewSet(APIView):
         except Exception as e:
             return Response({"error": f"Unexpected error: {str(e)}"}, status=500)
         wallet_data = response_user_service.json()
-        print('wallet_response:', wallet_data)
         queryset = Transaction.objects.filter(user=user)
         pending_total = queryset.filter(status__in=['pending', 'reported']).aggregate(Sum('amount'))['amount__sum']
-        print('queryset:', queryset)
         # Filter by transaction type
         transaction_type = request.query_params.get('type')
         if transaction_type:
@@ -85,7 +85,6 @@ class AdminTransactionsViewSet(APIView):
 
     def get(self, request):
         filter_type = request.query_params.get('filter', 'all').lower()
-        print('filter_type:', filter_type)
         now = timezone.now()
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = today - timedelta(days=today.weekday())
@@ -98,7 +97,6 @@ class AdminTransactionsViewSet(APIView):
             'all': {}
         }
         filter_params = time_filters.get(filter_type, time_filters['all'])
-        print('filter_param:', filter_params)
 
         try:
             queryset = Transaction.objects.filter(**filter_params)
@@ -110,7 +108,6 @@ class AdminTransactionsViewSet(APIView):
             total_payouts = queryset.filter(status='credited').aggregate(total=Sum('amount'))['total'] or 0
             original_payouts = total_payouts - total_commission
             total_refunds = queryset.filter(status='refunded', transaction_type='course_sale').aggregate(total=Sum(Abs(F('amount'))))['total'] or 0
-            print('queryset:', queryset) 
             # # Filter by transaction type
             # transaction_type = request.query_params.get('type')
             # if transaction_type:
@@ -160,7 +157,7 @@ class AdminTransactionsViewSet(APIView):
             return paginated_response
     
         except Exception as e:
-            print(f"Error in AdminDashboardView: {e}")
+            logger.exception(f"Error in AdminDashboardView: {e}")
             return Response({'error': 'An error occurred while fetching dashboard data.'}, status=500)
 
 class AdminTransactionsPDFView(APIView):
@@ -258,9 +255,8 @@ class AdminTransactionsPDFView(APIView):
             response['Content-Disposition'] = 'attachment; filename="transaction_report.pdf"'
             response.write(buffer.getvalue())
             buffer.close()
-            print('PDF generated successfully')
             return response
 
         except Exception as e:
-            print(f"Error in PDF generation: {e}")
+            logger.exception(f"Error in PDF generation: {e}")
             return Response({'error': 'An error occurred while generating the PDF.'}, status=500)

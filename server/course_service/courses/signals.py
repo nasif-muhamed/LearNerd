@@ -14,10 +14,8 @@ def chat_expiry_date(days):
 @receiver(post_save, sender=Purchase)
 def handle_purchase_created(sender, instance, created, **kwargs):
     if created:
-        print(f"Signals +++++ New purchase for {instance.user}: {instance.course.title}")
         if instance.purchase_type == 'subscription' and instance.chat_upto:
             expiry_date = chat_expiry_date(instance.chat_upto)
-            print('subscription purchase detected')
             publish_chat_event(
                 event_type='create_chat_room',
                 data={
@@ -29,7 +27,6 @@ def handle_purchase_created(sender, instance, created, **kwargs):
             
 @receiver(pre_save, sender=Purchase)
 def handle_purchase_update(sender, instance, **kwargs):
-    print('inside pre_save purchase update')
     if not instance.pk:
         # New purchase being created, skip. What I want is to updation of the purchase.
         return
@@ -43,12 +40,9 @@ def handle_purchase_update(sender, instance, **kwargs):
     old_purchase_type = old_instance.purchase_type
     new_purchase_type = instance.purchase_type
 
-    print(f"Purchase updated or not: {old_purchase_type}, {new_purchase_type}")
-
     # Only continue if the purchase is completed in the new version
     if old_purchase_type == 'freemium' and new_purchase_type == 'subscription' and instance.chat_upto:
         expiry_date = chat_expiry_date(instance.chat_upto)
-        print(f"Purchase being updated: Publishing chat event for user {instance.user}")
         publish_chat_event(
             event_type='create_chat_room',
             data={
@@ -60,7 +54,6 @@ def handle_purchase_update(sender, instance, **kwargs):
 
 @receiver(pre_save, sender=VideoSession)
 def handle_video_session_update(sender, instance, **kwargs):
-    print('inside pre_save VideoSession update')
     if not instance.pk:
         if instance.status == 'pending':
             publish_chat_event(

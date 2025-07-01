@@ -15,7 +15,6 @@ from banners.utils import get_ad_content
 
 from django.utils import timezone
 
-
 call_user_service = CallUserService()
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -65,7 +64,6 @@ class CourseSerializer(serializers.ModelSerializer):
         return value
     
     def validate(self, data):
-        print('subsctiption:', data.get('subscription'), 'amount', data.get('subscription_amount'))
         if data.get('subscription') and (data.get('subscription_amount') is None or data.get('subscription_amount') <= 0):
             raise serializers.ValidationError("Subscription amount is required and should be greater than 0 if subscription is enabled.")
         return data
@@ -227,7 +225,6 @@ class VideoSerializer(serializers.ModelSerializer):
                 folder="course/videos/",
             )
             validated_data['video_url'] = upload_result['secure_url']
-            print('video_url:', validated_data['video_url'])
             # Clean up the temporary file after upload
             os.remove(video_uploaded.file_path)
             video_uploaded.delete() 
@@ -248,7 +245,6 @@ class VideoSerializer(serializers.ModelSerializer):
 class SectionItemSerializer(serializers.ModelSerializer):
     # video = VideoSerializer(required=False)
     # assessment = AssessmentSerializer(required=False)
-
     # video_file = serializers.FileField(write_only=True, required=False)
     thumbnail_file = serializers.FileField(write_only=True, required=False, allow_null=True)
     video_data = serializers.CharField(write_only=True, required=False)
@@ -267,7 +263,6 @@ class SectionItemSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        print('inside valid SectionItem')
         item_type = data.get('item_type')
         
         # if item_type == 'video' and 'video_file' not in data:
@@ -280,11 +275,9 @@ class SectionItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Video data should not be provided for assessment item type")
         if 'document_data' in data and 'document_file' not in data:
             raise serializers.ValidationError("Document file is required when supporting document data is provided")
-        print('outside valid SectionItem')  
         return data
 
     def create(self, validated_data):
-        print('inside create SectionItem')
         with transaction.atomic():
             # video_file = validated_data.pop('video_file', None)
             thumbnail_file = validated_data.pop('thumbnail_file', None)
@@ -292,7 +285,6 @@ class SectionItemSerializer(serializers.ModelSerializer):
             assessment_json = validated_data.pop('assessment_data', None)
             document_json = validated_data.pop('document_data', None)
             document_file = validated_data.pop('document_file', None)
-            print('docs:', document_file, document_json)
             section_item = SectionItem.objects.create(**validated_data)
             
             if video_data:
@@ -321,7 +313,6 @@ class SectionItemSerializer(serializers.ModelSerializer):
                 document_data['section_item'] = section_item
                 document_data['pdf_file'] = document_file
                 SupportingDocumentSerializer().create(document_data)
-            print('outside create SectionItem')
             return section_item
 
 class VideoDetailSerializer(serializers.ModelSerializer):
@@ -456,7 +447,6 @@ class CourseUnAuthDetailSerializer(serializers.ModelSerializer):
                 response_user_service = call_user_service.get_user_details(obj.instructor)
                 return response_user_service.json()
             except UserServiceException as e:
-                # You might want to handle this error differently based on your requirements
                 return {"error": str(e)}
             except Exception as e:
                 return {"error": "Failed to fetch instructor details"}
@@ -474,7 +464,6 @@ class PurchaseCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ['purchased_at', 'completed']
 
     def validate(self, data):
-        print('inside validate')
         try:
             course = data.get('course')
             purchase_type= data.get('purchase_type')
@@ -483,7 +472,6 @@ class PurchaseCreateSerializer(serializers.ModelSerializer):
             chat_upto= data.get('chat_upto')
             safe_period= data.get('safe_period')
             stripe_payment_intent_id = data.get('stripe_payment_intent_id')
-            print('inside try:', course, purchase_type, subscription_amount, video_session, chat_upto, safe_period)
         except TypeError:
             raise serializers.ValidationError('Invalid data format')
         except KeyError as e:
@@ -556,42 +544,7 @@ class StudentMyCourseSerializer(serializers.ModelSerializer):
     
     def get_video_session_status(self, obj):
         # Count total section items for the course related to this purchase
-        print('session status:', obj.video_sessions.first())
         return obj.video_sessions.first().status if obj.video_sessions.first() else None
-
-
-# class StudentMyCourseDetailSerializer(serializers.ModelSerializer):
-#     objectives = LearningObjectiveSerializer(many=True, read_only=True)
-#     requirements = CourseRequirementSerializer(many=True, read_only=True)
-#     sections = SectionDetailSerializer(many=True, read_only=True)
-#     analytics = serializers.SerializerMethodField()
-
-#     class Meta:
-#         model = Course
-#         fields = [
-#             'id',
-#             'category',
-#             'title',
-#             'description',
-#             'thumbnail',
-#             'instructor',
-#             'freemium',
-#             'subscription',
-#             'subscription_amount',
-#             'video_session',
-#             'chat_upto',
-#             'safe_period',
-#             'created_at',
-#             'updated_at',
-#             'objectives',
-#             'requirements',
-#             'sections',
-#             'analytics',
-#         ]
-
-#     def get_analytics(self, obj):
-#         analytics_serializer = CourseAnalyticsSerializer(obj)
-#         return analytics_serializer.data
 
 class SectionItemCompletionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -748,7 +701,6 @@ class ReportSerializer(serializers.ModelSerializer):
             'purchased_at': purchase.purchased_at,
             'expire_at': purchase.safe_period_expiry if purchase.purchase_type == 'subscription' else None
         }
-        # print('purchase_details:', purchase_details)
         return purchase_details
 
 class VideoSessionSerializer(serializers.ModelSerializer):
@@ -792,11 +744,6 @@ class VideoSessionSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         'scheduled_time': "Scheduled time must be in the future."
                     })
-                # if int(data.get('scheduled_time')) <= 15:
-                #     raise serializers.ValidationError({
-                #         'scheduled_time': "session should be atleast 15 minutes."
-                #     })
-
                 
             if new_status == 'completed':
                 if now < self.instance.ending_time:
@@ -805,12 +752,10 @@ class VideoSessionSerializer(serializers.ModelSerializer):
                     })
 
         # Check for overlapping sessions if scheduled_time or duration_minutes is provided
-        print('data::', data)
         if data.get('status') == 'approved' and data.get('scheduled_time') and data.get('duration_minutes'):
             tutor = data.get('tutor', self.instance.tutor if self.instance else None)
             scheduled_time = data['scheduled_time']
             duration_minutes = data['duration_minutes']
-            print('scheduled_time:', type(scheduled_time), scheduled_time, duration_minutes)
             ending_time = scheduled_time + timezone.timedelta(minutes=duration_minutes)
 
             # Query for existing sessions for the same tutor

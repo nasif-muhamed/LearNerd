@@ -1,6 +1,9 @@
 import pika
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def publish_transaction_event(event_type, data):
     rabbitmq_host = os.getenv('RABBITMQ_HOST', 'localhost')
@@ -26,5 +29,5 @@ def publish_transaction_event(event_type, data):
         properties=pika.BasicProperties(delivery_mode=2)  # Persistent
     )
 
-    print(f" [x] Sent {routing_key}: {message}")
+    logger.info(f" [x] Sent {routing_key}: {message}")
     connection.close()
