@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AdminCategoryViewSet, UserCategoryView, CourseCreateAPIView, CreateObjectivesRequirementsView, ObjectiveListView, TutorCourseListAPIView,
     RequirementListView, ObjectiveUpdateView, RequirementUpdateView, ObjectiveDeleteView, RequirementDeleteView, SectionCreateView,
-    SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView,
+    SectionItemCreateView, CourseInCompleteView, SectionDeleteView, SectionItemDeleteView, ListDraftsView, DeleteDraftView, LandingPageView,
     CourseUnAuthDetailView, CoursePurchaseView, StudentMyCoursesListView, StudentMyCourseDetailView, StudentAssessmentSubmitView, StudentLectureSubmitView,
     TutorToggleActivationCourseView, StudentFetchTopTutorsView, StudentTutorAnalysisView, TutorCoursePreviewView, ReviewListCreateAPIView, StudentCourseFeedbackView,
     ReportListCreateAPIView, AdminUserCoursesDetailsView, StripeWebhookView, CreatePaymentIntentView, AdViewedSubmitView, HomeView, AdminListReportsAPIView,
@@ -25,6 +25,8 @@ urlpatterns = [
     path('draft/<int:course_id>', DeleteDraftView.as_view(), name='delete-draft'),
 
     path('categories/user/', UserCategoryView.as_view(), name='categories-user'),
+
+    path('landing/', LandingPageView.as_view(), name='landing-page'),
 
     # Create objectives and requirements
     path('objectives-requirements/', CreateObjectivesRequirementsView.as_view(), name='create-objectives-requirements'),
