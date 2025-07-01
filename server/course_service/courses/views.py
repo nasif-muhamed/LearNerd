@@ -826,10 +826,10 @@ class StudentFetchTopTutorsView(APIView):
                 return Response({"message": "No tutors found."}, status=404)
             paginator = self.pagination_class()
             paginated_tutors = paginator.paginate_queryset(tutors, request)
+            logger.debug(f'paginted tutors: {paginated_tutors}') 
             result, error = get_tutor_details(paginated_tutors)
             if error:
                 return error
-            # logger.info('paginted tutors:', paginated_tutors) 
             # # Fetch tutor details from user service using the IDs
             # tutor_ids = [tutor['instructor'] for tutor in paginated_tutors]
             # try:

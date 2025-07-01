@@ -100,7 +100,12 @@ def get_tutor_details(users):
             {"error": "Mismatch between number of tutors and tutor details returned."},
             status=500
         )
-
+    filtered_users_data = []
+    for id in user_ids:
+        for user in users_data:
+            if user['id'] == id:
+                filtered_users_data.append(user)
+                break
     result = [
         {
             'tutor_id': user['instructor'],
@@ -108,6 +113,6 @@ def get_tutor_details(users):
             'enrollment_count': user['total_enrollments'],
             'tutor_details': details
         }
-        for user, details in zip(users, users_data)
+        for user, details in zip(users, filtered_users_data)
     ]
     return result, None
