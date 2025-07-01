@@ -12,7 +12,6 @@ function App() {
     return (
         <Router>
             <NotificationHandler/>
-
             <Routes>
                 <Route path="/student/*" element={<StudentRoutes />} />
                 <Route path="/tutor/*" element={<TutorRoutes/>} />
