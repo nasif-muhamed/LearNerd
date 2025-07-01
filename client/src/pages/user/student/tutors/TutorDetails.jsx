@@ -141,7 +141,7 @@ const TutorDetails = () => {
                 </div>
 
                 {/* Reviews and Ratings */}
-                <div className="mb-8">
+                {/* <div className="mb-8">
                     <h2 className="text-2xl font-semibold mb-4 flex items-center">
                         <Star className="mr-2 text-yellow-500" />
                         Reviews and Ratings Given
@@ -166,10 +166,10 @@ const TutorDetails = () => {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div> */}
 
                 {/* Reports */}
-                <div>
+                {/* <div>
                     <h2 className="text-2xl font-semibold mb-4 flex items-center">
                         <Flag className="mr-2 text-red-500" /> Reports From
                         Rohit
@@ -194,7 +194,7 @@ const TutorDetails = () => {
                             </div>
                         ))}
                     </div>
-                </div>
+                </div> */}
             </div>
         </div>
     );

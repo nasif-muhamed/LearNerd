@@ -783,7 +783,7 @@ const StreamCourse = () => {
                                         <p className="text-muted-foreground">
                                             Video Sessions
                                         </p>
-                                        <p>{myCourse?.course?.video_sessions ? myCourse?.course?.video_session - myCourse.video_session?.length : myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
+                                        <p>{myCourse?.video_session ? myCourse?.course?.video_session - myCourse.video_session?.length : myCourse?.course?.video_session} out of {myCourse?.course?.video_session} left</p>
                                     </div>
                                     <div>
                                         <button onClick={handleRequestSession} className={`w-full mb-2 ${videoSessions && videoSessions[0].status == 'approved' ? 'btn-destructive' : videoSessions && videoSessions[0].status == 'pending' ? 'btn-secondary' : 'btn-primary'}`} disabled={videoSessions && videoSessions[0].status != 'completed'} >
