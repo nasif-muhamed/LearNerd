@@ -150,62 +150,28 @@ cd LearNerd
 
 # Start all services with Docker Compose
 cd server
+# setup .env file as per mentioned below, at the same location where docker-compose.yaml locates.
+docker-compose up db -d
+
+"""
+create databases for admin_service and course_service. user_service will be automtically
+build at the time of db initialization. channel_service using mongo atlas.
+e.g:
+  - docker exec -it <db-container-id> /bin/sh
+  - psql -U postgres
+  - CREATE DATABASE your_admin_service_db_name;
+  - CREATE DATABASE your_course_service_db_name;
+"""
+
 docker-compose up -d
 
 # Install frontend dependencies
 cd ../client
+
+# setup .env file as mentioned below.
 npm install
 
 # Start the React development server
-npm run dev
-```
-
-### 🛠️ Manual Setup
-
-#### Backend Setup
-```bash
-# Navigate to server directory
-cd server
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your configurations
-
-# Run database migrations for each service
-cd user_service && python manage.py migrate && cd ..
-cd course_service && python manage.py migrate && cd ..
-cd channel_service && python manage.py migrate && cd ..
-cd admin_service && python manage.py migrate && cd ..
-cd api_gateway_django && python manage.py migrate && cd ..
-
-# Start each service (in separate terminals)
-cd user_service && python manage.py runserver 8001
-cd course_service && python manage.py runserver 8002
-cd channel_service && python manage.py runserver 8003
-cd admin_service && python manage.py runserver 8004
-cd api_gateway_django && python manage.py runserver 8000
-```
-
-#### Frontend Setup
-```bash
-# Navigate to client directory
-cd client
-
-# Install dependencies
-npm install
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your API endpoints
-
-# Start development server
 npm run dev
 ```
 
@@ -215,49 +181,89 @@ npm run dev
 
 ### Backend (.env)
 ```env
-# Database Configuration
+# Common Configurations
 DB_NAME=learnerds_db
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DB_HOST=localhost
 DB_PORT=5432
+DEBUG=True
+EMAIL_HOST_USER=your_email_user
+EMAIL_HOST_PASSWORD_USER=your_host_password
+REDIS_HOST=redis
+REDIS_PORT=your_redis_port
+RABBITMQ_HOST=rabbitmq
+RABBITMQ_USER=your_rabbitmq_user_name
+RABBITMQ_PASS=your_rabbitmq_password
 
-# JWT Configuration
-SECRET_KEY=your_super_secret_key
+# user_service
+DB_NAME_USER=your_user_service_db_name
+DJANGO_SECRET_USER=your_user_service_django_secret_key
 JWT_SECRET_KEY=your_jwt_secret
+JWT_ALGORITHM_USER=your_jwt_algorithm
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_PRIVATE_KEY_ID=your_firebase_private_key_id
+FIREBASE_PRIVATE_KEY=your_firebase_private_key
+FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+FIREBASE_CLIENT_ID=your_firebase_client_id
+FIREBASE_AUTH_URI=your_firebase_auth_uri
+FIREBASE_TOKEN_URI=your_firebase_token_uri
+FIREBASE_AUTH_PROVIDER_X509_CERT_URL=your_firebase_auth_provider_cert_url
+FIREBASE_CLIENT_X509_CERT_URL=your_firebase_client_cert_url
+FIREBASE_UNIVERSE_DOMAIN=your_firebase_universe_domain
 
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=your_email@gmail.com
-EMAIL_HOST_PASSWORD=your_app_password
+# admin_service
+DB_NAME_ADMIN=your_admin_service_db_name
+DJANGO_SECRET_ADMIN=your_admin_service_django_secret_key
+CLOUDINARY_CLOUD_NAME=ddlw92hp6
+CLOUDINARY_API_KEY=137559726597386
+CLOUDINARY_API_SECRET=coKxqU9Z3OD4r8QipUQDV4mzCRM
 
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
+# course_service
+DB_NAME_COURSE=your_course_service_db_name
+DJANGO_SECRET_COURSE=your_course_service_django_secret_key
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+ZEGO_APP_ID=your_zegocloud_app_id
+ZEGO_SERVER_SECRET=your_zegocloud_server_secret
 
-# AWS S3 Configuration (for file uploads)
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_STORAGE_BUCKET_NAME=your_bucket_name
+# channel_service
+DJANGO_SECRET_CHANNEL=your_channel_service_django_secret_key
+MONGODB_DATABASENAME=your_mongodb_db_name
+MONGODB_URI=your_mongodb_atlas_uri
+MONGODB_USERNAME=your_mongo_atlas_user_name
+MONGODB_PASSWORD=your_mongodb_atlas_collection_password
+
+# api_gateway_service-django
+DJANGO_SECRET_GATEWAY=your_api_gateway_django_secret_key
+USER_SERVICE_URL=http://host.docker.internal:8001/
+ADMIN_SERVICE_URL=http://host.docker.internal:8002/
+COURSE_SERVICE_URL=http://host.docker.internal:8003/
+CHANNEL_SERVICE_URL=http://host.docker.internal:8004/
+
 ```
 
 ### Frontend (.env)
 ```env
 # API Configuration
-VITE_BASE_URL=http://localhost:8000/api
-VITE_SOCKET_URL=ws://localhost:8004/ws
+VITE_BASE_URL=http://localhost:8000/
+VITE_WS_BASE_URL=ws://localhost:8004
+VITE_BASE_PATH=/
 
 # Payment Gateway
 VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 
-# Google OAuth
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
+# Claudinary Config
+VITE_UPLOAD_PRESET=chat_media
+VITE_CLOUD_NAME=ddlw92hp6
+VITE_CLOUDINARY_IMAGE_UPLOAD_URL=https://api.cloudinary.com/v1_1/ddlw92hp6/image/upload
 ```
 
 ---
 
 ### API Testing
-- **Postman Collection**: Available in `/docs/api-collection.json`
+- **Postman Collection**: Available in `/docs/api-collection.json` (will publish later)
 - **Automated Testing**: GitHub Actions CI/CD pipeline
 
 ---
