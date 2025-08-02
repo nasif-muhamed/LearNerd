@@ -78,13 +78,13 @@ class ProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("First Name must only contain alphabetic characters, spaces, apostrophes, or hyphens.")
         return data
     
-    def validate_second_name(self, data):
+    def validate_last_name(self, data):
         if len(data) < 1:
-            raise serializers.ValidationError("Second Name must be at least 1 characters long")
+            raise serializers.ValidationError("Last Name must be at least 1 characters long")
         if len(data) > 50:
-            raise serializers.ValidationError("Second Name cannot be longer than 50 characters.")
+            raise serializers.ValidationError("Last Name cannot be longer than 50 characters.")
         if not re.match(r'^[a-zA-Z]+([ \'-][a-zA-Z]+)*$', data):
-            raise serializers.ValidationError("Second Name must only contain alphabetic characters, spaces, apostrophes, or hyphens.")
+            raise serializers.ValidationError("Last Name must only contain alphabetic characters, spaces, apostrophes, or hyphens.")
         return data
 
 class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to see the profile details
