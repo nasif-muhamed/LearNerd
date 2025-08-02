@@ -1,3 +1,4 @@
+import re
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import get_user_model
 
@@ -67,6 +68,24 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ['id', 'email', 'first_name', 'last_name', 'biography', 'image', 'is_tutor', 'is_active', 'created_at', 'unread_notifications']
         read_only_fields = ['id', 'email', 'is_tutor', 'is_active', 'created_at']
+
+    def validate_first_name(self, data):
+        if len(data) < 3:
+            raise serializers.ValidationError("First Name must be at least 3 characters long")
+        if len(data) > 50:
+            raise serializers.ValidationError("First Name cannot be longer than 50 characters.")
+        if not re.match(r'^[a-zA-Z]+([ \'-][a-zA-Z]+)*$', data):
+            raise serializers.ValidationError("First Name must only contain alphabetic characters, spaces, apostrophes, or hyphens.")
+        return data
+    
+    def validate_second_name(self, data):
+        if len(data) < 1:
+            raise serializers.ValidationError("Second Name must be at least 1 characters long")
+        if len(data) > 50:
+            raise serializers.ValidationError("Second Name cannot be longer than 50 characters.")
+        if not re.match(r'^[a-zA-Z]+([ \'-][a-zA-Z]+)*$', data):
+            raise serializers.ValidationError("Second Name must only contain alphabetic characters, spaces, apostrophes, or hyphens.")
+        return data
 
 class ProfileDetailsSerializer(serializers.ModelSerializer):  # for anyone to see the profile details
     class Meta:
