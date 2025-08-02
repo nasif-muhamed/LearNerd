@@ -155,9 +155,9 @@ const ProfileForm = ({ user, refreshToken }) => {
                                 {...register("biography", {
                                     required: "Biography is required",
                                     minLength: {
-                                        value: 75,
+                                        value: 100,
                                         message:
-                                            "Biography must be at least 20 characters",
+                                            "Biography must be at least 100 characters",
                                     },
                                 })}
                             />
