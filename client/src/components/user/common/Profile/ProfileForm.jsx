@@ -83,9 +83,9 @@ const ProfileForm = ({ user, refreshToken }) => {
                                     {...register("firstName", {
                                         required: "First name is required",
                                         minLength: {
-                                            value: 4,
+                                            value: 3,
                                             message:
-                                                "First name must be at least 5 characters",
+                                                "First name must be at least 3 characters",
                                         },
                                     })}
                                 />
@@ -115,9 +115,9 @@ const ProfileForm = ({ user, refreshToken }) => {
                                     {...register("lastName", {
                                         required: "Last name is required",
                                         minLength: {
-                                            value: 4,
+                                            value: 1,
                                             message:
-                                                "Last name must be at least 5 characters",
+                                                "Last name must be at least 1 characters",
                                         },
                                     })}
                                 />
