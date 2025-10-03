@@ -40,3 +40,16 @@ spec:
   - port: 8000
     targetPort: 8000
     protocol: TCP
+
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: api-gateway
+# spec:
+#   selector:
+#     app: api-gateway  # Match your deployment labels
+#   ports:
+#     - protocol: TCP
+#       port: 80  # The port on which your service will be accessible
+#       targetPort: 8000  # The port your app is listening on in the pod
+#   type: LoadBalancer  # Expose it as a LoadBalancer

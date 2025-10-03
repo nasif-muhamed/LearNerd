@@ -26,12 +26,11 @@ spec:
               name: learnerds-config
         resources:
           requests:
-            memory: "200Mi"
-            cpu: "100m"
+            memory: "300Mi"
+            cpu: "200m"
           limits:
-            memory: "400Mi"
-            cpu: "300m"
-            
+            memory: "1Gi"
+            cpu: "500m"            
       - name: course-service-celery-beat
         image: muhdnasif/learnerds-course_service:latest
         imagePullPolicy: Always
