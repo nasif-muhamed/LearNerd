@@ -37,50 +37,9 @@ const LandingPage = () => {
     useEffect(() => {
         fetchTutors()
     }, [])
-  // Demo statistics data
-    const stats = {
-        courses: 1250,
-        users: 25000,
-        instructors: 450,
-        satisfaction: 98
-    };
-
-  // Demo featured courses
-    const featuredCourses = [
-        {
-        id: 1,
-        title: "React Fundamentals",
-        instructor: "Alex Johnson",
-        price: 49.99,
-        image: "/api/placeholder/320/180",
-        rating: 4.8,
-        category: "Web Development",
-        studentsCount: 1243
-        },
-        {
-        id: 2,
-        title: "Python for Data Science",
-        instructor: "Maria Stevens",
-        price: 59.99,
-        image: "/api/placeholder/320/180",
-        rating: 4.9,
-        category: "Data Science",
-        studentsCount: 2198
-        },
-        {
-        id: 3,
-        title: "UX Design Principles",
-        instructor: "Sam Taylor",
-        price: 39.99,
-        image: "/api/placeholder/320/180",
-        rating: 4.7,
-        category: "Design",
-        studentsCount: 856
-        }
-    ];
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="w-full min-h-screen flex flex-col">
             <main className="flex-grow">
                 {/* Hero Section */}
                 <section className="relative overflow-hidden">
