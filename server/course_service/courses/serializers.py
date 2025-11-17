@@ -99,6 +99,45 @@ class CourseObjectivesRequirementsSerializer(serializers.Serializer):
     objectives = LearningObjectiveSerializer(many=True)
     requirements = CourseRequirementSerializer(many=True)
 
+    def validate(self, attrs):
+        course_id = attrs["course_id"]
+        
+        # Check duplicate objectives
+        if len({obj["objective"] for obj in attrs["objectives"]}) != len([obj["objective"] for obj in attrs["objectives"]]):
+            raise serializers.ValidationError({
+                "objectives": "Duplicate objectives are not allowed."
+            })
+        existing_objectives = set(
+            LearningObjective.objects.filter(course_id=course_id)
+            .values_list("objective", flat=True)
+        )
+        incoming_objectives = {obj["objective"] for obj in attrs["objectives"]}
+
+        duplicates = existing_objectives.intersection(incoming_objectives)
+        if duplicates:
+            raise serializers.ValidationError({
+                "objectives": [f"Objective already exists: {dup}" for dup in duplicates]
+            })
+
+        # Check duplicate requirements
+        if len({obj["requirement"] for obj in attrs["requirements"]}) != len([obj["requirement"] for obj in attrs["requirements"]]):
+            raise serializers.ValidationError({
+                "objectives": "Duplicate requirements are not allowed."
+            })
+        existing_requirements = set(
+            CourseRequirement.objects.filter(course_id=course_id)
+            .values_list("requirement", flat=True)
+        )
+        incoming_requirements = {req["requirement"] for req in attrs["requirements"]}
+
+        duplicates = existing_requirements.intersection(incoming_requirements)
+        if duplicates:
+            raise serializers.ValidationError({
+                "requirements": [f"Requirement already exists: {dup}" for dup in duplicates]
+            })
+
+        return attrs
+
     def create(self, validated_data):
         course = Course.objects.get(id=validated_data['course_id'])
         
