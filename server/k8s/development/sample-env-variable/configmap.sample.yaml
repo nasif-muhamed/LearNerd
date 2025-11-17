@@ -1,0 +1,32 @@
+# configmap.sample.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: learnerds-config-sample
+data:
+  DB_ENGINE: "django.db.backends.postgresql"
+  DB_HOST: "db"
+  DB_PORT: "5432"
+  DEBUG: "True"
+  EMAIL_HOST_USER: "your-host-email"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  RABBITMQ_HOST: "rabbitmq"
+  DB_NAME_USER: "your-user-service-db-name"
+  DB_NAME_ADMIN: "your-admin-service-db-name"
+  DB_NAME_COURSE: "your-course-service-db-name"
+  DB_NAME_CHANNEL: "your-channel-service-db-name"
+  USER_SERVICE_URL: "http://user-service:8001/"
+  ADMIN_SERVICE_URL: "http://admin-service:8002/"
+  COURSE_SERVICE_URL: "http://course-service:8003/"
+  CHANNEL_SERVICE_URL: "http://channel-service:8004/"
+  JWT_ALGORITHM_USER: "your-jwt-algorithm"
+  FIREBASE_CREDENTIALS_PATH: "keyfiles/learnerds-firbase-setup.json"
+  FIREBASE_PROJECT_ID: "your-firbase-project-id"
+  FIREBASE_CLIENT_EMAIL: "your-firebase-client-email"
+  FIREBASE_AUTH_URI: "your-firebase-auth-uri"
+  FIREBASE_TOKEN_URI: "your-firebase-token-uri"
+  FIREBASE_AUTH_PROVIDER_X509_CERT_URL: "your-firebase-auth-provider-url"
+  FIREBASE_CLIENT_X509_CERT_URL: "your-firebase-client-url"
+  FIREBASE_UNIVERSE_DOMAIN: "your-firebase-universe-domain"
+  MEDIA_STORAGE: "media"
