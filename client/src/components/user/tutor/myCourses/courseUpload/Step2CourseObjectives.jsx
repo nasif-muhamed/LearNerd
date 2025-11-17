@@ -4,6 +4,7 @@ import { Plus, X, Trash2, FilePenLine } from "lucide-react";
 import CourseUploadHeader from './CourseUploadHeader';
 import CourseFormNavigation from './CourseFormNavigation';
 import api from "../../../../../services/api/axiosInterceptor";
+import handleError from "../../../../../utils/handleError";
 
 const CourseObjectives = ({
     setStep, 
@@ -24,15 +25,6 @@ const CourseObjectives = ({
     //     if (requirements.length + uploadedRequirements.length < 1) setRequirements([""])
     //     if (objectives.length + uploadedObjectives.length < 1) setObjectives([""])
     // }, [requirements, uploadedRequirements, objectives, uploadedObjectives])
-
-    const handleError = (error, noData) => {
-        if (error.response?.data) {
-            toast.error(Object.values(error.response?.data)?.[0]);
-        } else {
-            toast.error(noData);
-            toast.error(error.message || 'Something went wrong');
-        }
-    };
 
     const fetchObjectives = async (id) => {
         setLoading(true)
@@ -212,7 +204,7 @@ const CourseObjectives = ({
                 setStep(2);
             } catch (error) {
                 console.error("Error saving:", error);
-                toast("There was a problem saving objectives and requirements. Please try again.");
+                handleError(error, "There was a problem saving objectives and requirements. Please try again.")
             }
         }
     };
